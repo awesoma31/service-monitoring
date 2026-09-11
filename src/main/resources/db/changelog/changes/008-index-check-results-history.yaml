@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-index-check-results-history
+      author: awesoma31
+      comment: >-
+        Serves the infinite-scroll history endpoint, which reads a monitor's results
+        newest first. Written as raw SQL because Liquibase's createIndex cannot
+        express DESC ordering.
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_check_results_monitor_checked_at
+                ON check_results (monitor_id, checked_at DESC)
+      rollback:
+        - sql:
+            sql: DROP INDEX idx_check_results_monitor_checked_at

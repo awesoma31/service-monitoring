@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-monitor-tags
+      author: awesoma31
+      comment: Plain many-to-many join table between monitors and tags
+      changes:
+        - createTable:
+            tableName: monitor_tags
+            columns:
+              - column:
+                  name: monitor_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_monitor_tags_monitor
+                    references: monitors(id)
+                    deleteCascade: true
+              - column:
+                  name: tag_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_monitor_tags_tag
+                    references: tags(id)
+                    deleteCascade: true
+        - addPrimaryKey:
+            tableName: monitor_tags
+            columnNames: monitor_id, tag_id
+            constraintName: pk_monitor_tags
+        - createIndex:
+            indexName: idx_monitor_tags_tag_id
+            tableName: monitor_tags
+            columns:
+              - column:
+                  name: tag_id
+      rollback:
+        - dropTable:
+            tableName: monitor_tags

@@ -1,0 +1,94 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-monitors
+      author: awesoma31
+      comment: HTTP endpoints being watched, with their probe settings and last known state
+      changes:
+        - createTable:
+            tableName: monitors
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_monitors
+              - column:
+                  name: project_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_monitors_project
+                    references: projects(id)
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: url
+                  type: VARCHAR(2048)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: http_method
+                  type: VARCHAR(10)
+                  defaultValue: GET
+                  constraints:
+                    nullable: false
+              - column:
+                  name: interval_sec
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timeout_ms
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expected_status
+                  type: INTEGER
+                  defaultValueNumeric: 200
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_state
+                  type: VARCHAR(20)
+                  defaultValue: UNKNOWN
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_monitors_project_id
+            tableName: monitors
+            columns:
+              - column:
+                  name: project_id
+        - sql:
+            sql: >-
+              ALTER TABLE monitors
+                ADD CONSTRAINT ck_monitors_name_not_blank
+                  CHECK (length(trim(name)) > 0),
+                ADD CONSTRAINT ck_monitors_url_scheme
+                  CHECK (url LIKE 'http://%' OR url LIKE 'https://%'),
+                ADD CONSTRAINT ck_monitors_http_method
+                  CHECK (http_method IN ('GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE')),
+                ADD CONSTRAINT ck_monitors_interval_sec
+                  CHECK (interval_sec BETWEEN 10 AND 86400),
+                ADD CONSTRAINT ck_monitors_timeout_ms
+                  CHECK (timeout_ms BETWEEN 100 AND 60000),
+                ADD CONSTRAINT ck_monitors_expected_status
+                  CHECK (expected_status BETWEEN 100 AND 599),
+                ADD CONSTRAINT ck_monitors_current_state
+                  CHECK (current_state IN ('UP', 'DOWN', 'PAUSED', 'UNKNOWN'))
+      rollback:
+        - dropTable:
+            tableName: monitors

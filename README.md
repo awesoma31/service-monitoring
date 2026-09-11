@@ -118,3 +118,11 @@ docker compose up --build
 
 `check` прогоняет тесты и проверяет покрытие: при line coverage ниже 70% сборка
 падает. HTML-отчёт — `build/reports/jacoco/test/html/index.html`.
+
+Интеграционные тесты поднимают Postgres через Testcontainers, поэтому Docker должен
+быть запущен. С Docker Desktop настройка не нужна. Для colima укажите путь к её сокету —
+иначе тесты падают с `Could not find a valid Docker environment`:
+
+```bash
+echo "docker.host=unix://$HOME/.colima/default/docker.sock" >> ~/.testcontainers.properties
+```
