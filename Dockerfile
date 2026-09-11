@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
 # Dependency layer: re-resolved only when the build scripts change.
@@ -12,8 +12,14 @@ COPY src src
 # which is not available inside the image build.
 RUN ./gradlew --no-daemon bootJar -x test
 
-FROM eclipse-temurin:21-jre AS runtime
+FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app
+
+# Running as root inside the container is an unnecessary privilege.
+RUN addgroup -S app && adduser -S -G app app
+USER app
+
 COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# Default heap sizing ignores the container limit, so make the JVM honour it.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/app.jar"]
