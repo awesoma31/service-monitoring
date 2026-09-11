@@ -43,6 +43,10 @@ class LiquibaseMigrationsTest {
 
     @BeforeAll
     static void createOwnDatabase() throws Exception {
+        // A previous run killed mid-rollback would leave a half-migrated database behind,
+        // and this test would then roll back a changelog it did not apply. Start from
+        // nothing rather than from whatever survived.
+        dropOwnDatabase();
         runOnDefaultDatabase("CREATE DATABASE " + OWN_DATABASE);
         jdbcUrl = PostgresContainer.INSTANCE.getJdbcUrl()
                 .replace("/" + PostgresContainer.INSTANCE.getDatabaseName(), "/" + OWN_DATABASE);
@@ -50,6 +54,10 @@ class LiquibaseMigrationsTest {
 
     @AfterAll
     static void dropOwnDatabase() throws Exception {
+        // Postgres refuses to drop a database that still has sessions attached.
+        runOnDefaultDatabase(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '"
+                        + OWN_DATABASE + "'");
         runOnDefaultDatabase("DROP DATABASE IF EXISTS " + OWN_DATABASE);
     }
 
