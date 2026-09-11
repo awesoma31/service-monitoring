@@ -15,16 +15,15 @@ import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.awesoma.monitoring.support.PostgresContainer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Migrations are only trustworthy if they also undo themselves: a rollback that fails
  * leaves a half-migrated database that nobody can move forward or back.
  */
-@Testcontainers
 class LiquibaseMigrationsTest {
 
     private static final String CHANGELOG = "db/changelog/db.changelog-master.yaml";
@@ -33,14 +32,43 @@ class LiquibaseMigrationsTest {
             "users", "projects", "project_members", "tags", "monitors",
             "monitor_tags", "check_results", "incidents", "channels", "notifications");
 
-    @Container
-    private static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:17-alpine");
+    /**
+     * Rolling the schema back empties the database, so this test cannot share one with the
+     * others. It gets a database of its own inside the shared container rather than a
+     * second container.
+     */
+    private static final String OWN_DATABASE = "migrations_check";
+
+    private static String jdbcUrl;
+
+    @BeforeAll
+    static void createOwnDatabase() throws Exception {
+        runOnDefaultDatabase("CREATE DATABASE " + OWN_DATABASE);
+        jdbcUrl = PostgresContainer.INSTANCE.getJdbcUrl()
+                .replace("/" + PostgresContainer.INSTANCE.getDatabaseName(), "/" + OWN_DATABASE);
+    }
+
+    @AfterAll
+    static void dropOwnDatabase() throws Exception {
+        runOnDefaultDatabase("DROP DATABASE IF EXISTS " + OWN_DATABASE);
+    }
+
+    private static void runOnDefaultDatabase(String sql) throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                        PostgresContainer.INSTANCE.getJdbcUrl(),
+                        PostgresContainer.INSTANCE.getUsername(),
+                        PostgresContainer.INSTANCE.getPassword());
+                Statement statement = connection.createStatement()) {
+            statement.execute(sql);
+        }
+    }
 
     @Test
     void appliesEveryChangesetAndRollsBackCleanly() throws Exception {
         try (Connection connection = DriverManager.getConnection(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+                jdbcUrl,
+                PostgresContainer.INSTANCE.getUsername(),
+                PostgresContainer.INSTANCE.getPassword())) {
 
             Database database = DatabaseFactory.getInstance()
                     .findCorrectDatabaseImplementation(new JdbcConnection(connection));
