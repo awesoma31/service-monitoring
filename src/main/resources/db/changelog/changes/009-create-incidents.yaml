@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-create-incidents
+      author: awesoma31
+      comment: An incident spans from the first failed check until the monitor recovers
+      changes:
+        - createTable:
+            tableName: incidents
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_incidents
+              - column:
+                  name: monitor_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_incidents_monitor
+                    references: monitors(id)
+                    deleteCascade: true
+              - column:
+                  name: started_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resolved_at
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: OPEN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: severity
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cause
+                  type: VARCHAR(500)
+        - sql:
+            sql: >-
+              ALTER TABLE incidents
+                ADD CONSTRAINT ck_incidents_status
+                  CHECK (status IN ('OPEN', 'RESOLVED')),
+                ADD CONSTRAINT ck_incidents_severity
+                  CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
+                ADD CONSTRAINT ck_incidents_resolved_at_order
+                  CHECK (resolved_at IS NULL OR resolved_at >= started_at),
+                ADD CONSTRAINT ck_incidents_status_matches_resolved_at
+                  CHECK ((status = 'OPEN' AND resolved_at IS NULL)
+                      OR (status = 'RESOLVED' AND resolved_at IS NOT NULL))
+      rollback:
+        - dropTable:
+            tableName: incidents
