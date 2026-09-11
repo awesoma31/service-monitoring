@@ -84,10 +84,37 @@ org.awesoma.monitoring
 - `develop → main` — отдельный PR в конце лабы (например, `Release: Lab 1`), опционально
   с тегом (`v1.0-lab1`).
 
-## Запуск проекта
+## Требования
+
+- JDK 21
+- Docker с поддержкой `docker compose`
+
+## Запуск
 
 ```bash
-docker compose up
+cp .env.example .env   # при необходимости поправьте значения
+docker compose up --build
 ```
 
-(будет актуально после `feature/lab1-project-init`; сейчас в репозитории ещё нет кода).
+Поднимаются Postgres и приложение, причём приложение стартует только после того,
+как healthcheck Postgres сообщит о готовности базы.
+
+| Что | Адрес |
+|---|---|
+| Health | http://localhost:8080/actuator/health |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| OpenAPI JSON | http://localhost:8080/v3/api-docs |
+
+Остановить — `docker compose down`, вместе с данными БД — `docker compose down -v`.
+
+Конфигурация задаётся только переменными окружения (см. `.env.example`); значений
+по умолчанию для доступа к БД нет, поэтому без них приложение не стартует.
+
+## Сборка и тесты
+
+```bash
+./gradlew check
+```
+
+`check` прогоняет тесты и проверяет покрытие: при line coverage ниже 70% сборка
+падает. HTML-отчёт — `build/reports/jacoco/test/html/index.html`.
