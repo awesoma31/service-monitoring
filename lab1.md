@@ -30,7 +30,11 @@
 - `MonitorState`: `UP`, `DOWN`, `PAUSED`, `UNKNOWN`
 - `CheckResultType`: `SUCCESS`, `TIMEOUT`, `BAD_STATUS`, `CONNECTION_ERROR`
 - `IncidentStatus`: `OPEN`, `RESOLVED`
-- `Severity`, `ChannelType` (`EMAIL`, `WEBHOOK`, `TELEGRAM`), `NotificationStatus`, `UserStatus`, `HttpMethod`
+- `Severity`: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
+- `ChannelType`: `EMAIL`, `WEBHOOK`, `TELEGRAM`
+- `NotificationStatus`: `PENDING`, `SENT`, `FAILED`
+- `UserStatus`: `ACTIVE`, `INACTIVE`, `BLOCKED`
+- `HttpMethod`: `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`
 
 ### Индексы
 
@@ -50,10 +54,14 @@ changeset на изменение, у каждого прописан `rollback`
 4. `004-create-tags`
 5. `005-create-monitors`
 6. `006-create-monitor-tags`
-7. `007-create-check-results` (+ индекс `monitor_id, checked_at DESC`)
-8. `008-create-incidents` (+ индекс `monitor_id, status` + частичный unique-индекс)
-9. `009-create-channels`
-10. `010-create-notifications`
+7. `007-create-check-results`
+8. `008-index-check-results-history` — индекс `(monitor_id, checked_at DESC)`, сырым SQL:
+   `createIndex` в Liquibase не умеет DESC
+9. `009-create-incidents`
+10. `010-index-incidents` — индекс `(monitor_id, status)` и частичный
+    `UNIQUE(monitor_id) WHERE status = 'OPEN'`, тоже сырым SQL: нет поддержки WHERE
+11. `011-create-channels`
+12. `012-create-notifications`
 
 ## Планировщик проверок
 
@@ -110,7 +118,7 @@ Entity никогда не выходит за пределы `service`/`reposit
 - [ ] CRUD с REST API на основных сущностях, правильные HTTP-статусы (201+Location, 204, 404, 409, 400/422)
 - [ ] Spring Data JPA для доступа к БД
 - [ ] Валидация на уровне DTO (Bean Validation) и Entity/миграции (NOT NULL, CHECK)
-- [ ] Схема БД — через Liquibase-миграции (YAML, rollback, без правки применённых)
+- [x] Схема БД — через Liquibase-миграции (YAML, rollback, без правки применённых)
 - [ ] Юнит-тесты (Mockito) + интеграционные (Testcontainers + JUnit 5)
 - [ ] Конфигурация только через переменные окружения (`${VAR}` в `application.yml`)
 - [ ] Сборка и запуск через `docker compose up` (app + postgres + healthcheck)
