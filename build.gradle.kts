@@ -56,7 +56,6 @@ jacoco {
 val coverageExclusions = listOf(
     "**/MonitoringApplication.class",
     "**/config/**",
-    "**/domain/enums/**",
     "**/web/dto/**",
     "**/web/mapper/*Impl.class",
 )
