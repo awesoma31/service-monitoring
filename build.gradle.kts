@@ -66,6 +66,10 @@ fun filteredClasses(classDirs: FileCollection): FileCollection =
 
 tasks.test {
     useJUnitPlatform()
+    // Testcontainers' resource reaper mounts the Docker socket by its path inside the
+    // daemon's host. Docker Desktop already uses this path; colima keeps the socket in
+    // $HOME, and without this the reaper fails to start and every test errors out.
+    environment("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/var/run/docker.sock")
     finalizedBy(tasks.jacocoTestReport)
 }
 
