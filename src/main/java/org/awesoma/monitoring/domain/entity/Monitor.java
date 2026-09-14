@@ -16,6 +16,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Getter;
@@ -75,6 +76,10 @@ public class Monitor extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "current_state", nullable = false, length = 20)
     private MonitorState currentState = MonitorState.UNKNOWN;
+
+    /** Null until the first probe, which makes a fresh monitor due straight away. */
+    @Column(name = "last_checked_at")
+    private OffsetDateTime lastCheckedAt;
 
     /**
      * Plain many-to-many: the join table carries nothing but the two keys.

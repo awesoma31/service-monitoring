@@ -16,6 +16,12 @@ spring:
 server:
   port: ${APP_PORT:8080}
 
+checker:
+  # Disabled in tests so a background tick cannot interleave with their assertions.
+  enabled: ${CHECKER_ENABLED:true}
+  interval-ms: ${CHECKER_INTERVAL_MS:15000}
+  batch-size: ${CHECKER_BATCH_SIZE:50}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
