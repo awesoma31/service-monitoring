@@ -4,6 +4,7 @@ import java.util.HashSet;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.web.dto.monitor.MonitorCreateRequest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorResponse;
@@ -71,8 +72,22 @@ public class MonitorService {
         monitor.setIntervalSec(request.intervalSec());
         monitor.setTimeoutMs(request.timeoutMs());
         monitor.setExpectedStatus(request.expectedStatus());
-        monitor.setActive(request.active());
+        applyActiveFlag(monitor, request.active());
         return mapper.toResponse(monitor);
+    }
+
+    /**
+     * Keeps the reported state honest while a monitor is switched off. Leaving it UP would
+     * claim the site is fine although nothing checks it any more, and leaving it DOWN would
+     * keep an alert standing that nobody is going to resolve.
+     */
+    private void applyActiveFlag(Monitor monitor, boolean active) {
+        monitor.setActive(active);
+        if (!active) {
+            monitor.setCurrentState(MonitorState.PAUSED);
+        } else if (monitor.getCurrentState() == MonitorState.PAUSED) {
+            monitor.setCurrentState(MonitorState.UNKNOWN);
+        }
     }
 
     @Transactional
