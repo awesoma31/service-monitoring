@@ -30,6 +30,9 @@ dependencies {
     implementation("org.liquibase:liquibase-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
     implementation("org.mapstruct:mapstruct:$mapstructVersion")
+    // Password hashing only: the crypto module brings no security auto-configuration,
+    // so no filters or login flows are enabled. Authentication itself arrives in lab 3.
+    implementation("org.springframework.security:spring-security-crypto")
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
