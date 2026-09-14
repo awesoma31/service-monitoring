@@ -23,6 +23,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.awesoma.monitoring.domain.enums.HttpMethod;
 import org.awesoma.monitoring.domain.enums.MonitorState;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "monitors")
@@ -75,7 +76,14 @@ public class Monitor extends BaseEntity {
     @Column(name = "current_state", nullable = false, length = 20)
     private MonitorState currentState = MonitorState.UNKNOWN;
 
-    /** Plain many-to-many: the join table carries nothing but the two keys. */
+    /**
+     * Plain many-to-many: the join table carries nothing but the two keys.
+     *
+     * <p>Batched so that rendering a page of monitors costs one extra query for all their
+     * tags instead of one per monitor, while the page itself is still cut by the database.
+     * The size matches the largest page the API hands out.
+     */
+    @BatchSize(size = 50)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "monitor_tags",

@@ -68,6 +68,34 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void listingCanBeNarrowedToASingleTag() throws Exception {
+        long projectId = createProject("by-tag");
+        createTagged(projectId, "Prod one", "https://p1.example", "prod");
+        createTagged(projectId, "Prod two", "https://p2.example", "prod");
+        createTagged(projectId, "Staging", "https://s.example", "staging");
+
+        mockMvc.perform(get("/api/v1/projects/{id}/monitors", projectId).param("tag", "prod"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Total-Count", "2"))
+                .andExpect(jsonPath("$.content.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/projects/{id}/monitors", projectId).param("tag", "staging"))
+                .andExpect(header().string("X-Total-Count", "1"))
+                .andExpect(jsonPath("$.content[0].name").value("Staging"));
+    }
+
+    @Test
+    void anUnknownTagYieldsAnEmptyPageRatherThanAnError() throws Exception {
+        long projectId = createProject("unknown-tag");
+        createTagged(projectId, "Only", "https://only.example", "prod");
+
+        mockMvc.perform(get("/api/v1/projects/{id}/monitors", projectId).param("tag", "absent"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Total-Count", "0"))
+                .andExpect(jsonPath("$.content").isEmpty());
+    }
+
+    @Test
     void duplicateNameInsideOneProjectIsAConflict() throws Exception {
         long projectId = createProject("duplicate-name");
         createMonitor(projectId, "Same", "https://same.example");
@@ -111,6 +139,13 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
                         .formatted(name, url)))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("id").asLong();
+    }
+
+    private void createTagged(long projectId, String name, String url, String tag) throws Exception {
+        mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
+                        {"name":"%s","url":"%s","intervalSec":60,"timeoutMs":5000,"tags":["%s"]}"""
+                        .formatted(name, url, tag)))
+                .andExpect(status().isCreated());
     }
 
     private MockHttpServletRequestBuilder postJson(String path, String body) {

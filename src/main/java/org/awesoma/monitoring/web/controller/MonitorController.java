@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,8 +35,10 @@ public class MonitorController {
 
     @GetMapping("/projects/{projectId}/monitors")
     public ResponseEntity<Page<MonitorResponse>> listByProject(
-            @PathVariable Long projectId, @Valid PageParams page) {
-        Page<MonitorResponse> monitorPage = monitors.listByProject(projectId, page.toPageable());
+            @PathVariable Long projectId,
+            @RequestParam(required = false) String tag,
+            @Valid PageParams page) {
+        Page<MonitorResponse> monitorPage = monitors.listByProject(projectId, tag, page.toPageable());
         return ResponseEntity.ok()
                 .header(TOTAL_COUNT_HEADER, String.valueOf(monitorPage.getTotalElements()))
                 .body(monitorPage);

@@ -28,9 +28,13 @@ public class MonitorService {
     private final TagService tags;
     private final MonitorMapper mapper;
 
-    public Page<MonitorResponse> listByProject(Long projectId, Pageable pageable) {
-        projects.require(projectId);
-        return monitors.findByProjectId(projectId, pageable).map(mapper::toResponse);
+    /** An absent tag lists the whole project; a given one narrows the page to that label. */
+    public Page<MonitorResponse> listByProject(Long projectId, String tag, Pageable pageable) {
+        projects.requireExists(projectId);
+        Page<Monitor> page = tag == null || tag.isBlank()
+                ? monitors.findByProjectId(projectId, pageable)
+                : monitors.findByProjectIdAndTagsName(projectId, tag, pageable);
+        return page.map(mapper::toResponse);
     }
 
     public MonitorResponse get(Long id) {

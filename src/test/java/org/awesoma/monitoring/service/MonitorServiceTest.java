@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class MonitorServiceTest {
@@ -99,6 +102,35 @@ class MonitorServiceTest {
         service.replaceTags(5L, Set.of("fresh"));
 
         assertThat(monitor.getTags()).containsExactly(fresh);
+    }
+
+    @Test
+    void listingWithoutATagAsksForTheWholeProject() {
+        when(monitors.findByProjectId(eq(1L), any())).thenReturn(Page.empty());
+
+        service.listByProject(1L, null, Pageable.unpaged());
+
+        verify(monitors).findByProjectId(eq(1L), any());
+        verify(monitors, never()).findByProjectIdAndTagsName(any(), any(), any());
+    }
+
+    @Test
+    void listingWithATagNarrowsTheQuery() {
+        when(monitors.findByProjectIdAndTagsName(eq(1L), eq("prod"), any())).thenReturn(Page.empty());
+
+        service.listByProject(1L, "prod", Pageable.unpaged());
+
+        verify(monitors).findByProjectIdAndTagsName(eq(1L), eq("prod"), any());
+        verify(monitors, never()).findByProjectId(any(), any());
+    }
+
+    @Test
+    void aBlankTagIsTreatedAsNoFilter() {
+        when(monitors.findByProjectId(eq(1L), any())).thenReturn(Page.empty());
+
+        service.listByProject(1L, "  ", Pageable.unpaged());
+
+        verify(monitors).findByProjectId(eq(1L), any());
     }
 
     @Test

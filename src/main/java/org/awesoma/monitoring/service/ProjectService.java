@@ -124,7 +124,8 @@ public class ProjectService {
                         "User %d is not a member of project %d".formatted(userId, projectId)));
     }
 
-    private void requireExists(Long id) {
+    /** Existence check that does not load the row, for callers that only need the guard. */
+    public void requireExists(Long id) {
         if (!projects.existsById(id)) {
             throw NotFoundException.of("Project", id);
         }
