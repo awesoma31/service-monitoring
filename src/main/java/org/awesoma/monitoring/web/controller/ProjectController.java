@@ -2,6 +2,12 @@ package org.awesoma.monitoring.web.controller;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.ProjectService;
@@ -28,27 +34,60 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/projects")
 @RequiredArgsConstructor
+@Tag(name = "Projects")
 public class ProjectController {
 
     private final ProjectService projects;
 
     @GetMapping
+    @Operation(summary = "List projects", description = "Returns one page of projects, at most 50 records.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Projects returned"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
+    })
     public Page<ProjectResponse> list(@Valid PageParams page) {
         return projects.list(page.toPageable());
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get a project")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Project returned"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
+    })
     public ProjectResponse get(@PathVariable @Positive Long id) {
         return projects.get(id);
     }
 
     @PostMapping
+    @Operation(
+            summary = "Create a project",
+            description = "Creates the project and adds its owner as an OWNER member atomically.")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "201",
+                description = "Project created",
+                headers = @Header(
+                        name = "Location",
+                        description = "URI of the created project",
+                        schema = @Schema(type = "string", format = "uri"))),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
+    })
     public ResponseEntity<ProjectResponse> create(@Valid @RequestBody ProjectCreateRequest request) {
         ProjectResponse created = projects.create(request);
         return ResponseEntity.created(URI.create("/api/v1/projects/" + created.id())).body(created);
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Update a project", description = "Changes the project name; its slug remains fixed.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Project updated"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
+    })
     public ProjectResponse update(
             @PathVariable @Positive Long id, @Valid @RequestBody ProjectUpdateRequest request) {
         return projects.update(id, request);
@@ -56,17 +95,43 @@ public class ProjectController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete a project")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Project deleted"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
+    })
     public void delete(@PathVariable @Positive Long id) {
         projects.delete(id);
     }
 
     @GetMapping("/{id}/members")
+    @Operation(summary = "List project members")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Members returned"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
+    })
     public Page<ProjectMemberResponse> listMembers(
             @PathVariable @Positive Long id, @Valid PageParams page) {
         return projects.listMembers(id, page.toPageable());
     }
 
     @PostMapping("/{id}/members")
+    @Operation(summary = "Add a project member")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "201",
+                description = "Member added",
+                headers = @Header(
+                        name = "Location",
+                        description = "URI of the new project membership",
+                        schema = @Schema(type = "string", format = "uri"))),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
+    })
     public ResponseEntity<ProjectMemberResponse> addMember(
             @PathVariable @Positive Long id,
             @Valid @RequestBody ProjectMemberRequest request) {
@@ -77,6 +142,15 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}/members/{userId}")
+    @Operation(
+            summary = "Change a member role",
+            description = "The last project owner cannot be demoted.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Member role changed"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
+    })
     public ProjectMemberResponse changeRole(
             @PathVariable @Positive Long id,
             @PathVariable @Positive Long userId,
@@ -86,6 +160,15 @@ public class ProjectController {
 
     @DeleteMapping("/{id}/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Remove a project member",
+            description = "The last project owner cannot be removed.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Member removed"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
+    })
     public void removeMember(
             @PathVariable @Positive Long id, @PathVariable @Positive Long userId) {
         projects.removeMember(id, userId);
