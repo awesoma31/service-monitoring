@@ -1,6 +1,7 @@
 package org.awesoma.monitoring.web.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.service.IncidentService;
@@ -30,31 +31,31 @@ public class IncidentController {
      */
     @GetMapping("/monitors/{monitorId}/results")
     public Slice<CheckResultResponse> listResults(
-            @PathVariable Long monitorId, @Valid PageParams page) {
+            @PathVariable @Positive Long monitorId, @Valid PageParams page) {
         return incidents.listResults(monitorId, page.toPageable());
     }
 
     @GetMapping("/monitors/{monitorId}/incidents")
     public Page<IncidentResponse> listByMonitor(
-            @PathVariable Long monitorId,
+            @PathVariable @Positive Long monitorId,
             @RequestParam(required = false) IncidentStatus status,
             @Valid PageParams page) {
         return incidents.listByMonitor(monitorId, status, page.toPageable());
     }
 
     @GetMapping("/incidents/{id}")
-    public IncidentResponse get(@PathVariable Long id) {
+    public IncidentResponse get(@PathVariable @Positive Long id) {
         return incidents.get(id);
     }
 
     @PostMapping("/incidents/{id}/resolve")
-    public IncidentResponse resolve(@PathVariable Long id) {
+    public IncidentResponse resolve(@PathVariable @Positive Long id) {
         return incidents.resolve(id);
     }
 
     @GetMapping("/incidents/{id}/notifications")
     public Page<NotificationResponse> listNotifications(
-            @PathVariable Long id, @Valid PageParams page) {
+            @PathVariable @Positive Long id, @Valid PageParams page) {
         return incidents.listNotifications(id, page.toPageable());
     }
 }

@@ -1,6 +1,7 @@
 package org.awesoma.monitoring.web.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.ProjectService;
@@ -37,7 +38,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-    public ProjectResponse get(@PathVariable Long id) {
+    public ProjectResponse get(@PathVariable @Positive Long id) {
         return projects.get(id);
     }
 
@@ -49,24 +50,26 @@ public class ProjectController {
 
     @PutMapping("/{id}")
     public ProjectResponse update(
-            @PathVariable Long id, @Valid @RequestBody ProjectUpdateRequest request) {
+            @PathVariable @Positive Long id, @Valid @RequestBody ProjectUpdateRequest request) {
         return projects.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable @Positive Long id) {
         projects.delete(id);
     }
 
     @GetMapping("/{id}/members")
-    public Page<ProjectMemberResponse> listMembers(@PathVariable Long id, @Valid PageParams page) {
+    public Page<ProjectMemberResponse> listMembers(
+            @PathVariable @Positive Long id, @Valid PageParams page) {
         return projects.listMembers(id, page.toPageable());
     }
 
     @PostMapping("/{id}/members")
     public ResponseEntity<ProjectMemberResponse> addMember(
-            @PathVariable Long id, @Valid @RequestBody ProjectMemberRequest request) {
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody ProjectMemberRequest request) {
         ProjectMemberResponse created = projects.addMember(id, request);
         return ResponseEntity.created(
                         URI.create("/api/v1/projects/" + id + "/members/" + created.userId()))
@@ -75,15 +78,16 @@ public class ProjectController {
 
     @PutMapping("/{id}/members/{userId}")
     public ProjectMemberResponse changeRole(
-            @PathVariable Long id,
-            @PathVariable Long userId,
+            @PathVariable @Positive Long id,
+            @PathVariable @Positive Long userId,
             @Valid @RequestBody ProjectMemberRoleRequest request) {
         return projects.changeRole(id, userId, request.role());
     }
 
     @DeleteMapping("/{id}/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeMember(@PathVariable Long id, @PathVariable Long userId) {
+    public void removeMember(
+            @PathVariable @Positive Long id, @PathVariable @Positive Long userId) {
         projects.removeMember(id, userId);
     }
 }

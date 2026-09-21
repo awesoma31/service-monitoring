@@ -1,6 +1,7 @@
 package org.awesoma.monitoring.web.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.UserService;
@@ -34,7 +35,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public UserResponse get(@PathVariable Long id) {
+    public UserResponse get(@PathVariable @Positive Long id) {
         return users.get(id);
     }
 
@@ -45,13 +46,14 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public UserResponse update(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request) {
+    public UserResponse update(
+            @PathVariable @Positive Long id, @Valid @RequestBody UserUpdateRequest request) {
         return users.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable @Positive Long id) {
         users.delete(id);
     }
 }

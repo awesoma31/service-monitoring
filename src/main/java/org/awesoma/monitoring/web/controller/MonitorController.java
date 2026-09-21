@@ -1,6 +1,7 @@
 package org.awesoma.monitoring.web.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.MonitorService;
@@ -35,7 +36,7 @@ public class MonitorController {
 
     @GetMapping("/projects/{projectId}/monitors")
     public ResponseEntity<Page<MonitorResponse>> listByProject(
-            @PathVariable Long projectId,
+            @PathVariable @Positive Long projectId,
             @RequestParam(required = false) String tag,
             @Valid PageParams page) {
         Page<MonitorResponse> monitorPage = monitors.listByProject(projectId, tag, page.toPageable());
@@ -46,31 +47,32 @@ public class MonitorController {
 
     @PostMapping("/projects/{projectId}/monitors")
     public ResponseEntity<MonitorResponse> create(
-            @PathVariable Long projectId, @Valid @RequestBody MonitorCreateRequest request) {
+            @PathVariable @Positive Long projectId,
+            @Valid @RequestBody MonitorCreateRequest request) {
         MonitorResponse created = monitors.create(projectId, request);
         return ResponseEntity.created(URI.create("/api/v1/monitors/" + created.id())).body(created);
     }
 
     @GetMapping("/monitors/{id}")
-    public MonitorResponse get(@PathVariable Long id) {
+    public MonitorResponse get(@PathVariable @Positive Long id) {
         return monitors.get(id);
     }
 
     @PutMapping("/monitors/{id}")
     public MonitorResponse update(
-            @PathVariable Long id, @Valid @RequestBody MonitorUpdateRequest request) {
+            @PathVariable @Positive Long id, @Valid @RequestBody MonitorUpdateRequest request) {
         return monitors.update(id, request);
     }
 
     @PutMapping("/monitors/{id}/tags")
     public MonitorResponse replaceTags(
-            @PathVariable Long id, @Valid @RequestBody MonitorTagsRequest request) {
+            @PathVariable @Positive Long id, @Valid @RequestBody MonitorTagsRequest request) {
         return monitors.replaceTags(id, request.tags());
     }
 
     @DeleteMapping("/monitors/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable @Positive Long id) {
         monitors.delete(id);
     }
 }

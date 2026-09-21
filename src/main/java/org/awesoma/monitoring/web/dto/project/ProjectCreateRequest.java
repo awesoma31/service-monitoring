@@ -3,10 +3,11 @@ package org.awesoma.monitoring.web.dto.project;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record ProjectCreateRequest(
-        @NotNull Long ownerId,
+        @NotNull @Positive Long ownerId,
         @NotBlank @Size(max = 255) String name,
         @NotBlank @Size(max = 100)
                 @Pattern(

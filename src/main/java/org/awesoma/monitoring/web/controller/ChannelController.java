@@ -1,6 +1,7 @@
 package org.awesoma.monitoring.web.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.ChannelService;
@@ -30,31 +31,32 @@ public class ChannelController {
 
     @GetMapping("/projects/{projectId}/channels")
     public Page<ChannelResponse> listByProject(
-            @PathVariable Long projectId, @Valid PageParams page) {
+            @PathVariable @Positive Long projectId, @Valid PageParams page) {
         return channels.listByProject(projectId, page.toPageable());
     }
 
     @PostMapping("/projects/{projectId}/channels")
     public ResponseEntity<ChannelResponse> create(
-            @PathVariable Long projectId, @Valid @RequestBody ChannelCreateRequest request) {
+            @PathVariable @Positive Long projectId,
+            @Valid @RequestBody ChannelCreateRequest request) {
         ChannelResponse created = channels.create(projectId, request);
         return ResponseEntity.created(URI.create("/api/v1/channels/" + created.id())).body(created);
     }
 
     @GetMapping("/channels/{id}")
-    public ChannelResponse get(@PathVariable Long id) {
+    public ChannelResponse get(@PathVariable @Positive Long id) {
         return channels.get(id);
     }
 
     @PutMapping("/channels/{id}")
     public ChannelResponse update(
-            @PathVariable Long id, @Valid @RequestBody ChannelUpdateRequest request) {
+            @PathVariable @Positive Long id, @Valid @RequestBody ChannelUpdateRequest request) {
         return channels.update(id, request);
     }
 
     @DeleteMapping("/channels/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable @Positive Long id) {
         channels.delete(id);
     }
 }
