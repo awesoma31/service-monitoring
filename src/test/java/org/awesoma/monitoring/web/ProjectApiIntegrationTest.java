@@ -3,6 +3,7 @@ package org.awesoma.monitoring.web;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -103,6 +104,56 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(postJson("/api/v1/users", """
                         {"email":"not-an-email","password":"short","fullName":""}"""))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void aProjectCanBeListedFetchedAndRenamed() throws Exception {
+        long projectId = createProject(createUser("project-crud@example.com"), "project-crud");
+
+        mockMvc.perform(get("/api/v1/projects").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1));
+
+        mockMvc.perform(get("/api/v1/projects/{id}", projectId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value("project-crud"));
+
+        mockMvc.perform(put("/api/v1/projects/{id}", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Renamed Project"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Renamed Project"))
+                .andExpect(jsonPath("$.slug").value("project-crud"));
+    }
+
+    @Test
+    void aMemberCanBeAddedPromotedAndRemoved() throws Exception {
+        long ownerId = createUser("membership-owner@example.com");
+        long memberId = createUser("membership-member@example.com");
+        long projectId = createProject(ownerId, "membership-flow");
+
+        mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/members", """
+                        {"userId":%d,"role":"VIEWER"}
+                        """.formatted(memberId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(memberId))
+                .andExpect(jsonPath("$.role").value("VIEWER"));
+
+        mockMvc.perform(put("/api/v1/projects/{id}/members/{userId}", projectId, memberId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"EDITOR"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("EDITOR"));
+
+        mockMvc.perform(delete("/api/v1/projects/{id}/members/{userId}", projectId, memberId))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/projects/{id}/members", projectId))
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].userId").value(ownerId));
     }
 
     private long createUser(String email) throws Exception {
