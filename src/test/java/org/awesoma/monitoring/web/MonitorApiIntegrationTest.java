@@ -1,5 +1,6 @@
 package org.awesoma.monitoring.web;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -120,6 +121,32 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void aMonitorCanBeFetchedPausedResumedAndDeleted() throws Exception {
+        long projectId = createProject("monitor-crud");
+        long monitorId = createMonitor(projectId, "Original", "https://original.example");
+
+        mockMvc.perform(get("/api/v1/monitors/{id}", monitorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Original"));
+
+        updateMonitor(monitorId, "Paused", false)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Paused"))
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.currentState").value("PAUSED"));
+
+        updateMonitor(monitorId, "Resumed", true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.currentState").value("UNKNOWN"));
+
+        mockMvc.perform(delete("/api/v1/monitors/{id}", monitorId))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/monitors/{id}", monitorId))
+                .andExpect(status().isNotFound());
+    }
+
     private long createProject(String slug) throws Exception {
         String userBody = mockMvc.perform(postJson("/api/v1/users", """
                         {"email":"%s@example.com","password":"password123","fullName":"Owner"}"""
@@ -150,5 +177,15 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
 
     private MockHttpServletRequestBuilder postJson(String path, String body) {
         return post(path).contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions updateMonitor(
+            long monitorId, String name, boolean active) throws Exception {
+        return mockMvc.perform(put("/api/v1/monitors/{id}", monitorId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"%s","url":"https://updated.example","httpMethod":"HEAD",
+                         "intervalSec":120,"timeoutMs":3000,"expectedStatus":204,"active":%s}
+                        """.formatted(name, active)));
     }
 }
