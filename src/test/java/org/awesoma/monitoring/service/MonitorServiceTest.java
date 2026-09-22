@@ -15,6 +15,7 @@ import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.Tag;
 import org.awesoma.monitoring.domain.enums.HttpMethod;
+import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.web.dto.monitor.MonitorCreateRequest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
@@ -86,6 +87,23 @@ class MonitorServiceTest {
         assertThat(monitor.getIntervalSec()).isEqualTo(120);
         assertThat(monitor.getExpectedStatus()).isEqualTo(204);
         assertThat(monitor.isActive()).isFalse();
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.PAUSED);
+    }
+
+    @Test
+    void enablingAPausedMonitorReturnsItToUnknown() {
+        Monitor monitor = new Monitor();
+        monitor.setCurrentState(MonitorState.PAUSED);
+        monitor.setActive(false);
+        when(monitors.findById(5L)).thenReturn(Optional.of(monitor));
+
+        service.update(
+                5L,
+                new MonitorUpdateRequest(
+                        "Enabled", "https://enabled.example", HttpMethod.GET, 60, 5000, 200, true));
+
+        assertThat(monitor.isActive()).isTrue();
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UNKNOWN);
     }
 
     @Test
@@ -138,6 +156,16 @@ class MonitorServiceTest {
         when(monitors.findById(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.get(404L)).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void deleteRemovesAnExistingMonitor() {
+        Monitor monitor = new Monitor();
+        when(monitors.findById(5L)).thenReturn(Optional.of(monitor));
+
+        service.delete(5L);
+
+        verify(monitors).delete(monitor);
     }
 
     private MonitorCreateRequest request(String name) {
