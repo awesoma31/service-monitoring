@@ -3,7 +3,6 @@ package org.awesoma.monitoring.domain.model;
 import org.awesoma.monitoring.domain.enums.CheckResultType;
 import org.awesoma.monitoring.domain.enums.Severity;
 
-/** Result of one probe, in the form the domain records and reacts to. */
 public record ProbeOutcome(
         CheckResultType result, Integer responseMs, Integer httpStatus, String errorMessage) {
 
@@ -31,10 +30,6 @@ public record ProbeOutcome(
         return result.isFailure();
     }
 
-    /**
-     * An unreachable host is worse than an unexpected status code: the first means nobody
-     * can use the service at all, the second that it answers but wrongly.
-     */
     public Severity severity() {
         return switch (result) {
             case CONNECTION_ERROR, TIMEOUT -> Severity.HIGH;

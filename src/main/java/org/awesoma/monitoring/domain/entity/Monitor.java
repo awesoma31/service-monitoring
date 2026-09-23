@@ -77,17 +77,9 @@ public class Monitor extends BaseEntity {
     @Column(name = "current_state", nullable = false, length = 20)
     private MonitorState currentState = MonitorState.UNKNOWN;
 
-    /** Null until the first probe, which makes a fresh monitor due straight away. */
     @Column(name = "last_checked_at")
     private OffsetDateTime lastCheckedAt;
 
-    /**
-     * Plain many-to-many: the join table carries nothing but the two keys.
-     *
-     * <p>Batched so that rendering a page of monitors costs one extra query for all their
-     * tags instead of one per monitor, while the page itself is still cut by the database.
-     * The size matches the largest page the API hands out.
-     */
     @BatchSize(size = 50)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
