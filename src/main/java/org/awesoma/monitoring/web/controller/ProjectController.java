@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Projects")
 public class ProjectController {
 
-    private final ProjectService projects;
+    private final ProjectService projectService;
 
     @GetMapping
     @Operation(summary = "List projects", description = "Returns one page of projects, at most 50 records.")
@@ -46,7 +46,7 @@ public class ProjectController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
     public Page<ProjectResponse> list(@Valid PageParams page) {
-        return projects.list(page.toPageable());
+        return projectService.list(page.toPageable());
     }
 
     @GetMapping("/{id}")
@@ -57,7 +57,7 @@ public class ProjectController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public ProjectResponse get(@PathVariable @Positive Long id) {
-        return projects.get(id);
+        return projectService.get(id);
     }
 
     @PostMapping
@@ -77,7 +77,7 @@ public class ProjectController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<ProjectResponse> create(@Valid @RequestBody ProjectCreateRequest request) {
-        ProjectResponse created = projects.create(request);
+        ProjectResponse created = projectService.create(request);
         return ResponseEntity.created(URI.create("/api/v1/projects/" + created.id())).body(created);
     }
 
@@ -90,7 +90,7 @@ public class ProjectController {
     })
     public ProjectResponse update(
             @PathVariable @Positive Long id, @Valid @RequestBody ProjectUpdateRequest request) {
-        return projects.update(id, request);
+        return projectService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
@@ -103,7 +103,7 @@ public class ProjectController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public void delete(@PathVariable @Positive Long id) {
-        projects.delete(id);
+        projectService.delete(id);
     }
 
     @GetMapping("/{id}/members")
@@ -115,7 +115,7 @@ public class ProjectController {
     })
     public Page<ProjectMemberResponse> listMembers(
             @PathVariable @Positive Long id, @Valid PageParams page) {
-        return projects.listMembers(id, page.toPageable());
+        return projectService.listMembers(id, page.toPageable());
     }
 
     @PostMapping("/{id}/members")
@@ -135,7 +135,7 @@ public class ProjectController {
     public ResponseEntity<ProjectMemberResponse> addMember(
             @PathVariable @Positive Long id,
             @Valid @RequestBody ProjectMemberRequest request) {
-        ProjectMemberResponse created = projects.addMember(id, request);
+        ProjectMemberResponse created = projectService.addMember(id, request);
         return ResponseEntity.created(
                         URI.create("/api/v1/projects/" + id + "/members/" + created.userId()))
                 .body(created);
@@ -155,7 +155,7 @@ public class ProjectController {
             @PathVariable @Positive Long id,
             @PathVariable @Positive Long userId,
             @Valid @RequestBody ProjectMemberRoleRequest request) {
-        return projects.changeRole(id, userId, request.role());
+        return projectService.changeRole(id, userId, request.role());
     }
 
     @DeleteMapping("/{id}/members/{userId}")
@@ -171,6 +171,6 @@ public class ProjectController {
     })
     public void removeMember(
             @PathVariable @Positive Long id, @PathVariable @Positive Long userId) {
-        projects.removeMember(id, userId);
+        projectService.removeMember(id, userId);
     }
 }

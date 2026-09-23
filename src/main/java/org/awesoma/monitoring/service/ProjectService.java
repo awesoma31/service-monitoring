@@ -38,14 +38,6 @@ public class ProjectService {
         return mapper.toResponse(require(id));
     }
 
-    /**
-     * Creates a project and enrols its owner as a member in one transaction.
-     *
-     * <p>These two writes must not be separable: a project whose owner is missing from
-     * project_members has nobody who can administer it, and nothing in the API would let
-     * anyone repair that afterwards. A failure between the two inserts must leave no
-     * project at all.
-     */
     @Transactional
     public ProjectResponse create(ProjectCreateRequest request) {
         if (projects.existsBySlug(request.slug())) {
@@ -109,7 +101,6 @@ public class ProjectService {
         members.delete(member);
     }
 
-    /** A project without an owner cannot be administered, so the last one cannot step down. */
     private void requireAnotherOwnerExists(Long projectId) {
         if (members.countByProjectIdAndRole(projectId, MemberRole.OWNER) <= 1) {
             throw new ConflictStateException(
@@ -124,7 +115,6 @@ public class ProjectService {
                         "User %d is not a member of project %d".formatted(userId, projectId)));
     }
 
-    /** Existence check that does not load the row, for callers that only need the guard. */
     public void requireExists(Long id) {
         if (!projects.existsById(id)) {
             throw NotFoundException.of("Project", id);

@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.awesoma.monitoring.domain.enums.HttpMethod;
 
-/** The owning project is fixed; a monitor does not move between projects. */
 public record MonitorUpdateRequest(
         @Schema(example = "Public API") @NotBlank @Size(max = 255) String name,
         @Schema(example = "https://api.example.com/health")

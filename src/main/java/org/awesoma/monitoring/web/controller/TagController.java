@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Tags")
 public class TagController {
 
-    private final TagService tags;
+    private final TagService tagService;
 
     @GetMapping
     @Operation(summary = "List tags", description = "Returns one page of reusable monitor tags.")
@@ -41,7 +41,7 @@ public class TagController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
     public Page<TagResponse> list(@Valid PageParams page) {
-        return tags.list(page.toPageable());
+        return tagService.list(page.toPageable());
     }
 
     @PostMapping
@@ -58,7 +58,7 @@ public class TagController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<TagResponse> create(@Valid @RequestBody TagCreateRequest request) {
-        TagResponse created = tags.create(request);
+        TagResponse created = tagService.create(request);
         return ResponseEntity.created(URI.create("/api/v1/tags/" + created.id())).body(created);
     }
 
@@ -71,6 +71,6 @@ public class TagController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public void delete(@PathVariable @Positive Long id) {
-        tags.delete(id);
+        tagService.delete(id);
     }
 }

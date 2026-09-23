@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.net.URI;
 import java.util.List;
 
-/** Documentation model for the RFC 7807 responses produced by GlobalExceptionHandler. */
 @Schema(name = "ApiError", description = "RFC 7807 problem detail returned for API errors")
 public record ApiErrorResponse(
         @Schema(example = "about:blank") URI type,

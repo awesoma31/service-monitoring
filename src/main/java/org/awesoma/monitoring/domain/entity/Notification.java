@@ -45,7 +45,6 @@ public class Notification extends BaseEntity {
     @Column(nullable = false)
     private int attempts;
 
-    /** The database rejects a SENT notification without a timestamp, so both move together. */
     public void markSent(OffsetDateTime at) {
         this.status = NotificationStatus.SENT;
         this.sentAt = at;

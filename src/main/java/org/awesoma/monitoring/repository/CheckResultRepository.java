@@ -7,9 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CheckResultRepository extends JpaRepository<CheckResult, Long> {
 
-    /**
-     * History for infinite scrolling. A Slice deliberately avoids the count query: the
-     * table grows without bound and the client only needs to know whether more rows follow.
-     */
     Slice<CheckResult> findByMonitorIdOrderByCheckedAtDesc(Long monitorId, Pageable pageable);
 }

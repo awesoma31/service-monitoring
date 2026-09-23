@@ -29,7 +29,6 @@ public class MonitorService {
     private final TagService tags;
     private final MonitorMapper mapper;
 
-    /** An absent tag lists the whole project; a given one narrows the page to that label. */
     public Page<MonitorResponse> listByProject(Long projectId, String tag, Pageable pageable) {
         projects.requireExists(projectId);
         Page<Monitor> page = tag == null || tag.isBlank()
@@ -76,11 +75,6 @@ public class MonitorService {
         return mapper.toResponse(monitor);
     }
 
-    /**
-     * Keeps the reported state honest while a monitor is switched off. Leaving it UP would
-     * claim the site is fine although nothing checks it any more, and leaving it DOWN would
-     * keep an alert standing that nobody is going to resolve.
-     */
     private void applyActiveFlag(Monitor monitor, boolean active) {
         monitor.setActive(active);
         if (!active) {

@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Set;
 
-/** Replaces the whole tag set; unknown tag names are created on the fly. */
 public record MonitorTagsRequest(
         @Schema(example = "[\"production\", \"api\"]")
                 @NotNull

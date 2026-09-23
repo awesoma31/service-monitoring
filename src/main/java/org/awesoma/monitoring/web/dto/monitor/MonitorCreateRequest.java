@@ -9,10 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Set;
 import org.awesoma.monitoring.domain.enums.HttpMethod;
 
-/**
- * Bounds mirror the check constraints in the migration: rejecting here gives the client a
- * readable message instead of a database error.
- */
 public record MonitorCreateRequest(
         @Schema(example = "Public API") @NotBlank @Size(max = 255) String name,
         @Schema(example = "https://api.example.com/health")

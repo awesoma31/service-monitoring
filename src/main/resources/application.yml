@@ -8,7 +8,6 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      # Schema is owned by Liquibase; Hibernate only verifies it matches the entities.
       ddl-auto: validate
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
@@ -17,7 +16,6 @@ server:
   port: ${APP_PORT:8080}
 
 checker:
-  # Disabled in tests so a background tick cannot interleave with their assertions.
   enabled: ${CHECKER_ENABLED:true}
   interval-ms: ${CHECKER_INTERVAL_MS:15000}
   batch-size: ${CHECKER_BATCH_SIZE:50}

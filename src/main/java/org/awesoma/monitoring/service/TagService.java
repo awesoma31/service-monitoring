@@ -23,39 +23,35 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TagService {
 
-    private final TagRepository tags;
+    private final TagRepository tagRepository;
     private final TagMapper mapper;
 
     public Page<TagResponse> list(Pageable pageable) {
-        return tags.findAll(pageable).map(mapper::toResponse);
+        return tagRepository.findAll(pageable).map(mapper::toResponse);
     }
 
     @Transactional
     public TagResponse create(TagCreateRequest request) {
-        if (tags.existsByName(request.name())) {
+        if (tagRepository.existsByName(request.name())) {
             throw new ConflictStateException("Tag %s already exists".formatted(request.name()));
         }
         Tag tag = new Tag();
         tag.setName(request.name());
-        return mapper.toResponse(tags.save(tag));
+        return mapper.toResponse(tagRepository.save(tag));
     }
 
     @Transactional
     public void delete(Long id) {
-        Tag tag = tags.findById(id).orElseThrow(() -> NotFoundException.of("Tag", id));
-        tags.delete(tag);
+        Tag tag = tagRepository.findById(id).orElseThrow(() -> NotFoundException.of("Tag", id));
+        tagRepository.delete(tag);
     }
 
-    /**
-     * Resolves names to tags, creating the ones that do not exist yet. Tagging a monitor
-     * should not force the client to register every label first.
-     */
     @Transactional
     public Set<Tag> resolveOrCreate(Set<String> names) {
         if (names.isEmpty()) {
             return new HashSet<>();
         }
-        Map<String, Tag> existing = tags.findByNameIn(names).stream()
+        Map<String, Tag> existing = tagRepository.findByNameIn(names).stream()
                 .collect(Collectors.toMap(Tag::getName, Function.identity()));
 
         Set<Tag> resolved = new HashSet<>(existing.values());
@@ -64,7 +60,7 @@ public class TagService {
                 .forEach(name -> {
                     Tag tag = new Tag();
                     tag.setName(name);
-                    resolved.add(tags.save(tag));
+                    resolved.add(tagRepository.save(tag));
                 });
         return resolved;
     }

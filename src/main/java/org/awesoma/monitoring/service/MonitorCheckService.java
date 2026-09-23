@@ -19,23 +19,19 @@ import org.awesoma.monitoring.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Turns probe results into state: check history, monitor state, incidents and the
- * notifications they trigger.
- */
 @Service
 @RequiredArgsConstructor
 public class MonitorCheckService {
 
-    private final MonitorRepository monitors;
-    private final CheckResultRepository checkResults;
-    private final IncidentRepository incidents;
-    private final ChannelRepository channels;
-    private final NotificationRepository notifications;
+    private final MonitorRepository monitorRepository;
+    private final CheckResultRepository checkResultRepository;
+    private final IncidentRepository incidentRepository;
+    private final ChannelRepository channelRepository;
+    private final NotificationRepository notificationRepository;
 
     @Transactional(readOnly = true)
     public List<MonitorTarget> findDueTargets(int limit) {
-        return monitors.findAllById(monitors.findDueMonitorIds(limit)).stream()
+        return monitorRepository.findAllById(monitorRepository.findDueMonitorIds(limit)).stream()
                 .map(monitor -> new MonitorTarget(
                         monitor.getId(),
                         monitor.getUrl(),
@@ -45,23 +41,10 @@ public class MonitorCheckService {
                 .toList();
     }
 
-    /**
-     * Records one probe and reacts to it, all in a single transaction.
-     *
-     * <p>The monitor row is locked for the duration. Two workers probing the same monitor
-     * concurrently would otherwise both read the same state and both decide to open an
-     * incident; the second would then collide with the partial unique index instead of
-     * quietly doing nothing. The lock also keeps a failure and a recovery arriving at the
-     * same moment from interleaving into a monitor that is UP with an incident still open.
-     *
-     * <p>Atomicity matters beyond the race: a monitor marked DOWN without an incident, or
-     * an incident without its notifications, is a state no later probe would repair.
-     */
     @Transactional
     public void record(Long monitorId, ProbeOutcome outcome) {
-        Monitor monitor = monitors.findByIdForUpdate(monitorId).orElse(null);
+        Monitor monitor = monitorRepository.findByIdForUpdate(monitorId).orElse(null);
         if (monitor == null) {
-            // Deleted between being scheduled and being probed; nothing to record.
             return;
         }
         OffsetDateTime now = OffsetDateTime.now();
@@ -83,10 +66,9 @@ public class MonitorCheckService {
         result.setResponseMs(outcome.responseMs());
         result.setHttpStatus(outcome.httpStatus());
         result.setErrorMessage(outcome.errorMessage());
-        checkResults.save(result);
+        checkResultRepository.save(result);
     }
 
-    /** A monitor already DOWN keeps its incident: a failure is one event, not one per probe. */
     private void openIncidentIfAbsent(Monitor monitor, ProbeOutcome outcome, OffsetDateTime at) {
         if (monitor.getCurrentState() == MonitorState.DOWN) {
             return;
@@ -98,7 +80,7 @@ public class MonitorCheckService {
         incident.setStartedAt(at);
         incident.setSeverity(outcome.severity());
         incident.setCause(outcome.errorMessage());
-        incidents.save(incident);
+        incidentRepository.save(incident);
 
         notifyEnabledChannels(monitor, incident);
     }
@@ -109,7 +91,7 @@ public class MonitorCheckService {
         if (!wasDown) {
             return;
         }
-        incidents
+        incidentRepository
                 .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
                 .ifPresent(incident -> {
                     incident.resolve(at);
@@ -118,11 +100,11 @@ public class MonitorCheckService {
     }
 
     private void notifyEnabledChannels(Monitor monitor, Incident incident) {
-        channels.findByProjectIdAndEnabledTrue(monitor.getProject().getId()).forEach(channel -> {
+        channelRepository.findByProjectIdAndEnabledTrue(monitor.getProject().getId()).forEach(channel -> {
             Notification notification = new Notification();
             notification.setIncident(incident);
             notification.setChannel(channel);
-            notifications.save(notification);
+            notificationRepository.save(notification);
         });
     }
 }

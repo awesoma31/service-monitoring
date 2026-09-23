@@ -30,8 +30,6 @@ dependencies {
     implementation("org.liquibase:liquibase-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
     implementation("org.mapstruct:mapstruct:$mapstructVersion")
-    // Password hashing only: the crypto module brings no security auto-configuration,
-    // so no filters or login flows are enabled. Authentication itself arrives in lab 3.
     implementation("org.springframework.security:spring-security-crypto")
 
     compileOnly("org.projectlombok:lombok")
@@ -54,8 +52,6 @@ jacoco {
     toolVersion = "0.8.15"
 }
 
-// Excluded from coverage: no meaningful logic to test, only boilerplate
-// (Lombok-generated members are skipped via lombok.addLombokGeneratedAnnotation).
 val coverageExclusions = listOf(
     "**/MonitoringApplication.class",
     "**/config/**",
@@ -68,9 +64,6 @@ fun filteredClasses(classDirs: FileCollection): FileCollection =
 
 tasks.test {
     useJUnitPlatform()
-    // Testcontainers' resource reaper mounts the Docker socket by its path inside the
-    // daemon's host. Docker Desktop already uses this path; colima keeps the socket in
-    // $HOME, and without this the reaper fails to start and every test errors out.
     environment("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/var/run/docker.sock")
     finalizedBy(tasks.jacocoTestReport)
 }
@@ -98,7 +91,6 @@ tasks.jacocoTestCoverageVerification {
     }
 }
 
-// Coverage below the threshold must fail the build, not just report.
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
 }

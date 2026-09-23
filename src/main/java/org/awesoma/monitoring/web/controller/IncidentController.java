@@ -29,12 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Incidents")
 public class IncidentController {
 
-    private final IncidentService incidents;
+    private final IncidentService incidentService;
 
-    /**
-     * Check history as an endless feed. The response carries no total count by design —
-     * see {@link IncidentService#listResults}.
-     */
     @GetMapping("/monitors/{monitorId}/results")
     @Operation(
             summary = "Scroll monitor check history",
@@ -48,7 +44,7 @@ public class IncidentController {
     })
     public Slice<CheckResultResponse> listResults(
             @PathVariable @Positive Long monitorId, @Valid PageParams page) {
-        return incidents.listResults(monitorId, page.toPageable());
+        return incidentService.listResults(monitorId, page.toPageable());
     }
 
     @GetMapping("/monitors/{monitorId}/incidents")
@@ -66,7 +62,7 @@ public class IncidentController {
                     @RequestParam(required = false)
                     IncidentStatus status,
             @Valid PageParams page) {
-        return incidents.listByMonitor(monitorId, status, page.toPageable());
+        return incidentService.listByMonitor(monitorId, status, page.toPageable());
     }
 
     @GetMapping("/incidents/{id}")
@@ -77,7 +73,7 @@ public class IncidentController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public IncidentResponse get(@PathVariable @Positive Long id) {
-        return incidents.get(id);
+        return incidentService.get(id);
     }
 
     @PostMapping("/incidents/{id}/resolve")
@@ -91,7 +87,7 @@ public class IncidentController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public IncidentResponse resolve(@PathVariable @Positive Long id) {
-        return incidents.resolve(id);
+        return incidentService.resolve(id);
     }
 
     @GetMapping("/incidents/{id}/notifications")
@@ -103,6 +99,6 @@ public class IncidentController {
     })
     public Page<NotificationResponse> listNotifications(
             @PathVariable @Positive Long id, @Valid PageParams page) {
-        return incidents.listNotifications(id, page.toPageable());
+        return incidentService.listNotifications(id, page.toPageable());
     }
 }
