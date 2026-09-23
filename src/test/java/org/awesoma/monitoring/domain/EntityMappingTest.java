@@ -21,11 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Booting at all already proves the mapping matches the migrated schema, since Hibernate
- * validates it. These tests go further and exercise every association type through a
- * round trip.
- */
 @Transactional
 class EntityMappingTest extends AbstractIntegrationTest {
 

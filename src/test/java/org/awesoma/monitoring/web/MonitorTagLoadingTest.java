@@ -21,12 +21,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Guards the cost of listing monitors. An earlier version fetched tags through an entity
- * graph, which made Hibernate page the result in memory — it read every monitor of the
- * project to return one page. The replacement must keep paging in the database while
- * still loading tags for the whole page at once.
- */
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 @Transactional
 class MonitorTagLoadingTest extends AbstractIntegrationTest {
@@ -54,8 +48,6 @@ class MonitorTagLoadingTest extends AbstractIntegrationTest {
 
         assertThat(page.getContent()).hasSize(PAGE_SIZE);
         assertThat(page.getTotalElements()).isEqualTo(MONITOR_COUNT);
-        // Existence guard, page, count, and one batched query covering the tags of every
-        // row on the page. Loading tags per row would add one query per monitor instead.
         assertThat(statistics.getPrepareStatementCount())
                 .as("a page of %d monitors must not cost a query per row", PAGE_SIZE)
                 .isLessThanOrEqualTo(4);

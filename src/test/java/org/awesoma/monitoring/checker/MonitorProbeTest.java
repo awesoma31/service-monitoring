@@ -14,7 +14,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/** Probes a real HTTP server from the JDK, so the outcomes come from actual sockets. */
 class MonitorProbeTest {
 
     private static HttpServer server;

@@ -22,11 +22,6 @@ import org.springframework.data.domain.Slice;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * The lab asks for one listing that scrolls without reporting a total. Hiding the total
- * from the response is not enough — the point is that the count query is never run, which
- * only a statement count can show.
- */
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 @Transactional
 class CheckHistoryQueryCountTest extends AbstractIntegrationTest {
@@ -50,7 +45,6 @@ class CheckHistoryQueryCountTest extends AbstractIntegrationTest {
 
         assertThat(slice.getContent()).hasSize(3);
         assertThat(slice.hasNext()).isTrue();
-        // The monitor existence check and the page itself. A count would add a third.
         assertThat(statistics.getPrepareStatementCount())
                 .as("a slice must not pay for counting rows it never reports")
                 .isLessThanOrEqualTo(2);
