@@ -18,15 +18,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-    public static final String BAD_REQUEST_RESPONSE = "#/components/responses/BadRequest";
-    public static final String NOT_FOUND_RESPONSE = "#/components/responses/NotFound";
-    public static final String CONFLICT_RESPONSE = "#/components/responses/Conflict";
-
     @Bean
     public OpenAPI serviceMonitoringOpenApi() {
         Components components = new Components();
         ModelConverters.getInstance()
-                .read(ApiErrorResponse.class)
+                .readAll(ApiErrorResponse.class)
                 .forEach(components::addSchemas);
         components
                 .addResponses(
