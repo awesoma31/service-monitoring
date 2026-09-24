@@ -19,6 +19,8 @@ import org.awesoma.monitoring.repository.CheckResultRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.NotificationRepository;
 import org.awesoma.monitoring.service.MonitorCheckService;
+import org.awesoma.monitoring.service.MonitorService;
+import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
     @Autowired private IncidentRepository incidents;
     @Autowired private NotificationRepository notifications;
     @Autowired private CheckResultRepository checkResults;
+    @Autowired private MonitorService monitorService;
 
     @Test
     void aFailureOpensOneIncidentAndARecoveryClosesIt() {
@@ -71,6 +74,44 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void aMonitorPausedWhileDownKeepsItsIncidentWhenItFailsAgain() {
+        Monitor monitor = seed("paused-failing");
+        entityManager.flush();
+        checks.record(monitor.getId(), ProbeOutcome.connectionError(12, "connection refused"));
+        entityManager.flush();
+
+        pauseAndResume(monitor);
+        checks.record(monitor.getId(), ProbeOutcome.connectionError(9, "connection refused"));
+        entityManager.flush();
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
+        assertThat(incidents.findByMonitorId(monitor.getId(), Pageable.unpaged()))
+                .as("the incident left open by the pause is reused, not duplicated")
+                .hasSize(1);
+        assertThat(checkResults.findByMonitorIdOrderByCheckedAtDesc(monitor.getId(), Pageable.unpaged()))
+                .hasSize(2);
+    }
+
+    @Test
+    void aMonitorPausedWhileDownClosesItsIncidentWhenItRecovers() {
+        Monitor monitor = seed("paused-recovering");
+        entityManager.flush();
+        checks.record(monitor.getId(), ProbeOutcome.connectionError(12, "connection refused"));
+        entityManager.flush();
+        Incident incident = incidents
+                .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
+                .orElseThrow();
+
+        pauseAndResume(monitor);
+        checks.record(monitor.getId(), ProbeOutcome.success(85, 200));
+        entityManager.flush();
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
+        assertThat(incident.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
+        assertThat(notifications.findByIncidentId(incident.getId(), Pageable.unpaged())).hasSize(2);
+    }
+
+    @Test
     void aMonitorIsDueUntilItHasBeenChecked() {
         Monitor monitor = seed("due");
         entityManager.flush();
@@ -96,6 +137,21 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(checks.findDueTargets(10))
                 .extracting(MonitorTarget::monitorId)
                 .doesNotContain(monitor.getId());
+    }
+
+    private void pauseAndResume(Monitor monitor) {
+        for (boolean active : new boolean[] {false, true}) {
+            monitorService.update(monitor.getId(), new MonitorUpdateRequest(
+                    monitor.getName(),
+                    monitor.getUrl(),
+                    monitor.getHttpMethod(),
+                    monitor.getIntervalSec(),
+                    monitor.getTimeoutMs(),
+                    monitor.getExpectedStatus(),
+                    active));
+        }
+        entityManager.flush();
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UNKNOWN);
     }
 
     private Monitor seed(String slug) {
