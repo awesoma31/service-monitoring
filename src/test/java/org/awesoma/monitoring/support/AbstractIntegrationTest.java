@@ -1,6 +1,13 @@
 package org.awesoma.monitoring.support;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+
+import org.awesoma.monitoring.web.access.RoleAuthorizationInterceptor;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -10,7 +17,18 @@ import org.springframework.test.context.DynamicPropertySource;
  * schema fails the context startup rather than surfacing later in production.
  */
 @SpringBootTest
+@Import(AbstractIntegrationTest.OwnerRoleHeaderConfig.class)
 public abstract class AbstractIntegrationTest {
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class OwnerRoleHeaderConfig {
+
+        @Bean
+        MockMvcBuilderCustomizer ownerRoleHeader() {
+            return builder -> builder.defaultRequest(get("/")
+                    .header(RoleAuthorizationInterceptor.ROLE_HEADER, "OWNER"));
+        }
+    }
 
     @DynamicPropertySource
     static void datasourceProperties(DynamicPropertyRegistry registry) {
