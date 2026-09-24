@@ -1,5 +1,9 @@
 package org.awesoma.monitoring.web.controller;
 
+import static org.awesoma.monitoring.domain.enums.MemberRole.EDITOR;
+import static org.awesoma.monitoring.domain.enums.MemberRole.OWNER;
+import static org.awesoma.monitoring.domain.enums.MemberRole.VIEWER;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.service.IncidentService;
+import org.awesoma.monitoring.web.access.AllowedRoles;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.incident.CheckResultResponse;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
@@ -27,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Tag(name = "Incidents")
+@AllowedRoles({OWNER, EDITOR, VIEWER})
 public class IncidentController {
 
     private final IncidentService incidentService;
@@ -81,6 +87,7 @@ public class IncidentController {
     }
 
     @PostMapping("/incidents/{id}/resolve")
+    @AllowedRoles({OWNER, EDITOR})
     @Operation(
             summary = "Resolve an incident manually",
             description = "Marks the incident resolved and returns a DOWN monitor to UNKNOWN until its next check.")

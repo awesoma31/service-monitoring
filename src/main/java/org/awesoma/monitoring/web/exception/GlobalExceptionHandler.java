@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.awesoma.monitoring.web.access.MissingRoleException;
+import org.awesoma.monitoring.web.access.RoleAccessDeniedException;
 
 /**
  * Turns failures at the HTTP boundary into one RFC 7807 response shape. Database details and
@@ -40,6 +42,26 @@ public class GlobalExceptionHandler {
         return problem(
                 HttpStatus.CONFLICT,
                 "Conflicting state",
+                exception.getMessage(),
+                request);
+    }
+
+    @ExceptionHandler(MissingRoleException.class)
+    public ProblemDetail handleMissingRole(
+            MissingRoleException exception, HttpServletRequest request) {
+        return problem(
+                HttpStatus.UNAUTHORIZED,
+                "Authentication required",
+                exception.getMessage(),
+                request);
+    }
+
+    @ExceptionHandler(RoleAccessDeniedException.class)
+    public ProblemDetail handleRoleAccessDenied(
+            RoleAccessDeniedException exception, HttpServletRequest request) {
+        return problem(
+                HttpStatus.FORBIDDEN,
+                "Access denied",
                 exception.getMessage(),
                 request);
     }
