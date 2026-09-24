@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-index-incidents
+      author: awesoma31
+      comment: >-
+        The partial unique index is the database-level guarantee behind openIncident:
+        two concurrent workers cannot open a second incident for the same monitor,
+        regardless of transaction interleaving. Raw SQL because Liquibase's
+        createIndex has no WHERE clause.
+      changes:
+        - createIndex:
+            indexName: idx_incidents_monitor_status
+            tableName: incidents
+            columns:
+              - column:
+                  name: monitor_id
+              - column:
+                  name: status
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_incidents_one_open_per_monitor
+                ON incidents (monitor_id)
+                WHERE status = 'OPEN'
+      rollback:
+        - sql:
+            sql: DROP INDEX uk_incidents_one_open_per_monitor
+        - dropIndex:
+            indexName: idx_incidents_monitor_status
+            tableName: incidents

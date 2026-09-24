@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-tags
+      author: awesoma31
+      comment: Free-form labels attached to monitors
+      changes:
+        - createTable:
+            tableName: tags
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_tags
+              - column:
+                  name: name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_tags_name
+        - sql:
+            sql: >-
+              ALTER TABLE tags
+                ADD CONSTRAINT ck_tags_name_not_blank
+                  CHECK (length(trim(name)) > 0)
+      rollback:
+        - dropTable:
+            tableName: tags

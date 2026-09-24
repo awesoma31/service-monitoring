@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-create-channels
+      author: awesoma31
+      comment: Delivery destinations a project uses to announce incidents
+      changes:
+        - createTable:
+            tableName: channels
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_channels
+              - column:
+                  name: project_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_channels_project
+                    references: projects(id)
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enabled
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: channels
+            columnNames: project_id, type, target
+            constraintName: uk_channels_project_type_target
+        - sql:
+            sql: >-
+              ALTER TABLE channels
+                ADD CONSTRAINT ck_channels_type
+                  CHECK (type IN ('EMAIL', 'WEBHOOK', 'TELEGRAM')),
+                ADD CONSTRAINT ck_channels_target_not_blank
+                  CHECK (length(trim(target)) > 0)
+      rollback:
+        - dropTable:
+            tableName: channels

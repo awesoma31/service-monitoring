@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users
+      author: awesoma31
+      comment: Accounts that own projects and receive notifications
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_users
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_users_email
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: full_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: ACTIVE
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              ALTER TABLE users
+                ADD CONSTRAINT ck_users_status
+                  CHECK (status IN ('ACTIVE', 'INACTIVE', 'BLOCKED')),
+                ADD CONSTRAINT ck_users_email_shape
+                  CHECK (email LIKE '%_@_%.__%'),
+                ADD CONSTRAINT ck_users_full_name_not_blank
+                  CHECK (length(trim(full_name)) > 0)
+      rollback:
+        - dropTable:
+            tableName: users

@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-add-monitors-last-checked-at
+      author: awesoma31
+      comment: >-
+        Lets the scheduler ask the database which monitors are due instead of deriving it
+        from the check history, which would mean scanning check_results on every tick.
+        Null means the monitor has never been probed, so it is due immediately.
+      changes:
+        - addColumn:
+            tableName: monitors
+            columns:
+              - column:
+                  name: last_checked_at
+                  type: TIMESTAMP WITH TIME ZONE
+        - sql:
+            sql: >-
+              CREATE INDEX idx_monitors_due
+                ON monitors (last_checked_at NULLS FIRST)
+                WHERE active
+      rollback:
+        - sql:
+            sql: DROP INDEX idx_monitors_due
+        - dropColumn:
+            tableName: monitors
+            columnName: last_checked_at
