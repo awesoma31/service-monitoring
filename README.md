@@ -8,7 +8,7 @@
 
 | Лаба | Что делаем | Статус |
 |---|---|---|
-| 1 | Монолит на Spring Boot | 🚧 в разработке — см. [lab1.md](lab1.md) |
+| 1 | Монолит на Spring Boot | ✅ готово — см. [lab1.md](lab1.md) |
 | 2 | Декомпозиция на микросервисы (Eureka, Config Server, Gateway, Feign, Circuit Breaker) | не начато |
 | 3 | Авторизация: Spring Security + JWT, ролевая модель | не начато |
 | 4 | Межсервисное взаимодействие через Kafka/RabbitMQ, файловый микросервис, Clean Architecture | не начато |
@@ -33,12 +33,12 @@
 
 Базовый Java-пакет: `org.awesoma.monitoring`.
 
-## Структура репозитория (актуализируется по ходу разработки)
+## Структура репозитория
 
 ```
 org.awesoma.monitoring
  ├── MonitoringApplication.java
- ├── config/            // OpenApiConfig, RestClientConfig, SchedulingConfig
+ ├── config/            // CryptoConfig, OpenApiConfig, SchedulingConfig
  ├── web/
  │    ├── controller/    // REST-контроллеры
  │    ├── dto/           // request/response DTO, без сущностей в контроллерах
@@ -48,10 +48,14 @@ org.awesoma.monitoring
  ├── repository/         // Spring Data JPA
  ├── domain/
  │    ├── entity/
- │    └── enums/
+ │    ├── enums/
+ │    └── model/         // типы обмена с checker: MonitorTarget, ProbeOutcome
  └── checker/            // планировщик проверок (@Scheduled), изолирован —
                          // в лабе 2 переезжает в отдельный реактивный сервис
 ```
+
+Вне Java-кода: `src/main/resources/db/changelog` — миграции Liquibase,
+`scripts/demo.sh` — сквозная проверка по API.
 
 ## Git-flow
 

@@ -62,12 +62,21 @@ changeset на изменение, у каждого прописан `rollback`
     `UNIQUE(monitor_id) WHERE status = 'OPEN'`, тоже сырым SQL: нет поддержки WHERE
 11. `011-create-channels`
 12. `012-create-notifications`
+13. `013-add-monitors-last-checked-at` — время последней проверки, по нему планировщик
+    выбирает мониторы, которые пора проверить; отдельным changeset'ом, а не правкой 005
 
 ## Планировщик проверок
 
 Максимально просто: `@Scheduled` + `RestClient`, без Quartz и собственных пулов потоков.
 Логика полностью в пакете `checker` (не размазана по `service`), потому что в лабе 2 она
 переезжает в отдельный реактивный check-service.
+
+- `checker/CheckScheduler` — раз в `CHECKER_INTERVAL_MS` берёт мониторы, которым пора
+  проверяться, и по одному отдаёт их на проверку; сбой одного не прерывает остальных.
+- `checker/MonitorProbe` — один HTTP-запрос, без состояния и без доступа к БД.
+- `service/MonitorCheckService` — записывает результат и открывает/закрывает инциденты.
+- `domain/model` (`MonitorTarget`, `ProbeOutcome`) — типы обмена между ними. Лежат не в
+  `checker`, чтобы сервисный слой не импортировал пакет, который уедет в лабе 2.
 
 ## Транзакции (обоснование)
 
@@ -83,57 +92,77 @@ changeset на изменение, у каждого прописан `rollback`
    `OWNER`. Без транзакции возможен проект без единого участника при сбое между двумя
    INSERT'ами.
 
+Где в коде: транзакции 1 и 2 — это один метод `MonitorCheckService.record`, ветка
+выбирается по результату проверки. Блокировка (`MonitorRepository.findByIdForUpdate`,
+`@Lock(PESSIMISTIC_WRITE)`) берётся в самом начале, до чтения состояния, поэтому защищает
+обе ветки. Сетевой запрос делается до транзакции, внутри только запись в БД. Частичный
+unique-индекс по открытым инцидентам страхует ту же гонку на уровне базы. Транзакция 3 —
+`ProjectService.create`.
+
 ## Пагинация
 
-- `GET /api/v1/monitors/{id}/results` — бесконечная прокрутка, `Slice<CheckResultDto>`, без `count(*)`.
-- `GET /api/v1/projects/{id}/monitors` — `Page<MonitorDto>` + заголовок `X-Total-Count`.
-- `size` везде `@Max(50)`, дефолт `20` — общий параметр-объект/аннотация на все контроллеры, чтобы не дублировать валидацию.
+- `GET /api/v1/monitors/{id}/results` — бесконечная прокрутка, `Slice<CheckResultResponse>`, без `count(*)`.
+- `GET /api/v1/projects/{id}/monitors` — `Page<MonitorResponse>` + заголовок `X-Total-Count`.
+- `size` везде `@Max(50)`, дефолт `20` — общий параметр-объект `PageParams` на все контроллеры, чтобы не дублировать валидацию.
+- Что `Slice` действительно не делает `count(*)`, а теги мониторов не грузятся по одному,
+  проверяют тесты со счётчиком SQL-запросов: `CheckHistoryQueryCountTest`, `MonitorTagLoadingTest`.
 
 ## Слои и структура пакетов
 
 ```
 org.awesoma.monitoring
  ├── MonitoringApplication.java
- ├── config/            // OpenApiConfig, RestClientConfig, SchedulingConfig
+ ├── config/            // CryptoConfig (BCrypt), OpenApiConfig, SchedulingConfig
  ├── web/
- │    ├── controller/    // UserController, ProjectController, ProjectMemberController,
- │    │                  // MonitorController, TagController, CheckResultController,
- │    │                  // IncidentController, ChannelController, NotificationController
- │    ├── dto/           // подпакеты по агрегатам: dto/monitor, dto/project, ...
- │    ├── mapper/        // MapStruct, по одному на агрегат
+ │    ├── controller/    // User, Project (+ участники), Monitor, Tag, Channel,
+ │    │                  // Incident (+ история проверок и уведомления)
+ │    ├── dto/           // подпакеты по агрегатам: channel, incident, monitor, project,
+ │    │                  // tag, user; common — PageParams и модель ошибки для OpenAPI
+ │    ├── mapper/        // MapStruct, по одному на агрегат, unmappedTargetPolicy = ERROR
  │    └── exception/     // GlobalExceptionHandler (@RestControllerAdvice, ProblemDetail),
  │                       // NotFoundException, ConflictStateException
- ├── service/            // бизнес-логика
- ├── repository/         // Spring Data JPA + кастомные @Query
+ ├── service/            // бизнес-логика и границы транзакций
+ ├── repository/         // Spring Data JPA + кастомные @Query, блокировка строки монитора
  ├── domain/
- │    ├── entity/
- │    └── enums/
- └── checker/            // CheckScheduler, CheckExecutor, client/ (обёртка над RestClient)
+ │    ├── entity/        // JPA-сущности, ProjectMember + ProjectMemberId для M2M с доп. полями
+ │    ├── enums/
+ │    └── model/         // MonitorTarget, ProbeOutcome — обмен с checker
+ └── checker/            // CheckScheduler (@Scheduled), MonitorProbe (RestClient)
 ```
 
 Entity никогда не выходит за пределы `service`/`repository`/`domain` — в контроллер только DTO.
 
 ## Требования из задания → чек-лист
 
-- [ ] CRUD с REST API на основных сущностях, правильные HTTP-статусы (201+Location, 204, 404, 409, 400/422)
-- [ ] Spring Data JPA для доступа к БД
-- [ ] Валидация на уровне DTO (Bean Validation) и Entity/миграции (NOT NULL, CHECK)
-- [x] Схема БД — через Liquibase-миграции (YAML, rollback, без правки применённых)
-- [ ] Юнит-тесты (Mockito) + интеграционные (Testcontainers + JUnit 5)
-- [ ] Конфигурация только через переменные окружения (`${VAR}` в `application.yml`)
-- [ ] Сборка и запуск через `docker compose up` (app + postgres + healthcheck)
-- [ ] Пагинация везде, максимум 50 записей за запрос
-- [ ] `Slice`-эндпоинт без `count(*)` (`/monitors/{id}/results`)
-- [ ] `Page`-эндпоинт с `X-Total-Count` (`/projects/{id}/monitors`)
-- [ ] Минимум 2 транзакции с обоснованием (реализовано 3: `openIncident`, `resolveIncident`, `createProject`)
-- [ ] Разделение Entity/DTO
-- [ ] Чистая архитектура: controller/service/repository/domain/config
-- [ ] Все enum'ы — строками (`@Enumerated(EnumType.STRING)`)
-- [ ] `@RestControllerAdvice` + `ProblemDetail`, человекочитаемые ошибки
-- [ ] Связи M2M, O2M/M2O, M2M с доп. полем — все три типа реализованы
-- [ ] OpenAPI 3 + Swagger UI (springdoc)
-- [ ] JaCoCo, порог покрытия 70%, встроен в `check`
-- [ ] Git feature branching + conventional commits с первого коммита
+Всё закрыто. Проверка: `./gradlew check` (113 тестов, покрытие строк 97,5% при пороге 70%)
+и `scripts/demo.sh` на стеке из `docker compose up`.
+
+- [x] CRUD с REST API на основных сущностях, правильные HTTP-статусы — 33 эндпоинта; 201 +
+  `Location`, 204 на удаление, 404, 409 на конфликт состояния, 400 на невалидный запрос
+  (для ошибок в полях выбран 400, а не 422: клиенту важно, какое поле исправить)
+- [x] Spring Data JPA для доступа к БД — `repository/*`
+- [x] Валидация на уровне DTO (Bean Validation) и Entity/миграции — аннотации в `web/dto` и
+  `domain/entity`, `NOT NULL` / `CHECK` / `UNIQUE` в changeset'ах
+- [x] Схема БД — через Liquibase-миграции (YAML, rollback, без правки применённых) — 13
+  changeset'ов, откат проверяет `LiquibaseMigrationsTest`
+- [x] Юнит-тесты (Mockito) + интеграционные (Testcontainers + JUnit 5) — один контейнер
+  Postgres на прогон (`support/PostgresContainer`)
+- [x] Конфигурация только через переменные окружения (`${VAR}` в `application.yml`)
+- [x] Сборка и запуск через `docker compose up` (app + postgres + healthcheck)
+- [x] Пагинация везде, максимум 50 записей за запрос — `PageParams`, `size > 50` → 400
+- [x] `Slice`-эндпоинт без `count(*)` (`/monitors/{id}/results`) — `CheckHistoryQueryCountTest`
+- [x] `Page`-эндпоинт с `X-Total-Count` (`/projects/{id}/monitors`)
+- [x] Минимум 2 транзакции с обоснованием (реализовано 3: `openIncident`, `resolveIncident`,
+  `createProject`) — см. раздел «Транзакции»
+- [x] Разделение Entity/DTO — MapStruct, сущности не выходят за сервисный слой
+- [x] Чистая архитектура: controller/service/repository/domain/config
+- [x] Все enum'ы — строками (`@Enumerated(EnumType.STRING)`) + `CHECK` в миграциях
+- [x] `@RestControllerAdvice` + `ProblemDetail`, человекочитаемые ошибки — с именами полей в
+  `violations`
+- [x] Связи M2M, O2M/M2O, M2M с доп. полем — все три типа реализованы
+- [x] OpenAPI 3 + Swagger UI (springdoc) — все операции с описанием и кодами ответов
+- [x] JaCoCo, порог покрытия 70%, встроен в `check`
+- [x] Git feature branching + conventional commits с первого коммита
 
 ## План веток (лаба 1)
 
@@ -154,4 +183,7 @@ Entity никогда не выходит за пределы `service`/`reposit
 9. `feature/lab1-openapi` — springdoc + Swagger UI.
 10. `feature/lab1-tests` — добор покрытия до 70% (юнит + интеграционные).
 
-Дальше — `fix/lab1-*` по мере обнаружения багов.
+Дальше — `fix/lab1-*` по мере обнаружения багов. Сверх плана влиты
+`feature/lab1-refactor` (Lombok, единообразные имена), `fix/lab1-monitor-validation`
+(имена полей в ошибках, значения по умолчанию для интервала и таймаута) и
+`feature/lab1-demo-script` (`scripts/demo.sh`).
