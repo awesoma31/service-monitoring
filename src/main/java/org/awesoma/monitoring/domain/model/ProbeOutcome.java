@@ -3,7 +3,6 @@ package org.awesoma.monitoring.domain.model;
 import org.awesoma.monitoring.domain.enums.CheckResultType;
 import org.awesoma.monitoring.domain.enums.Severity;
 
-/** Result of one probe, in the form the domain records and reacts to. */
 public record ProbeOutcome(
         CheckResultType result, Integer responseMs, Integer httpStatus, String errorMessage) {
 

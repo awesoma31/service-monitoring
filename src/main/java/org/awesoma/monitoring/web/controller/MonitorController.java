@@ -40,7 +40,7 @@ public class MonitorController {
     /** Total row count for clients that render page numbers rather than an endless list. */
     private static final String TOTAL_COUNT_HEADER = "X-Total-Count";
 
-    private final MonitorService monitors;
+    private final MonitorService monitorService;
 
     @GetMapping("/projects/{projectId}/monitors")
     @Operation(
@@ -63,7 +63,7 @@ public class MonitorController {
                     @RequestParam(required = false)
                     String tag,
             @Valid PageParams page) {
-        Page<MonitorResponse> monitorPage = monitors.listByProject(projectId, tag, page.toPageable());
+        Page<MonitorResponse> monitorPage = monitorService.listByProject(projectId, tag, page.toPageable());
         return ResponseEntity.ok()
                 .header(TOTAL_COUNT_HEADER, String.valueOf(monitorPage.getTotalElements()))
                 .body(monitorPage);
@@ -86,7 +86,7 @@ public class MonitorController {
     public ResponseEntity<MonitorResponse> create(
             @PathVariable @Positive Long projectId,
             @Valid @RequestBody MonitorCreateRequest request) {
-        MonitorResponse created = monitors.create(projectId, request);
+        MonitorResponse created = monitorService.create(projectId, request);
         return ResponseEntity.created(URI.create("/api/v1/monitors/" + created.id())).body(created);
     }
 
@@ -98,7 +98,7 @@ public class MonitorController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public MonitorResponse get(@PathVariable @Positive Long id) {
-        return monitors.get(id);
+        return monitorService.get(id);
     }
 
     @PutMapping("/monitors/{id}")
@@ -113,7 +113,7 @@ public class MonitorController {
     })
     public MonitorResponse update(
             @PathVariable @Positive Long id, @Valid @RequestBody MonitorUpdateRequest request) {
-        return monitors.update(id, request);
+        return monitorService.update(id, request);
     }
 
     @PutMapping("/monitors/{id}/tags")
@@ -128,7 +128,7 @@ public class MonitorController {
     })
     public MonitorResponse replaceTags(
             @PathVariable @Positive Long id, @Valid @RequestBody MonitorTagsRequest request) {
-        return monitors.replaceTags(id, request.tags());
+        return monitorService.replaceTags(id, request.tags());
     }
 
     @DeleteMapping("/monitors/{id}")
@@ -140,6 +140,6 @@ public class MonitorController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public void delete(@PathVariable @Positive Long id) {
-        monitors.delete(id);
+        monitorService.delete(id);
     }
 }

@@ -27,15 +27,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MonitorCheckService {
 
-    private final MonitorRepository monitors;
-    private final CheckResultRepository checkResults;
-    private final IncidentRepository incidents;
-    private final ChannelRepository channels;
-    private final NotificationRepository notifications;
+    private final MonitorRepository monitorRepository;
+    private final CheckResultRepository checkResultRepository;
+    private final IncidentRepository incidentRepository;
+    private final ChannelRepository channelRepository;
+    private final NotificationRepository notificationRepository;
 
     @Transactional(readOnly = true)
     public List<MonitorTarget> findDueTargets(int limit) {
-        return monitors.findAllById(monitors.findDueMonitorIds(limit)).stream()
+        return monitorRepository.findAllById(monitorRepository.findDueMonitorIds(limit)).stream()
                 .map(monitor -> new MonitorTarget(
                         monitor.getId(),
                         monitor.getUrl(),
@@ -59,7 +59,7 @@ public class MonitorCheckService {
      */
     @Transactional
     public void record(Long monitorId, ProbeOutcome outcome) {
-        Monitor monitor = monitors.findByIdForUpdate(monitorId).orElse(null);
+        Monitor monitor = monitorRepository.findByIdForUpdate(monitorId).orElse(null);
         if (monitor == null) {
             // Deleted between being scheduled and being probed; nothing to record.
             return;
@@ -83,7 +83,7 @@ public class MonitorCheckService {
         result.setResponseMs(outcome.responseMs());
         result.setHttpStatus(outcome.httpStatus());
         result.setErrorMessage(outcome.errorMessage());
-        checkResults.save(result);
+        checkResultRepository.save(result);
     }
 
     /** A monitor already DOWN keeps its incident: a failure is one event, not one per probe. */
@@ -98,7 +98,7 @@ public class MonitorCheckService {
         incident.setStartedAt(at);
         incident.setSeverity(outcome.severity());
         incident.setCause(outcome.errorMessage());
-        incidents.save(incident);
+        incidentRepository.save(incident);
 
         notifyEnabledChannels(monitor, incident);
     }
@@ -109,7 +109,7 @@ public class MonitorCheckService {
         if (!wasDown) {
             return;
         }
-        incidents
+        incidentRepository
                 .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
                 .ifPresent(incident -> {
                     incident.resolve(at);
@@ -118,11 +118,11 @@ public class MonitorCheckService {
     }
 
     private void notifyEnabledChannels(Monitor monitor, Incident incident) {
-        channels.findByProjectIdAndEnabledTrue(monitor.getProject().getId()).forEach(channel -> {
+        channelRepository.findByProjectIdAndEnabledTrue(monitor.getProject().getId()).forEach(channel -> {
             Notification notification = new Notification();
             notification.setIncident(incident);
             notification.setChannel(channel);
-            notifications.save(notification);
+            notificationRepository.save(notification);
         });
     }
 }

@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Users")
 public class UserController {
 
-    private final UserService users;
+    private final UserService userService;
 
     @GetMapping
     @Operation(summary = "List users", description = "Returns one page of users, at most 50 records.")
@@ -43,7 +43,7 @@ public class UserController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
     public Page<UserResponse> list(@Valid PageParams page) {
-        return users.list(page.toPageable());
+        return userService.list(page.toPageable());
     }
 
     @GetMapping("/{id}")
@@ -54,7 +54,7 @@ public class UserController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public UserResponse get(@PathVariable @Positive Long id) {
-        return users.get(id);
+        return userService.get(id);
     }
 
     @PostMapping
@@ -71,7 +71,7 @@ public class UserController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<UserResponse> create(@Valid @RequestBody UserCreateRequest request) {
-        UserResponse created = users.create(request);
+        UserResponse created = userService.create(request);
         return ResponseEntity.created(URI.create("/api/v1/users/" + created.id())).body(created);
     }
 
@@ -84,7 +84,7 @@ public class UserController {
     })
     public UserResponse update(
             @PathVariable @Positive Long id, @Valid @RequestBody UserUpdateRequest request) {
-        return users.update(id, request);
+        return userService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
@@ -97,6 +97,6 @@ public class UserController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public void delete(@PathVariable @Positive Long id) {
-        users.delete(id);
+        userService.delete(id);
     }
 }

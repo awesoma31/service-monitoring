@@ -20,12 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class UserService {
 
-    private final UserRepository users;
+    private final UserRepository userRepository;
     private final UserMapper mapper;
     private final PasswordEncoder passwordEncoder;
 
     public Page<UserResponse> list(Pageable pageable) {
-        return users.findAll(pageable).map(mapper::toResponse);
+        return userRepository.findAll(pageable).map(mapper::toResponse);
     }
 
     public UserResponse get(Long id) {
@@ -34,12 +34,12 @@ public class UserService {
 
     @Transactional
     public UserResponse create(UserCreateRequest request) {
-        if (users.existsByEmail(request.email())) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new ConflictStateException("Email %s is already taken".formatted(request.email()));
         }
         User user = mapper.toEntity(request);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        return mapper.toResponse(users.save(user));
+        return mapper.toResponse(userRepository.save(user));
     }
 
     @Transactional
@@ -52,11 +52,10 @@ public class UserService {
 
     @Transactional
     public void delete(Long id) {
-        users.delete(require(id));
+        userRepository.delete(require(id));
     }
 
-    /** Shared lookup so every entry point fails the same way for a missing user. */
     public User require(Long id) {
-        return users.findById(id).orElseThrow(() -> NotFoundException.of("User", id));
+        return userRepository.findById(id).orElseThrow(() -> NotFoundException.of("User", id));
     }
 }

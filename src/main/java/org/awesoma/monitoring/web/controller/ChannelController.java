@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Channels")
 public class ChannelController {
 
-    private final ChannelService channels;
+    private final ChannelService channelService;
 
     @GetMapping("/projects/{projectId}/channels")
     @Operation(summary = "List project notification channels")
@@ -45,7 +45,7 @@ public class ChannelController {
     })
     public Page<ChannelResponse> listByProject(
             @PathVariable @Positive Long projectId, @Valid PageParams page) {
-        return channels.listByProject(projectId, page.toPageable());
+        return channelService.listByProject(projectId, page.toPageable());
     }
 
     @PostMapping("/projects/{projectId}/channels")
@@ -65,7 +65,7 @@ public class ChannelController {
     public ResponseEntity<ChannelResponse> create(
             @PathVariable @Positive Long projectId,
             @Valid @RequestBody ChannelCreateRequest request) {
-        ChannelResponse created = channels.create(projectId, request);
+        ChannelResponse created = channelService.create(projectId, request);
         return ResponseEntity.created(URI.create("/api/v1/channels/" + created.id())).body(created);
     }
 
@@ -77,7 +77,7 @@ public class ChannelController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public ChannelResponse get(@PathVariable @Positive Long id) {
-        return channels.get(id);
+        return channelService.get(id);
     }
 
     @PutMapping("/channels/{id}")
@@ -90,7 +90,7 @@ public class ChannelController {
     })
     public ChannelResponse update(
             @PathVariable @Positive Long id, @Valid @RequestBody ChannelUpdateRequest request) {
-        return channels.update(id, request);
+        return channelService.update(id, request);
     }
 
     @DeleteMapping("/channels/{id}")
@@ -102,6 +102,6 @@ public class ChannelController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public void delete(@PathVariable @Positive Long id) {
-        channels.delete(id);
+        channelService.delete(id);
     }
 }

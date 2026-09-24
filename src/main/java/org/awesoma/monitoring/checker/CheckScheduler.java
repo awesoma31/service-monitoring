@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "checker.enabled", havingValue = "true", matchIfMissing = true)
 public class CheckScheduler {
 
-    private final MonitorCheckService checks;
+    private final MonitorCheckService monitorCheckService;
     private final MonitorProbe probe;
 
     @Value("${checker.batch-size}")
@@ -31,7 +31,7 @@ public class CheckScheduler {
 
     @Scheduled(fixedDelayString = "${checker.interval-ms}")
     public void runDueChecks() {
-        for (MonitorTarget target : checks.findDueTargets(batchSize)) {
+        for (MonitorTarget target : monitorCheckService.findDueTargets(batchSize)) {
             probeAndRecord(target);
         }
     }
@@ -39,7 +39,7 @@ public class CheckScheduler {
     /** One failing monitor must not stop the rest of the batch from being checked. */
     private void probeAndRecord(MonitorTarget target) {
         try {
-            checks.record(target.monitorId(), probe.probe(target));
+            monitorCheckService.record(target.monitorId(), probe.probe(target));
         } catch (RuntimeException exception) {
             log.warn("Failed to record a check for monitor {}", target.monitorId(), exception);
         }
