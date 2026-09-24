@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
             HandlerMethodValidationException exception, HttpServletRequest request) {
         List<ValidationViolation> violations = exception.getParameterValidationResults().stream()
                 .flatMap(result -> result.getResolvableErrors().stream()
-                        .map(error -> new ValidationViolation(parameterName(result), message(error))))
+                        .map(error -> new ValidationViolation(fieldName(result, error), message(error))))
                 .toList();
         return validationProblem(violations, request);
     }
@@ -118,6 +118,15 @@ public class GlobalExceptionHandler {
         problemDetail.setTitle(title);
         problemDetail.setInstance(URI.create(request.getRequestURI()));
         return problemDetail;
+    }
+
+    /**
+     * A body validated alongside a constrained path variable arrives here rather than as a
+     * BindException, with its errors wrapped per parameter. The client needs the name of the
+     * offending field, not the name of the controller's method argument.
+     */
+    private String fieldName(ParameterValidationResult result, MessageSourceResolvable error) {
+        return error instanceof FieldError fieldError ? fieldError.getField() : parameterName(result);
     }
 
     private String parameterName(ParameterValidationResult result) {

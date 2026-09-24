@@ -55,6 +55,19 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void omittedSettingsFallBackToDefaults() throws Exception {
+        long projectId = createProject("defaults");
+
+        mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
+                        {"name":"Minimal","url":"https://minimal.example"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.intervalSec").value(60))
+                .andExpect(jsonPath("$.timeoutMs").value(5000))
+                .andExpect(jsonPath("$.httpMethod").value("GET"))
+                .andExpect(jsonPath("$.expectedStatus").value(200));
+    }
+
+    @Test
     void tagsCanBeReplacedWholesale() throws Exception {
         long projectId = createProject("retag");
         long monitorId = createMonitor(projectId, "Retag", "https://retag.example");
@@ -112,7 +125,8 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
                         {"name":"Fast","url":"https://fast.example","intervalSec":1,"timeoutMs":5000}"""))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.violations[0].field").value("intervalSec"));
     }
 
     @Test
