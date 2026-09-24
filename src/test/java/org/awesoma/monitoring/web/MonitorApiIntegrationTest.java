@@ -112,7 +112,8 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
                         {"name":"Fast","url":"https://fast.example","intervalSec":1,"timeoutMs":5000}"""))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.violations[0].field").value("intervalSec"));
     }
 
     @Test
