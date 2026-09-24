@@ -9,6 +9,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * Drives the probing loop: asks which monitors are due, probes them, hands each result
+ * back to be recorded.
+ *
+ * <p>Deliberately plain — a single scheduled method, no thread pool of its own and no
+ * persistence. In lab 2 this package becomes a reactive service, and the only thing that
+ * changes for the rest of the application is where the results come from.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -28,6 +36,7 @@ public class CheckScheduler {
         }
     }
 
+    /** One failing monitor must not stop the rest of the batch from being checked. */
     private void probeAndRecord(MonitorTarget target) {
         try {
             monitorCheckService.record(target.monitorId(), probe.probe(target));

@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Monitors")
 public class MonitorController {
 
+    /** Total row count for clients that render page numbers rather than an endless list. */
     private static final String TOTAL_COUNT_HEADER = "X-Total-Count";
 
     private final MonitorService monitorService;

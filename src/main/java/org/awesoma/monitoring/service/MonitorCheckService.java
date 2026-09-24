@@ -19,6 +19,10 @@ import org.awesoma.monitoring.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Turns probe results into state: check history, monitor state, incidents and the
+ * notifications they trigger.
+ */
 @Service
 @RequiredArgsConstructor
 public class MonitorCheckService {
@@ -41,10 +45,23 @@ public class MonitorCheckService {
                 .toList();
     }
 
+    /**
+     * Records one probe and reacts to it, all in a single transaction.
+     *
+     * <p>The monitor row is locked for the duration. Two workers probing the same monitor
+     * concurrently would otherwise both read the same state and both decide to open an
+     * incident; the second would then collide with the partial unique index instead of
+     * quietly doing nothing. The lock also keeps a failure and a recovery arriving at the
+     * same moment from interleaving into a monitor that is UP with an incident still open.
+     *
+     * <p>Atomicity matters beyond the race: a monitor marked DOWN without an incident, or
+     * an incident without its notifications, is a state no later probe would repair.
+     */
     @Transactional
     public void record(Long monitorId, ProbeOutcome outcome) {
         Monitor monitor = monitorRepository.findByIdForUpdate(monitorId).orElse(null);
         if (monitor == null) {
+            // Deleted between being scheduled and being probed; nothing to record.
             return;
         }
         OffsetDateTime now = OffsetDateTime.now();
@@ -69,6 +86,7 @@ public class MonitorCheckService {
         checkResultRepository.save(result);
     }
 
+    /** A monitor already DOWN keeps its incident: a failure is one event, not one per probe. */
     private void openIncidentIfAbsent(Monitor monitor, ProbeOutcome outcome, OffsetDateTime at) {
         if (monitor.getCurrentState() == MonitorState.DOWN) {
             return;

@@ -31,6 +31,10 @@ public class IncidentController {
 
     private final IncidentService incidentService;
 
+    /**
+     * Check history as an endless feed. The response carries no total count by design —
+     * see {@link IncidentService#listResults}.
+     */
     @GetMapping("/monitors/{monitorId}/results")
     @Operation(
             summary = "Scroll monitor check history",

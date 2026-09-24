@@ -30,6 +30,10 @@ public record ProbeOutcome(
         return result.isFailure();
     }
 
+    /**
+     * An unreachable host is worse than an unexpected status code: the first means nobody
+     * can use the service at all, the second that it answers but wrongly.
+     */
     public Severity severity() {
         return switch (result) {
             case CONNECTION_ERROR, TIMEOUT -> Severity.HIGH;

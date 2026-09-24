@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
+/** The failure-to-recovery cycle against a real database, indexes and constraints included. */
 @Transactional
 class CheckCycleIntegrationTest extends AbstractIntegrationTest {
 
@@ -47,9 +48,11 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
                 .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
                 .orElseThrow();
         assertThat(incident.getCause()).isEqualTo("connection refused");
+        // Only the enabled channel is notified; the disabled one is skipped.
         assertThat(notifications.findByIncidentId(incident.getId(), Pageable.unpaged()))
                 .hasSize(1);
 
+        // A monitor that is already down must not accumulate a second incident.
         checks.record(monitor.getId(), ProbeOutcome.connectionError(9, "connection refused"));
         entityManager.flush();
         assertThat(incidents.findByMonitorId(monitor.getId(), Pageable.unpaged())).hasSize(1);

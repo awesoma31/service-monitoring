@@ -46,6 +46,10 @@ public class TagService {
         tagRepository.delete(tag);
     }
 
+    /**
+     * Resolves names to tags, creating the ones that do not exist yet. Tagging a monitor
+     * should not force the client to register every label first.
+     */
     @Transactional
     public Set<Tag> resolveOrCreate(Set<String> names) {
         if (names.isEmpty()) {

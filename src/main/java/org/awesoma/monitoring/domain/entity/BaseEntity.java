@@ -8,6 +8,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.Hibernate;
+/**
+ * Shared identity for entities with a generated primary key.
+ *
+ * <p>Equality is based on the identifier alone: two loaded copies of the same row must be
+ * equal, and a lazy proxy must equal the entity it stands for — hence {@link Hibernate#getClass}
+ * rather than {@code getClass()}, which would see the proxy subclass and break symmetry.
+ * An entity that has not been persisted yet is equal only to itself.
+ */
 
 @MappedSuperclass
 @Getter
@@ -31,6 +39,8 @@ public abstract class BaseEntity {
         return id != null && id.equals(otherId);
     }
 
+        // Constant per type on purpose: the id is null until the entity is persisted, so a
+        // hash derived from it would change while the entity is already inside a HashSet.
     @Override
     public int hashCode() {
         return Hibernate.getClass(this).hashCode();

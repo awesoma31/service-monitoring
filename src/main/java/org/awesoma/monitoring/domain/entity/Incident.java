@@ -54,6 +54,10 @@ public class Incident extends BaseEntity {
         return status == IncidentStatus.OPEN;
     }
 
+    /**
+     * Closes the incident, moving both fields together. The database rejects a RESOLVED
+     * incident without a resolution time, so they must never be set separately.
+     */
     public void resolve(OffsetDateTime at) {
         this.status = IncidentStatus.RESOLVED;
         this.resolvedAt = at;

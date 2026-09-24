@@ -7,6 +7,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springdoc.core.annotations.ParameterObject;
 
+/**
+ * Pagination parameters shared by every listing endpoint, so the page-size ceiling is
+ * defined once rather than repeated per controller. Exceeding it is rejected rather than
+ * silently capped: a client asking for 200 rows should learn that it cannot have them.
+ */
 @ParameterObject
 public record PageParams(
         @Schema(description = "Zero-based page index", defaultValue = "0", minimum = "0")

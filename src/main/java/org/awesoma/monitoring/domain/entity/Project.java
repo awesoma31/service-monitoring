@@ -52,7 +52,10 @@ public class Project extends BaseEntity {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProjectMember> members = new LinkedHashSet<>();
 
-
+    /**
+     * Adds a member and keeps both sides of the association consistent, so a project
+     * created and populated in one transaction is persisted with its members intact.
+     */
     public ProjectMember addMember(User user, MemberRole role) {
         ProjectMember member = new ProjectMember(this, user, role);
         members.add(member);

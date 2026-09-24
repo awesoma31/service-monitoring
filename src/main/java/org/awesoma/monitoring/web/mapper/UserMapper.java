@@ -12,6 +12,7 @@ public interface UserMapper {
 
     UserResponse toResponse(User user);
 
+    /** The password is hashed by the service, so it never reaches the entity as given. */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "status", ignore = true)

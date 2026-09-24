@@ -11,6 +11,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
+/**
+ * Performs a single HTTP probe. Holds no state and touches no database, which is what lets
+ * the whole package move to a service of its own later.
+ */
 @Component
 public class MonitorProbe {
 
@@ -37,12 +41,17 @@ public class MonitorProbe {
                 .method(HttpMethod.valueOf(target.httpMethod().name()))
                 .uri(target.url())
                 .retrieve()
+                // Any status is an answer worth recording; only transport failures throw.
                 .onStatus(status -> true, (request, response) -> { })
                 .toBodilessEntity()
                 .getStatusCode()
                 .value();
     }
 
+    /**
+     * A client per probe, because the timeout belongs to the monitor rather than to the
+     * client. Building one is cheap next to the network call it wraps.
+     */
     private RestClient clientFor(MonitorTarget target) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         Duration timeout = Duration.ofMillis(target.timeoutMs());

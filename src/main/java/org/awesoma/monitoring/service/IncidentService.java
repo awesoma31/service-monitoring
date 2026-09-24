@@ -45,6 +45,13 @@ public class IncidentService {
         return mapper.toResponse(require(id));
     }
 
+    /**
+     * Check history for infinite scrolling.
+     *
+     * <p>A Slice rather than a Page on purpose: check_results grows without bound, and
+     * counting the rows of a busy monitor on every scroll would cost more than the page
+     * itself. The client only needs to know whether more rows follow.
+     */
     public Slice<CheckResultResponse> listResults(Long monitorId, Pageable pageable) {
         monitors.require(monitorId);
         return checkResults
@@ -57,6 +64,14 @@ public class IncidentService {
         return notifications.findByIncidentId(incidentId, pageable).map(mapper::toResponse);
     }
 
+    /**
+     * Closes an incident by hand, for a failure someone has dealt with outside the system.
+     *
+     * <p>The monitor goes back to UNKNOWN rather than UP: an operator saying the incident
+     * is handled is not evidence that the site answers, and the next probe will establish
+     * that. Leaving it DOWN would be worse — the checker treats a DOWN monitor as already
+     * having an incident and would never open another one.
+     */
     @Transactional
     public IncidentResponse resolve(Long id) {
         Incident incident = require(id);

@@ -16,6 +16,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+/**
+ * Turns failures at the HTTP boundary into one RFC 7807 response shape. Database details and
+ * parser internals deliberately stay out of the response: they are useful in logs, but expose
+ * implementation details without helping an API client fix its request.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

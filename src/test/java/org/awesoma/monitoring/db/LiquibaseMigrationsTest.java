@@ -20,6 +20,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Migrations are only trustworthy if they also undo themselves: a rollback that fails
+ * leaves a half-migrated database that nobody can move forward or back.
+ */
 class LiquibaseMigrationsTest {
 
     private static final String CHANGELOG = "db/changelog/db.changelog-master.yaml";
@@ -28,12 +32,20 @@ class LiquibaseMigrationsTest {
             "users", "projects", "project_members", "tags", "monitors",
             "monitor_tags", "check_results", "incidents", "channels", "notifications");
 
+    /**
+     * Rolling the schema back empties the database, so this test cannot share one with the
+     * others. It gets a database of its own inside the shared container rather than a
+     * second container.
+     */
     private static final String OWN_DATABASE = "migrations_check";
 
     private static String jdbcUrl;
 
     @BeforeAll
     static void createOwnDatabase() throws Exception {
+        // A previous run killed mid-rollback would leave a half-migrated database behind,
+        // and this test would then roll back a changelog it did not apply. Start from
+        // nothing rather than from whatever survived.
         dropOwnDatabase();
         runOnDefaultDatabase("CREATE DATABASE " + OWN_DATABASE);
         jdbcUrl = PostgresContainer.INSTANCE.getJdbcUrl()
@@ -42,6 +54,7 @@ class LiquibaseMigrationsTest {
 
     @AfterAll
     static void dropOwnDatabase() throws Exception {
+        // Postgres refuses to drop a database that still has sessions attached.
         runOnDefaultDatabase(
                 "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '"
                         + OWN_DATABASE + "'");

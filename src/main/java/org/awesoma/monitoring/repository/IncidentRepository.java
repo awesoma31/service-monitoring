@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
+    /** At most one row can match: the database enforces one open incident per monitor. */
     Optional<Incident> findByMonitorIdAndStatus(Long monitorId, IncidentStatus status);
 
     Page<Incident> findByMonitorId(Long monitorId, Pageable pageable);
