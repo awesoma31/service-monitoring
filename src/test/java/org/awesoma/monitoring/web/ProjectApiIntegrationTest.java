@@ -128,7 +128,8 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
                         {"user_id":%d}
                         """.formatted(memberId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.user_id").value(memberId));
+                .andExpect(jsonPath("$.user_id").value(memberId))
+                .andExpect(jsonPath("$.joined_at").isNotEmpty());
 
         mockMvc.perform(delete("/api/v1/projects/{id}/members/{userId}", projectId, memberId))
                 .andExpect(status().isNoContent());

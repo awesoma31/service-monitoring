@@ -86,7 +86,8 @@ public class ProjectService {
                     "User %d is already a member of project %d".formatted(request.userId(), projectId));
         }
         User user = users.require(request.userId());
-        return mapper.toResponse(members.save(new ProjectMember(project, user)));
+        // Flushed right away so that joined_at, set by the insert, is part of the response.
+        return mapper.toResponse(members.saveAndFlush(new ProjectMember(project, user)));
     }
 
     @Transactional

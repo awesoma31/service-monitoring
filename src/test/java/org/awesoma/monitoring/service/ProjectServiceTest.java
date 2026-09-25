@@ -130,12 +130,12 @@ class ProjectServiceTest {
         when(projects.findById(1L)).thenReturn(Optional.of(project));
         when(members.existsById(new ProjectMemberId(1L, 2L))).thenReturn(false);
         when(users.require(2L)).thenReturn(user);
-        when(members.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(members.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.addMember(1L, new ProjectMemberRequest(2L));
 
         ArgumentCaptor<ProjectMember> saved = ArgumentCaptor.forClass(ProjectMember.class);
-        verify(members).save(saved.capture());
+        verify(members).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getProject()).isEqualTo(project);
         assertThat(saved.getValue().getUser()).isEqualTo(user);
     }
