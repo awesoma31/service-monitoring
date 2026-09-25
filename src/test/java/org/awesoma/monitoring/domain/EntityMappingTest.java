@@ -126,7 +126,7 @@ class EntityMappingTest extends AbstractIntegrationTest {
     private User owner(String email) {
         User user = new User();
         user.setEmail(email);
-        user.setPasswordHash("hash");
+        user.setPassword("secret123");
         user.setFullName("Owner");
         entityManager.persist(user);
         return user;

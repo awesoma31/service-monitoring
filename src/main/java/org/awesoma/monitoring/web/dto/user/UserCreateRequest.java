@@ -16,9 +16,9 @@ public record UserCreateRequest(
                         format = "password",
                         accessMode = Schema.AccessMode.WRITE_ONLY,
                         minLength = 8,
-                        maxLength = 72)
+                        maxLength = 255)
                 @NotBlank
-                @Size(min = 8, max = 72)
+                @Size(min = 8, max = 255)
                 String password,
         @Schema(example = "Alex Operator") @NotBlank @Size(max = 255) String fullName) {
 }

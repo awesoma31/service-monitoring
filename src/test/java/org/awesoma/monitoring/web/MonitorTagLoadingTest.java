@@ -64,7 +64,7 @@ class MonitorTagLoadingTest extends AbstractIntegrationTest {
     private Project seedProjectWithTaggedMonitors() {
         User owner = new User();
         owner.setEmail("tag-loading@example.com");
-        owner.setPasswordHash("hash");
+        owner.setPassword("secret123");
         owner.setFullName("Owner");
         entityManager.persist(owner);
 

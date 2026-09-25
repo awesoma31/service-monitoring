@@ -31,7 +31,7 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/v1/users/")))
                 .andExpect(jsonPath("$.email").value("created@example.com"))
                 .andExpect(jsonPath("$.password").doesNotExist())
-                .andExpect(jsonPath("$.passwordHash").doesNotExist());
+                .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     @Test

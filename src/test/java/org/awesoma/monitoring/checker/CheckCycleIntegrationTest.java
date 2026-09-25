@@ -157,7 +157,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
     private Monitor seed(String slug) {
         User owner = new User();
         owner.setEmail(slug + "@example.com");
-        owner.setPasswordHash("hash");
+        owner.setPassword("secret123");
         owner.setFullName("Owner");
         entityManager.persist(owner);
 

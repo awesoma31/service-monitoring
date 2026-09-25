@@ -32,13 +32,13 @@ class UserApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("listed-user@example.com"))
                 .andExpect(jsonPath("$.password").doesNotExist())
-                .andExpect(jsonPath("$.passwordHash").doesNotExist());
+                .andExpect(jsonPath("$.password").doesNotExist());
 
         mockMvc.perform(get("/api/v1/users").param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].password").doesNotExist())
-                .andExpect(jsonPath("$.content[0].passwordHash").doesNotExist());
+                .andExpect(jsonPath("$.content[0].password").doesNotExist());
     }
 
     @Test

@@ -29,8 +29,8 @@ public class User extends BaseEntity {
 
     @NotBlank
     @Size(max = 255)
-    @Column(name = "password_hash", nullable = false, length = 255)
-    private String passwordHash;
+    @Column(name = "password", nullable = false, length = 255)
+    private String password;
 
     @NotBlank
     @Size(max = 255)

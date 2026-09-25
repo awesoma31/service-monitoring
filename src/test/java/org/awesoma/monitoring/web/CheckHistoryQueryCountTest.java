@@ -59,7 +59,7 @@ class CheckHistoryQueryCountTest extends AbstractIntegrationTest {
     private Monitor seedMonitorWithChecks(int count) {
         User owner = new User();
         owner.setEmail("slice-count@example.com");
-        owner.setPasswordHash("hash");
+        owner.setPassword("secret123");
         owner.setFullName("Owner");
         entityManager.persist(owner);
 
