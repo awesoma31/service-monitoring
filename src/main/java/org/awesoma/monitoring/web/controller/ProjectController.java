@@ -1,9 +1,5 @@
 package org.awesoma.monitoring.web.controller;
 
-import static org.awesoma.monitoring.domain.enums.MemberRole.EDITOR;
-import static org.awesoma.monitoring.domain.enums.MemberRole.OWNER;
-import static org.awesoma.monitoring.domain.enums.MemberRole.VIEWER;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.ProjectService;
-import org.awesoma.monitoring.web.access.AllowedRoles;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
@@ -40,7 +35,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/projects")
 @RequiredArgsConstructor
 @Tag(name = "Projects")
-@AllowedRoles({OWNER, EDITOR, VIEWER})
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -67,7 +61,6 @@ public class ProjectController {
     }
 
     @PostMapping
-    @AllowedRoles(OWNER)
     @Operation(
             summary = "Create a project",
             description = "Creates the project and adds its owner as an OWNER member atomically.")
@@ -89,7 +82,6 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    @AllowedRoles({OWNER, EDITOR})
     @Operation(summary = "Update a project", description = "Changes the project name; its slug remains fixed.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Project updated"),
@@ -102,7 +94,6 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
-    @AllowedRoles(OWNER)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a project")
     @ApiResponses({
@@ -128,7 +119,6 @@ public class ProjectController {
     }
 
     @PostMapping("/{id}/members")
-    @AllowedRoles(OWNER)
     @Operation(summary = "Add a project member")
     @ApiResponses({
         @ApiResponse(
@@ -152,7 +142,6 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}/members/{userId}")
-    @AllowedRoles(OWNER)
     @Operation(
             summary = "Change a member role",
             description = "The last project owner cannot be demoted.")
@@ -170,7 +159,6 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}/members/{userId}")
-    @AllowedRoles(OWNER)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
             summary = "Remove a project member",

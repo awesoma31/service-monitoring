@@ -8,18 +8,10 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
-import io.swagger.v3.oas.models.media.StringSchema;
-import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.responses.ApiResponse;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import org.awesoma.monitoring.domain.enums.MemberRole;
-import org.awesoma.monitoring.web.access.AllowedRoles;
-import org.awesoma.monitoring.web.access.RoleAuthorizationInterceptor;
 import org.awesoma.monitoring.web.dto.common.ApiErrorResponse;
-import org.springdoc.core.customizers.OperationCustomizer;
-import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -65,27 +57,7 @@ public class OpenApiConfig {
                                         "title", "Conflicting state",
                                         "status", 409,
                                         "detail", "Slug production is already taken",
-                                        "instance", "/api/v1/projects")))
-                .addResponses(
-                        "Unauthorized",
-                        problemResponse(
-                                "The X-User-Role header is missing or invalid",
-                                Map.of(
-                                        "type", "about:blank",
-                                        "title", "Authentication required",
-                                        "status", 401,
-                                        "detail", "Header X-User-Role is required",
-                                        "instance", "/api/v1/projects")))
-                .addResponses(
-                        "Forbidden",
-                        problemResponse(
-                                "The supplied role cannot perform this operation",
-                                Map.of(
-                                        "type", "about:blank",
-                                        "title", "Access denied",
-                                        "status", 403,
-                                        "detail", "Role VIEWER cannot call DELETE /api/v1/monitors/1",
-                                        "instance", "/api/v1/monitors/1")));
+                                        "instance", "/api/v1/projects")));
 
         return new OpenAPI()
                 .info(new Info()
@@ -113,41 +85,6 @@ public class OpenApiConfig {
                         new io.swagger.v3.oas.models.tags.Tag()
                                 .name("Channels")
                                 .description("Project notification destinations")));
-    }
-
-    @Bean
-    public OperationCustomizer roleHeaderCustomizer() {
-        return (operation, handlerMethod) -> {
-            AllowedRoles allowedRoles = AnnotatedElementUtils.findMergedAnnotation(
-                    handlerMethod.getMethod(), AllowedRoles.class);
-            if (allowedRoles == null) {
-                allowedRoles = AnnotatedElementUtils.findMergedAnnotation(
-                        handlerMethod.getBeanType(), AllowedRoles.class);
-            }
-            if (allowedRoles == null) {
-                return operation;
-            }
-            List<String> allowedRoleNames = Arrays.stream(allowedRoles.value())
-                    .map(Enum::name)
-                    .toList();
-            List<String> allRoleNames = Arrays.stream(MemberRole.values())
-                    .map(Enum::name)
-                    .toList();
-            operation.addParametersItem(new Parameter()
-                    .in("header")
-                    .name(RoleAuthorizationInterceptor.ROLE_HEADER)
-                    .required(true)
-                    .description("Caller role. Allowed values for this operation: "
-                            + String.join(", ", allowedRoleNames))
-                    .schema(new StringSchema()._enum(allRoleNames).example(allRoleNames.getFirst())));
-            operation.getResponses()
-                    .addApiResponse(
-                            "401", new ApiResponse().$ref("#/components/responses/Unauthorized"));
-            operation.getResponses()
-                    .addApiResponse(
-                            "403", new ApiResponse().$ref("#/components/responses/Forbidden"));
-            return operation;
-        };
     }
 
     private ApiResponse problemResponse(String description, Map<String, Object> exampleValue) {
