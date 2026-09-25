@@ -22,6 +22,15 @@ subprojects {
         mavenCentral()
     }
 
+    // Spring Cloud release train matching Spring Boot 3.5 (2025.1 targets Boot 4).
+    plugins.withId("io.spring.dependency-management") {
+        extensions.configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension> {
+            imports {
+                mavenBom("org.springframework.cloud:spring-cloud-dependencies:2025.0.3")
+            }
+        }
+    }
+
     extensions.configure<JacocoPluginExtension> {
         toolVersion = "0.8.15"
     }

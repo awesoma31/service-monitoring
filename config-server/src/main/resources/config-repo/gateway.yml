@@ -1,0 +1,13 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: monitor-service
+              uri: lb://monitor-service
+              predicates:
+                - Path=/api/v1/**

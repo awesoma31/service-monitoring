@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: eureka-server
+
+server:
+  port: ${EUREKA_PORT:8761}
+
+eureka:
+  client:
+    # A single registry: it neither registers with nor copies from another one.
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # The registry is served from a cache refreshed every 30 s by default; with only a few
+    # services, refreshing it often keeps new instances reachable right after they start.
+    response-cache-update-interval-ms: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

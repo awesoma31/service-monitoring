@@ -1,0 +1,32 @@
+# Shared by every service that imports its configuration from this server.
+spring:
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  cloud:
+    loadbalancer:
+      cache:
+        # Instance lists are cached for 35 s by default, which hides a service that has
+        # just registered; keep it in step with the registry refresh below.
+        ttl: 5s
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    # The defaults (30 s) keep a freshly started service unreachable through the gateway
+    # for up to a minute; a small setup can afford to refresh more often.
+    registry-fetch-interval-seconds: 5
+  instance:
+    # Services call each other by the address they have inside the compose network.
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
