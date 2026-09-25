@@ -29,7 +29,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, Long> {
      */
     @Query(
             value = """
-                    SELECT id FROM monitors
+                    SELECT * FROM monitors
                     WHERE active
                       AND (last_checked_at IS NULL
                            OR last_checked_at + make_interval(secs => interval_sec) <= now())
@@ -37,7 +37,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, Long> {
                     LIMIT :limit
                     """,
             nativeQuery = true)
-    List<Long> findDueMonitorIds(@Param("limit") int limit);
+    List<Monitor> findDue(@Param("limit") int limit);
 
     /**
      * Locks the monitor row for the duration of the transaction.
@@ -47,6 +47,5 @@ public interface MonitorRepository extends JpaRepository<Monitor, Long> {
      * and the second would fail on the partial unique index instead of doing nothing.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select m from Monitor m where m.id = :id")
-    Optional<Monitor> findByIdForUpdate(@Param("id") Long id);
+    Optional<Monitor> findWithLockById(Long id);
 }

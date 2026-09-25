@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
+import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
@@ -69,8 +70,7 @@ class ProjectServiceTest {
     @Test
     void refusesToAddTheSameUserTwice() {
         when(projects.findById(1L)).thenReturn(Optional.of(new Project()));
-        when(members.findByProjectIdAndUserId(1L, 2L))
-                .thenReturn(Optional.of(new ProjectMember()));
+        when(members.existsById(new ProjectMemberId(1L, 2L))).thenReturn(true);
 
         assertThatThrownBy(() -> service.addMember(1L, new ProjectMemberRequest(2L)))
                 .isInstanceOf(ConflictStateException.class);
@@ -78,7 +78,7 @@ class ProjectServiceTest {
 
     @Test
     void reportsAMissingMembershipAsNotFound() {
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.empty());
+        when(members.findById(new ProjectMemberId(1L, 2L))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.removeMember(1L, 2L))
                 .isInstanceOf(NotFoundException.class)
@@ -128,7 +128,7 @@ class ProjectServiceTest {
         Project project = new Project();
         User user = new User();
         when(projects.findById(1L)).thenReturn(Optional.of(project));
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.empty());
+        when(members.existsById(new ProjectMemberId(1L, 2L))).thenReturn(false);
         when(users.require(2L)).thenReturn(user);
         when(members.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 

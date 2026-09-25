@@ -36,7 +36,7 @@ public class MonitorCheckService {
 
     @Transactional(readOnly = true)
     public List<MonitorTarget> findDueTargets(int limit) {
-        return monitorRepository.findAllById(monitorRepository.findDueMonitorIds(limit)).stream()
+        return monitorRepository.findDue(limit).stream()
                 .map(monitor -> new MonitorTarget(
                         monitor.getId(),
                         monitor.getUrl(),
@@ -60,7 +60,7 @@ public class MonitorCheckService {
      */
     @Transactional
     public void record(Long monitorId, ProbeOutcome outcome) {
-        Monitor monitor = monitorRepository.findByIdForUpdate(monitorId).orElse(null);
+        Monitor monitor = monitorRepository.findWithLockById(monitorId).orElse(null);
         if (monitor == null) {
             // Deleted between being scheduled and being probed; nothing to record.
             return;

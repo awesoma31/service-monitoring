@@ -3,6 +3,7 @@ package org.awesoma.monitoring.service;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
+import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
@@ -80,7 +81,7 @@ public class ProjectService {
     @Transactional
     public ProjectMemberResponse addMember(Long projectId, ProjectMemberRequest request) {
         Project project = require(projectId);
-        if (members.findByProjectIdAndUserId(projectId, request.userId()).isPresent()) {
+        if (members.existsById(new ProjectMemberId(projectId, request.userId()))) {
             throw new ConflictStateException(
                     "User %d is already a member of project %d".formatted(request.userId(), projectId));
         }
@@ -95,7 +96,7 @@ public class ProjectService {
 
     private ProjectMember requireMember(Long projectId, Long userId) {
         return members
-                .findByProjectIdAndUserId(projectId, userId)
+                .findById(new ProjectMemberId(projectId, userId))
                 .orElseThrow(() -> new NotFoundException(
                         "User %d is not a member of project %d".formatted(userId, projectId)));
     }
