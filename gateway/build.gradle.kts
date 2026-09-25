@@ -24,4 +24,7 @@ tasks.named<Test>("test") {
         "optional:file:$configRepo/application.yml,optional:file:$configRepo/gateway.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
+    // Lets the routing test read the route table from the actuator.
+    systemProperty("management.endpoints.web.exposure.include", "health,gateway")
+    systemProperty("management.endpoint.gateway.access", "read_only")
 }

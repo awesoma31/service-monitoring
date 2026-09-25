@@ -22,8 +22,15 @@ class ConfigServerApplicationTest {
                 .anyMatch(source -> source.endsWith("config-repo/monitor-service.yml"))
                 .anyMatch(source -> source.endsWith("config-repo/application.yml"));
         assertThat(config.toString())
-                .contains("checker.interval-ms")
+                .contains("spring.datasource.url")
                 .contains("spring.jackson.property-naming-strategy");
+    }
+
+    @Test
+    void servesTheSchedulerSettingsToTheCheckService() {
+        JsonNode config = http.getForObject("/check-service/default", JsonNode.class);
+
+        assertThat(config.toString()).contains("checker.interval-ms").contains("spring.r2dbc.url");
     }
 
     @Test

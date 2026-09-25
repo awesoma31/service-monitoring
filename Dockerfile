@@ -8,6 +8,7 @@ WORKDIR /app
 COPY gradlew ./
 COPY gradle gradle
 COPY settings.gradle.kts build.gradle.kts lombok.config ./
+COPY check-service/build.gradle.kts check-service/
 COPY config-server/build.gradle.kts config-server/
 COPY eureka-server/build.gradle.kts eureka-server/
 COPY gateway/build.gradle.kts gateway/

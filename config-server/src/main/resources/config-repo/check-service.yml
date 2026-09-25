@@ -1,0 +1,25 @@
+spring:
+  r2dbc:
+    url: ${DB_R2DBC_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  liquibase:
+    # Migrations run over JDBC before the service starts talking R2DBC.
+    url: ${DB_JDBC_URL}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+server:
+  port: ${APP_PORT:8080}
+
+checker:
+  enabled: ${CHECKER_ENABLED:true}
+  interval-ms: ${CHECKER_INTERVAL_MS:15000}
+  batch-size: ${CHECKER_BATCH_SIZE:50}
+  # Probes of one pass run concurrently, up to this many at a time.
+  concurrency: ${CHECKER_CONCURRENCY:8}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

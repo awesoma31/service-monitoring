@@ -1,4 +1,4 @@
-# Start order: postgres → config-server → eureka-server → monitor-service → gateway.
+# Start order: postgres → config-server → eureka-server → services → gateway.
 # Only the gateway (API) and the Eureka dashboard are published on the host.
 x-healthcheck: &actuator-health
   interval: 5s
@@ -21,6 +21,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Creates the databases of the other services; the monitor-service one is POSTGRES_DB.
+  postgres-init:
+    image: postgres:17-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-monitoring}
+    volumes:
+      - ./docker/postgres/create-databases.sql:/create-databases.sql:ro
+    command: >-
+      psql -h postgres -U ${POSTGRES_USER:-monitoring} -d ${POSTGRES_DB:-monitoring}
+      -v ON_ERROR_STOP=1 -f /create-databases.sql
 
   config-server:
     build:
@@ -66,6 +80,31 @@ services:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP" ]
       <<: *actuator-health
 
+  check-service:
+    build:
+      context: .
+      args:
+        MODULE: check-service
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_FAIL_FAST: "true"
+      EUREKA_URL: http://eureka-server:8761/eureka
+      DB_R2DBC_URL: r2dbc:postgresql://postgres:5432/check_db
+      DB_JDBC_URL: jdbc:postgresql://postgres:5432/check_db
+      DB_USER: ${POSTGRES_USER:-monitoring}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-monitoring}
+      APP_PORT: 8080
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP" ]
+      <<: *actuator-health
+
   gateway:
     build:
       context: .
@@ -77,6 +116,8 @@ services:
       eureka-server:
         condition: service_healthy
       monitor-service:
+        condition: service_healthy
+      check-service:
         condition: service_healthy
     environment:
       CONFIG_SERVER_URL: http://config-server:8888

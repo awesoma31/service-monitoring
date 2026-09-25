@@ -22,6 +22,16 @@ class GatewayRoutingTest {
     }
 
     @Test
+    void checkHistoryIsRoutedToTheCheckServiceBeforeTheCatchAllRoute() {
+        http.get().uri("/actuator/gateway/routes").exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[0].route_id").isEqualTo("check-service")
+                .jsonPath("$[0].uri").isEqualTo("lb://check-service")
+                .jsonPath("$[1].route_id").isEqualTo("monitor-service");
+    }
+
+    @Test
     void otherPathsAreNotRouted() {
         http.get().uri("/unknown").exchange().expectStatus().isNotFound();
     }
