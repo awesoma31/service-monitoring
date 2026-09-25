@@ -18,9 +18,9 @@
 
 ## Схема БД
 
-- `users (id, email UK, password_hash, full_name, status)`
+- `users (id, email UK, password, full_name, status)`
 - `projects (id, owner_id FK -> users, name, slug UK, created_at)`
-- `project_members (project_id FK, user_id FK, role, joined_at)` — M2M с доп. полем (`role`)
+- `project_members (project_id FK, user_id FK, joined_at)` — M2M с доп. полем (`joined_at`)
 - `monitors (id, project_id FK, name, url, http_method, interval_sec, timeout_ms, expected_status, active, current_state)`
 - `tags (id, name UK)` + `monitor_tags (monitor_id FK, tag_id FK)` — чистая M2M
 - `check_results (id, monitor_id FK, checked_at, result, response_ms, http_status, error_message)`
@@ -31,13 +31,12 @@
 Связи всех трёх типов, требуемых заданием:
 - **One-to-Many / Many-to-One**: `projects → monitors`, `monitors → check_results`, `monitors → incidents`, `incidents → notifications`, `channels → notifications`.
 - **Many-to-Many (чистая)**: `monitors ↔ tags` через `monitor_tags`.
-- **Many-to-Many с доп. полем**: `projects ↔ users` через `project_members` (доп. поле `role`, `joined_at`).
+- **Many-to-Many с доп. полем**: `projects ↔ users` через `project_members` (доп. поле `joined_at`).
 
 ### Enum'ы
 
 Хранятся как строки (`@Enumerated(EnumType.STRING)`) + `CHECK`-constraint в миграции:
 
-- `MemberRole`: `OWNER`, `EDITOR`, `VIEWER`
 - `MonitorState`: `UP`, `DOWN`, `PAUSED`, `UNKNOWN`
 - `CheckResultType`: `SUCCESS`, `TIMEOUT`, `BAD_STATUS`, `CONNECTION_ERROR`
 - `IncidentStatus`: `OPEN`, `RESOLVED`
@@ -75,6 +74,10 @@ changeset на изменение, у каждого прописан `rollback`
 12. `012-create-notifications`
 13. `013-add-monitors-last-checked-at` — время последней проверки, по нему планировщик
     выбирает мониторы, которые пора проверить; отдельным changeset'ом, а не правкой 005
+14. `014-rename-users-password` — `password_hash` → `password`: в лабе 1 пароль хранится
+    как есть, хеширование вернётся вместе с аутентификацией в лабе 3
+15. `015-drop-project-members-role` — удалена роль участника: разграничения доступа в лабе 1
+    нет; откат восстанавливает владельца как `OWNER`, остальных как `VIEWER`
 
 ## Планировщик проверок
 
@@ -99,8 +102,8 @@ changeset на изменение, у каждого прописан `rollback`
    параллельных прогонов воркера, которые одновременно пытаются закрыть/открыть инцидент
    на один и тот же монитор) + закрытие инцидента + возврат `monitor.current_state → UP` +
    создание notification о восстановлении.
-3. **createProject** — создание проекта + добавление владельца в `project_members` с ролью
-   `OWNER`. Без транзакции возможен проект без единого участника при сбое между двумя
+3. **createProject** — создание проекта + добавление владельца в `project_members`.
+   Без транзакции возможен проект без единого участника при сбое между двумя
    INSERT'ами.
 
 Где в коде: транзакции 1 и 2 — это один метод `MonitorCheckService.record`, ветка
@@ -123,7 +126,7 @@ unique-индекс по открытым инцидентам страхует 
 ```
 org.awesoma.monitoring
  ├── MonitoringApplication.java
- ├── config/            // CryptoConfig (BCrypt), OpenApiConfig, SchedulingConfig
+ ├── config/            // OpenApiConfig, SchedulingConfig
  ├── web/
  │    ├── controller/    // User, Project (+ участники), Monitor, Tag, Channel,
  │    │                  // Incident (+ история проверок и уведомления)
@@ -145,7 +148,7 @@ Entity никогда не выходит за пределы `service`/`reposit
 
 ## Требования из задания → чек-лист
 
-Всё закрыто. Проверка: `./gradlew check` (113 тестов, покрытие строк 97,5% при пороге 70%)
+Всё закрыто. Проверка: `./gradlew check` (110 тестов, покрытие строк 97,7% при пороге 70%)
 и `scripts/demo.sh` на стеке из `docker compose up`.
 
 - [x] CRUD с REST API на основных сущностях, правильные HTTP-статусы — 33 эндпоинта; 201 +
@@ -154,7 +157,7 @@ Entity никогда не выходит за пределы `service`/`reposit
 - [x] Spring Data JPA для доступа к БД — `repository/*`
 - [x] Валидация на уровне DTO (Bean Validation) и Entity/миграции — аннотации в `web/dto` и
   `domain/entity`, `NOT NULL` / `CHECK` / `UNIQUE` в changeset'ах
-- [x] Схема БД — через Liquibase-миграции (YAML, rollback, без правки применённых) — 13
+- [x] Схема БД — через Liquibase-миграции (YAML, rollback, без правки применённых) — 15
   changeset'ов, откат проверяет `LiquibaseMigrationsTest`
 - [x] Юнит-тесты (Mockito) + интеграционные (Testcontainers + JUnit 5) — один контейнер
   Postgres на прогон (`support/PostgresContainer`)
