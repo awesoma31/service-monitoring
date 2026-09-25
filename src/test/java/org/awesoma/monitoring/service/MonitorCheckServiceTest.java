@@ -43,7 +43,7 @@ class MonitorCheckServiceTest {
     @Test
     void aFailureOnAHealthyMonitorOpensAnIncidentAndAlertsEveryEnabledChannel() {
         Monitor monitor = monitor(MonitorState.UP);
-        when(monitors.findByIdForUpdate(1L)).thenReturn(Optional.of(monitor));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
         when(channels.findByProjectIdAndEnabledTrue(7L)).thenReturn(List.of(new Channel(), new Channel()));
 
         service.record(1L, ProbeOutcome.timeout(5000, "read timed out"));
@@ -64,7 +64,7 @@ class MonitorCheckServiceTest {
     @Test
     void aSecondFailureDoesNotOpenASecondIncident() {
         Monitor monitor = monitor(MonitorState.DOWN);
-        when(monitors.findByIdForUpdate(1L)).thenReturn(Optional.of(monitor));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
 
         service.record(1L, ProbeOutcome.connectionError(10, "refused"));
 
@@ -79,7 +79,7 @@ class MonitorCheckServiceTest {
         Monitor monitor = monitor(MonitorState.DOWN);
         Incident open = new Incident();
         open.setStartedAt(OffsetDateTime.now().minusMinutes(5));
-        when(monitors.findByIdForUpdate(1L)).thenReturn(Optional.of(monitor));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
         when(incidents.findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN))
                 .thenReturn(Optional.of(open));
         when(channels.findByProjectIdAndEnabledTrue(7L)).thenReturn(List.of(new Channel()));
@@ -95,7 +95,7 @@ class MonitorCheckServiceTest {
     @Test
     void aSuccessOnAHealthyMonitorTouchesNoIncident() {
         Monitor monitor = monitor(MonitorState.UP);
-        when(monitors.findByIdForUpdate(1L)).thenReturn(Optional.of(monitor));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
 
         service.record(1L, ProbeOutcome.success(80, 200));
 
@@ -106,7 +106,7 @@ class MonitorCheckServiceTest {
 
     @Test
     void aMonitorDeletedWhileBeingProbedIsIgnored() {
-        when(monitors.findByIdForUpdate(1L)).thenReturn(Optional.empty());
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.empty());
 
         service.record(1L, ProbeOutcome.success(10, 200));
 

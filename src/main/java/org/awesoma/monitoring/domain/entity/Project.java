@@ -18,7 +18,6 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.awesoma.monitoring.domain.enums.MemberRole;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -56,8 +55,8 @@ public class Project extends BaseEntity {
      * Adds a member and keeps both sides of the association consistent, so a project
      * created and populated in one transaction is persisted with its members intact.
      */
-    public ProjectMember addMember(User user, MemberRole role) {
-        ProjectMember member = new ProjectMember(this, user, role);
+    public ProjectMember addMember(User user) {
+        ProjectMember member = new ProjectMember(this, user);
         members.add(member);
         return member;
     }

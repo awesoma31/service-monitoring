@@ -22,14 +22,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock private UserRepository users;
     @Mock private UserMapper mapper;
-    @Mock private PasswordEncoder passwordEncoder;
     @InjectMocks private UserService service;
 
     @Test
@@ -44,17 +42,17 @@ class UserServiceTest {
     }
 
     @Test
-    void storesTheHashInsteadOfTheGivenPassword() {
+    void createSavesTheUserBuiltFromTheRequest() {
+        User mapped = new User();
         when(users.existsByEmail("new@example.com")).thenReturn(false);
-        when(mapper.toEntity(any())).thenReturn(new User());
-        when(passwordEncoder.encode("plaintext-password")).thenReturn("hashed");
+        when(mapper.toEntity(any())).thenReturn(mapped);
         when(users.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.create(request("new@example.com"));
 
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(users).save(saved.capture());
-        assertThat(saved.getValue().getPasswordHash()).isEqualTo("hashed");
+        assertThat(saved.getValue()).isSameAs(mapped);
     }
 
     @Test

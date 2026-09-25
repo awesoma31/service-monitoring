@@ -38,13 +38,6 @@ docker compose up --build
 | OpenAPI | http://localhost:8080/v3/api-docs |
 | Health | http://localhost:8080/actuator/health |
 
-Запросы к API передают роль вызывающего в заголовке `X-User-Role` (`OWNER`, `EDITOR` или
-`VIEWER`); без него сервер отвечает `401`:
-
-```bash
-curl -H 'X-User-Role: OWNER' http://localhost:8080/api/v1/projects
-```
-
 Сквозная проверка основного сценария по API (нужны `curl` и `jq`, около минуты):
 
 ```bash

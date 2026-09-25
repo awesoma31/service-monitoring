@@ -6,7 +6,6 @@ import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 import org.awesoma.monitoring.domain.entity.User;
-import org.awesoma.monitoring.domain.enums.MemberRole;
 import org.junit.jupiter.api.Test;
 
 class ProjectMemberEqualityTest {
@@ -48,7 +47,7 @@ class ProjectMemberEqualityTest {
         User user = new User();
         user.setId(userId);
 
-        ProjectMember member = new ProjectMember(project, user, MemberRole.VIEWER);
+        ProjectMember member = new ProjectMember(project, user);
         member.setId(new ProjectMemberId(projectId, userId));
         return member;
     }

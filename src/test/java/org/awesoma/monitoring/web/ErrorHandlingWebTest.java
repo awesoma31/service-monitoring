@@ -17,32 +17,16 @@ import org.awesoma.monitoring.web.controller.UserController;
 import org.awesoma.monitoring.web.dto.user.UserCreateRequest;
 import org.awesoma.monitoring.web.exception.ConflictStateException;
 import org.awesoma.monitoring.web.exception.NotFoundException;
-import org.awesoma.monitoring.web.access.RoleAuthorizationInterceptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(UserController.class)
-@Import(ErrorHandlingWebTest.OwnerRoleHeaderConfig.class)
 class ErrorHandlingWebTest {
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class OwnerRoleHeaderConfig {
-
-        @Bean
-        MockMvcBuilderCustomizer ownerRoleHeader() {
-            return builder -> builder.defaultRequest(get("/")
-                    .header(RoleAuthorizationInterceptor.ROLE_HEADER, "OWNER"));
-        }
-    }
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private UserService users;
@@ -52,7 +36,7 @@ class ErrorHandlingWebTest {
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"not-an-email","password":"short","fullName":""}
+                                {"email":"not-an-email","password":"short","full_name":""}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -61,7 +45,7 @@ class ErrorHandlingWebTest {
                 .andExpect(jsonPath("$.detail").value("One or more request values are invalid"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/users"))
                 .andExpect(jsonPath("$.violations[*].field")
-                        .value(containsInAnyOrder("email", "password", "fullName")));
+                        .value(containsInAnyOrder("email", "password", "full_name")));
 
         verify(users, never()).create(any());
     }
@@ -93,7 +77,7 @@ class ErrorHandlingWebTest {
         mockMvc.perform(put("/api/v1/users/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"fullName":"User","status":"DELETED"}
+                                {"full_name":"User","status":"DELETED"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -160,7 +144,7 @@ class ErrorHandlingWebTest {
 
     private String validUser() {
         return """
-                {"email":"user@example.com","password":"password123","fullName":"User"}
+                {"email":"user@example.com","password":"password123","full_name":"User"}
                 """;
     }
 }
