@@ -4,6 +4,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.concurrent.atomic.AtomicLong;
 import org.awesoma.notification.support.AbstractIntegrationTest;
+import org.awesoma.notification.web.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -87,6 +88,21 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
                         {"type":"EMAIL","target":"ops@example.com"}""")
                 .exchange()
                 .expectStatus().isNotFound();
+    }
+
+    @Test
+    void aChannelCannotBeCreatedWhileProjectsCannotBeChecked() {
+        long projectId = PROJECTS.incrementAndGet();
+        when(monitorService.projectExists(projectId)).thenThrow(
+                new ServiceUnavailableException("monitor-service", new IllegalStateException("down")));
+
+        http.post().uri("/api/v1/projects/{id}/channels", projectId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""
+                        {"type":"EMAIL","target":"ops@example.com"}""")
+                .exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody().jsonPath("$.title").isEqualTo("Service unavailable");
     }
 
     @Test

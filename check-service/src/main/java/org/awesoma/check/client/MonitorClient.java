@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /** Internal API of monitor-service, resolved through Eureka by its service name. */
-@FeignClient(name = "monitor-service", path = "/internal/monitors")
+@FeignClient(
+        name = "monitor-service",
+        path = "/internal/monitors",
+        fallbackFactory = MonitorClientFallbackFactory.class)
 public interface MonitorClient {
 
     @GetMapping("/due")

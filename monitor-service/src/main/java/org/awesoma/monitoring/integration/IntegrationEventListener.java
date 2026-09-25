@@ -1,7 +1,6 @@
 package org.awesoma.monitoring.integration;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -10,9 +9,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * transaction therefore never alerts anyone about an incident that did not happen.
  *
  * <p>The calls leave the transaction on purpose: a notification-service outage must not undo
- * an incident. A call that fails is logged; the incident, the monitor and its deletion stand.
+ * an incident. Each client has a circuit breaker whose fallback logs the call that could not
+ * be made, so a failure never reaches the request that committed the change.
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class IntegrationEventListener {
@@ -22,28 +21,17 @@ public class IntegrationEventListener {
 
     @TransactionalEventListener
     public void on(IncidentChanged event) {
-        call("notify about incident " + event.incidentId(), () -> notifications.incidentChanged(event));
+        notifications.incidentChanged(event);
     }
 
     @TransactionalEventListener
     public void on(MonitorDeleted event) {
-        call("delete the history of monitor " + event.monitorId(),
-                () -> checkHistory.deleteHistory(event.monitorId()));
+        checkHistory.deleteHistory(event.monitorId());
     }
 
     @TransactionalEventListener
     public void on(ProjectDeleted event) {
-        event.monitorIds().forEach(monitorId -> call(
-                "delete the history of monitor " + monitorId, () -> checkHistory.deleteHistory(monitorId)));
-        call("delete the channels of project " + event.projectId(),
-                () -> notifications.deleteChannels(event.projectId()));
-    }
-
-    private void call(String action, Runnable request) {
-        try {
-            request.run();
-        } catch (RuntimeException failure) {
-            log.warn("Could not {}", action, failure);
-        }
+        event.monitorIds().forEach(checkHistory::deleteHistory);
+        notifications.deleteChannels(event.projectId());
     }
 }

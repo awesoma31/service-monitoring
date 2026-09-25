@@ -7,7 +7,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 /** Internal API of notification-service, resolved through Eureka by its service name. */
-@FeignClient(name = "notification-service", path = "/internal")
+@FeignClient(
+        name = "notification-service",
+        path = "/internal",
+        fallbackFactory = NotificationClientFallbackFactory.class)
 public interface NotificationClient {
 
     @PostMapping("/notifications")

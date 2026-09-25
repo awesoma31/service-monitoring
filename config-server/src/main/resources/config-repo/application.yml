@@ -3,6 +3,10 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
   cloud:
+    openfeign:
+      circuitbreaker:
+        # Every Feign client runs through a Resilience4j circuit breaker with a fallback.
+        enabled: true
     loadbalancer:
       cache:
         # Instance lists are cached for 35 s by default, which hides a service that has
@@ -21,11 +25,30 @@ eureka:
     prefer-ip-address: true
     lease-renewal-interval-in-seconds: 5
 
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        # Opens when at least half of the last 10 calls failed (judged after 5 calls), stays
+        # open for 10 s, then lets 2 trial calls decide whether to close again.
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+  timelimiter:
+    configs:
+      default:
+        # A call that takes longer counts as failed; the default of 1 s is tight for a
+        # service that has only just started.
+        timeout-duration: 3s
+
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,circuitbreakers
   endpoint:
     health:
       probes:

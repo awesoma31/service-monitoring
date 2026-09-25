@@ -45,6 +45,12 @@ public class GlobalExceptionHandler {
                 exchange);
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ProblemDetail handleUnavailable(
+            ServiceUnavailableException exception, ServerWebExchange exchange) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service unavailable", exception.getMessage(), exchange);
+    }
+
     @ExceptionHandler(WebExchangeBindException.class)
     public ProblemDetail handleBinding(WebExchangeBindException exception, ServerWebExchange exchange) {
         return validationProblem(exception.getAllErrors().stream()

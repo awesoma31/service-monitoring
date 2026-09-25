@@ -1,7 +1,5 @@
 package org.awesoma.monitoring.integration;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -25,14 +23,6 @@ class IntegrationEventListenerTest {
     }
 
     @Test
-    void anUnreachableServiceDoesNotFailTheCommittedChange() {
-        IncidentChanged event = new IncidentChanged(1L, 2L, IncidentChanged.Kind.RESOLVED);
-        doThrow(new IllegalStateException("connection refused")).when(notifications).incidentChanged(event);
-
-        assertThatCode(() -> listener.on(event)).doesNotThrowAnyException();
-    }
-
-    @Test
     void aDeletedMonitorLosesItsHistory() {
         listener.on(new MonitorDeleted(5L));
 
@@ -41,8 +31,6 @@ class IntegrationEventListenerTest {
 
     @Test
     void aDeletedProjectLosesTheHistoryOfEveryMonitorAndItsChannels() {
-        doThrow(new IllegalStateException("down")).when(checkHistory).deleteHistory(3L);
-
         listener.on(new ProjectDeleted(9L, List.of(3L, 4L)));
 
         verify(checkHistory).deleteHistory(3L);

@@ -5,7 +5,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /** Internal API of check-service, resolved through Eureka by its service name. */
-@FeignClient(name = "check-service", path = "/internal/results")
+@FeignClient(
+        name = "check-service",
+        path = "/internal/results",
+        fallbackFactory = CheckHistoryClientFallbackFactory.class)
 public interface CheckHistoryClient {
 
     @DeleteMapping

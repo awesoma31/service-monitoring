@@ -28,6 +28,12 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage(), exchange);
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ProblemDetail handleUnavailable(
+            ServiceUnavailableException exception, ServerWebExchange exchange) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service unavailable", exception.getMessage(), exchange);
+    }
+
     @ExceptionHandler(WebExchangeBindException.class)
     public ProblemDetail handleBinding(WebExchangeBindException exception, ServerWebExchange exchange) {
         return validationProblem(exception.getAllErrors().stream()

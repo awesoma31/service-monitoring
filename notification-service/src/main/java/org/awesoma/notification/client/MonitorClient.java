@@ -5,7 +5,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 /** Internal API of monitor-service, resolved through Eureka by its service name. */
-@FeignClient(name = "monitor-service", path = "/internal")
+@FeignClient(
+        name = "monitor-service",
+        path = "/internal",
+        fallbackFactory = MonitorClientFallbackFactory.class)
 public interface MonitorClient {
 
     @GetMapping("/projects/{id}/exists")
