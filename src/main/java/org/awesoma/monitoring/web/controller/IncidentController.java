@@ -1,9 +1,5 @@
 package org.awesoma.monitoring.web.controller;
 
-import static org.awesoma.monitoring.domain.enums.MemberRole.EDITOR;
-import static org.awesoma.monitoring.domain.enums.MemberRole.OWNER;
-import static org.awesoma.monitoring.domain.enums.MemberRole.VIEWER;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,13 +10,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.service.IncidentService;
-import org.awesoma.monitoring.web.access.AllowedRoles;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.incident.CheckResultResponse;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
 import org.awesoma.monitoring.web.dto.incident.NotificationResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Tag(name = "Incidents")
-@AllowedRoles({OWNER, EDITOR, VIEWER})
 public class IncidentController {
 
     private final IncidentService incidentService;
@@ -52,9 +47,9 @@ public class IncidentController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public Slice<CheckResultResponse> listResults(
+    public ResponseEntity<Slice<CheckResultResponse>> listResults(
             @PathVariable @Positive Long monitorId, @Valid PageParams page) {
-        return incidentService.listResults(monitorId, page.toPageable());
+        return ResponseEntity.ok(incidentService.listResults(monitorId, page.toPageable()));
     }
 
     @GetMapping("/monitors/{monitorId}/incidents")
@@ -66,13 +61,13 @@ public class IncidentController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public Page<IncidentResponse> listByMonitor(
+    public ResponseEntity<Page<IncidentResponse>> listByMonitor(
             @PathVariable @Positive Long monitorId,
             @Parameter(description = "Optional incident status filter", example = "OPEN")
                     @RequestParam(required = false)
                     IncidentStatus status,
             @Valid PageParams page) {
-        return incidentService.listByMonitor(monitorId, status, page.toPageable());
+        return ResponseEntity.ok(incidentService.listByMonitor(monitorId, status, page.toPageable()));
     }
 
     @GetMapping("/incidents/{id}")
@@ -82,12 +77,11 @@ public class IncidentController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public IncidentResponse get(@PathVariable @Positive Long id) {
-        return incidentService.get(id);
+    public ResponseEntity<IncidentResponse> get(@PathVariable @Positive Long id) {
+        return ResponseEntity.ok(incidentService.get(id));
     }
 
     @PostMapping("/incidents/{id}/resolve")
-    @AllowedRoles({OWNER, EDITOR})
     @Operation(
             summary = "Resolve an incident manually",
             description = "Marks the incident resolved and returns a DOWN monitor to UNKNOWN until its next check.")
@@ -97,8 +91,8 @@ public class IncidentController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
-    public IncidentResponse resolve(@PathVariable @Positive Long id) {
-        return incidentService.resolve(id);
+    public ResponseEntity<IncidentResponse> resolve(@PathVariable @Positive Long id) {
+        return ResponseEntity.ok(incidentService.resolve(id));
     }
 
     @GetMapping("/incidents/{id}/notifications")
@@ -108,8 +102,8 @@ public class IncidentController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public Page<NotificationResponse> listNotifications(
+    public ResponseEntity<Page<NotificationResponse>> listNotifications(
             @PathVariable @Positive Long id, @Valid PageParams page) {
-        return incidentService.listNotifications(id, page.toPageable());
+        return ResponseEntity.ok(incidentService.listNotifications(id, page.toPageable()));
     }
 }

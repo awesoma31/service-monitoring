@@ -34,7 +34,7 @@ public class IncidentService {
 
     public Page<IncidentResponse> listByMonitor(
             Long monitorId, IncidentStatus status, Pageable pageable) {
-        monitors.require(monitorId);
+        monitors.requireExists(monitorId);
         Page<Incident> page = status == null
                 ? incidents.findByMonitorId(monitorId, pageable)
                 : incidents.findByMonitorIdAndStatus(monitorId, status, pageable);
@@ -53,14 +53,16 @@ public class IncidentService {
      * itself. The client only needs to know whether more rows follow.
      */
     public Slice<CheckResultResponse> listResults(Long monitorId, Pageable pageable) {
-        monitors.require(monitorId);
+        monitors.requireExists(monitorId);
         return checkResults
                 .findByMonitorIdOrderByCheckedAtDesc(monitorId, pageable)
                 .map(mapper::toResponse);
     }
 
     public Page<NotificationResponse> listNotifications(Long incidentId, Pageable pageable) {
-        require(incidentId);
+        if (!incidents.existsById(incidentId)) {
+            throw NotFoundException.of("Incident", incidentId);
+        }
         return notifications.findByIncidentId(incidentId, pageable).map(mapper::toResponse);
     }
 

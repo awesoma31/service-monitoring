@@ -1,9 +1,5 @@
 package org.awesoma.monitoring.web.controller;
 
-import static org.awesoma.monitoring.domain.enums.MemberRole.EDITOR;
-import static org.awesoma.monitoring.domain.enums.MemberRole.OWNER;
-import static org.awesoma.monitoring.domain.enums.MemberRole.VIEWER;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,14 +12,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.MonitorService;
-import org.awesoma.monitoring.web.access.AllowedRoles;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.monitor.MonitorCreateRequest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorResponse;
 import org.awesoma.monitoring.web.dto.monitor.MonitorTagsRequest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,14 +27,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Tag(name = "Monitors")
-@AllowedRoles({OWNER, EDITOR, VIEWER})
 public class MonitorController {
 
     /** Total row count for clients that render page numbers rather than an endless list. */
@@ -76,7 +68,6 @@ public class MonitorController {
     }
 
     @PostMapping("/projects/{projectId}/monitors")
-    @AllowedRoles({OWNER, EDITOR})
     @Operation(summary = "Create a monitor", description = "Unknown tag names are created automatically.")
     @ApiResponses({
         @ApiResponse(
@@ -104,12 +95,11 @@ public class MonitorController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public MonitorResponse get(@PathVariable @Positive Long id) {
-        return monitorService.get(id);
+    public ResponseEntity<MonitorResponse> get(@PathVariable @Positive Long id) {
+        return ResponseEntity.ok(monitorService.get(id));
     }
 
     @PutMapping("/monitors/{id}")
-    @AllowedRoles({OWNER, EDITOR})
     @Operation(
             summary = "Update a monitor",
             description = "Disabling a monitor pauses it; enabling a paused monitor returns it to UNKNOWN.")
@@ -119,13 +109,12 @@ public class MonitorController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
-    public MonitorResponse update(
+    public ResponseEntity<MonitorResponse> update(
             @PathVariable @Positive Long id, @Valid @RequestBody MonitorUpdateRequest request) {
-        return monitorService.update(id, request);
+        return ResponseEntity.ok(monitorService.update(id, request));
     }
 
     @PutMapping("/monitors/{id}/tags")
-    @AllowedRoles({OWNER, EDITOR})
     @Operation(
             summary = "Replace monitor tags",
             description = "Replaces the complete tag set; unknown tag names are created automatically.")
@@ -135,21 +124,20 @@ public class MonitorController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
-    public MonitorResponse replaceTags(
+    public ResponseEntity<MonitorResponse> replaceTags(
             @PathVariable @Positive Long id, @Valid @RequestBody MonitorTagsRequest request) {
-        return monitorService.replaceTags(id, request.tags());
+        return ResponseEntity.ok(monitorService.replaceTags(id, request.tags()));
     }
 
     @DeleteMapping("/monitors/{id}")
-    @AllowedRoles({OWNER, EDITOR})
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a monitor")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Monitor deleted"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public void delete(@PathVariable @Positive Long id) {
+    public ResponseEntity<Void> delete(@PathVariable @Positive Long id) {
         monitorService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

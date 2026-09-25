@@ -1,6 +1,5 @@
 package org.awesoma.monitoring.repository;
 
-import java.util.Optional;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 import org.springframework.data.domain.Page;
@@ -11,7 +10,5 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Pr
 
     Page<ProjectMember> findByProjectId(Long projectId, Pageable pageable);
 
-    Optional<ProjectMember> findByProjectIdAndUserId(Long projectId, Long userId);
 
-    long countByProjectIdAndRole(Long projectId, org.awesoma.monitoring.domain.enums.MemberRole role);
 }

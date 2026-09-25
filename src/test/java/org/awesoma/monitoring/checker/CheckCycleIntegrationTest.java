@@ -11,7 +11,6 @@ import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.domain.enums.ChannelType;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
-import org.awesoma.monitoring.domain.enums.MemberRole;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
@@ -157,7 +156,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
     private Monitor seed(String slug) {
         User owner = new User();
         owner.setEmail(slug + "@example.com");
-        owner.setPasswordHash("hash");
+        owner.setPassword("secret123");
         owner.setFullName("Owner");
         entityManager.persist(owner);
 
@@ -165,7 +164,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         project.setOwner(owner);
         project.setName("Project");
         project.setSlug(slug);
-        project.addMember(owner, MemberRole.OWNER);
+        project.addMember(owner);
         entityManager.persist(project);
 
         Channel enabled = new Channel();

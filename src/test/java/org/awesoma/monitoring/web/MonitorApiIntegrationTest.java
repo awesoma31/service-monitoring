@@ -36,7 +36,7 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Total-Count", "3"))
                 .andExpect(jsonPath("$.content.length()").value(2))
-                .andExpect(jsonPath("$.totalElements").value(3));
+                .andExpect(jsonPath("$.total_elements").value(3));
     }
 
     @Test
@@ -44,14 +44,14 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
         long projectId = createProject("with-tags");
 
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
-                        {"name":"Tagged","url":"https://tagged.example","intervalSec":60,
-                         "timeoutMs":5000,"tags":["prod","api"]}"""))
+                        {"name":"Tagged","url":"https://tagged.example","interval_sec":60,
+                         "timeout_ms":5000,"tags":["prod","api"]}"""))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/v1/monitors/")))
                 .andExpect(jsonPath("$.tags.length()").value(2))
-                .andExpect(jsonPath("$.httpMethod").value("GET"))
-                .andExpect(jsonPath("$.expectedStatus").value(200))
-                .andExpect(jsonPath("$.currentState").value("UNKNOWN"));
+                .andExpect(jsonPath("$.http_method").value("GET"))
+                .andExpect(jsonPath("$.expected_status").value(200))
+                .andExpect(jsonPath("$.current_state").value("UNKNOWN"));
     }
 
     @Test
@@ -61,10 +61,10 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
                         {"name":"Minimal","url":"https://minimal.example"}"""))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.intervalSec").value(60))
-                .andExpect(jsonPath("$.timeoutMs").value(5000))
-                .andExpect(jsonPath("$.httpMethod").value("GET"))
-                .andExpect(jsonPath("$.expectedStatus").value(200));
+                .andExpect(jsonPath("$.interval_sec").value(60))
+                .andExpect(jsonPath("$.timeout_ms").value(5000))
+                .andExpect(jsonPath("$.http_method").value("GET"))
+                .andExpect(jsonPath("$.expected_status").value(200));
     }
 
     @Test
@@ -115,7 +115,7 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
         createMonitor(projectId, "Same", "https://same.example");
 
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
-                        {"name":"Same","url":"https://other.example","intervalSec":60,"timeoutMs":5000}"""))
+                        {"name":"Same","url":"https://other.example","interval_sec":60,"timeout_ms":5000}"""))
                 .andExpect(status().isConflict());
     }
 
@@ -124,9 +124,9 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
         long projectId = createProject("bad-interval");
 
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
-                        {"name":"Fast","url":"https://fast.example","intervalSec":1,"timeoutMs":5000}"""))
+                        {"name":"Fast","url":"https://fast.example","interval_sec":1,"timeout_ms":5000}"""))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.violations[0].field").value("intervalSec"));
+                .andExpect(jsonPath("$.violations[0].field").value("interval_sec"));
     }
 
     @Test
@@ -148,12 +148,12 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Paused"))
                 .andExpect(jsonPath("$.active").value(false))
-                .andExpect(jsonPath("$.currentState").value("PAUSED"));
+                .andExpect(jsonPath("$.current_state").value("PAUSED"));
 
         updateMonitor(monitorId, "Resumed", true)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(true))
-                .andExpect(jsonPath("$.currentState").value("UNKNOWN"));
+                .andExpect(jsonPath("$.current_state").value("UNKNOWN"));
 
         mockMvc.perform(delete("/api/v1/monitors/{id}", monitorId))
                 .andExpect(status().isNoContent());
@@ -163,20 +163,20 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
 
     private long createProject(String slug) throws Exception {
         String userBody = mockMvc.perform(postJson("/api/v1/users", """
-                        {"email":"%s@example.com","password":"password123","fullName":"Owner"}"""
+                        {"email":"%s@example.com","password":"password123","full_name":"Owner"}"""
                         .formatted(slug)))
                 .andReturn().getResponse().getContentAsString();
         long ownerId = json.readTree(userBody).get("id").asLong();
 
         String projectBody = mockMvc.perform(postJson("/api/v1/projects", """
-                        {"ownerId":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug)))
+                        {"owner_id":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug)))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(projectBody).get("id").asLong();
     }
 
     private long createMonitor(long projectId, String name, String url) throws Exception {
         String body = mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
-                        {"name":"%s","url":"%s","intervalSec":60,"timeoutMs":5000}"""
+                        {"name":"%s","url":"%s","interval_sec":60,"timeout_ms":5000}"""
                         .formatted(name, url)))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("id").asLong();
@@ -184,7 +184,7 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
 
     private void createTagged(long projectId, String name, String url, String tag) throws Exception {
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/monitors", """
-                        {"name":"%s","url":"%s","intervalSec":60,"timeoutMs":5000,"tags":["%s"]}"""
+                        {"name":"%s","url":"%s","interval_sec":60,"timeout_ms":5000,"tags":["%s"]}"""
                         .formatted(name, url, tag)))
                 .andExpect(status().isCreated());
     }
@@ -198,8 +198,8 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
         return mockMvc.perform(put("/api/v1/monitors/{id}", monitorId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"%s","url":"https://updated.example","httpMethod":"HEAD",
-                         "intervalSec":120,"timeoutMs":3000,"expectedStatus":204,"active":%s}
+                        {"name":"%s","url":"https://updated.example","http_method":"HEAD",
+                         "interval_sec":120,"timeout_ms":3000,"expected_status":204,"active":%s}
                         """.formatted(name, active)));
     }
 }

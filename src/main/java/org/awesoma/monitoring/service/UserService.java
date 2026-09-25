@@ -11,7 +11,6 @@ import org.awesoma.monitoring.web.exception.NotFoundException;
 import org.awesoma.monitoring.web.mapper.UserMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +21,6 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper mapper;
-    private final PasswordEncoder passwordEncoder;
 
     public Page<UserResponse> list(Pageable pageable) {
         return userRepository.findAll(pageable).map(mapper::toResponse);
@@ -37,9 +35,7 @@ public class UserService {
         if (userRepository.existsByEmail(request.email())) {
             throw new ConflictStateException("Email %s is already taken".formatted(request.email()));
         }
-        User user = mapper.toEntity(request);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        return mapper.toResponse(userRepository.save(user));
+        return mapper.toResponse(userRepository.save(mapper.toEntity(request)));
     }
 
     @Transactional

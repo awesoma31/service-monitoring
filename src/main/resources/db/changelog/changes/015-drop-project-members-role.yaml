@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-drop-project-members-role
+      author: awesoma31
+      comment: >-
+        Lab 1 has no access control, so member roles are dropped; the membership keeps
+        joined_at as its own data. The project owner stays in projects.owner_id.
+        Rolling back cannot recover the roles that were dropped: the owner becomes OWNER
+        and every other member VIEWER, the least privileged role.
+      changes:
+        - sql:
+            sql: ALTER TABLE project_members DROP CONSTRAINT ck_project_members_role
+        - dropColumn:
+            tableName: project_members
+            columnName: role
+      rollback:
+        - addColumn:
+            tableName: project_members
+            columns:
+              - column:
+                  name: role
+                  type: VARCHAR(20)
+                  defaultValue: VIEWER
+        - sql:
+            sql: >-
+              UPDATE project_members pm SET role = 'OWNER'
+                FROM projects p
+               WHERE p.id = pm.project_id AND p.owner_id = pm.user_id
+        - dropDefaultValue:
+            tableName: project_members
+            columnName: role
+        - addNotNullConstraint:
+            tableName: project_members
+            columnName: role
+            columnDataType: VARCHAR(20)
+        - sql:
+            sql: >-
+              ALTER TABLE project_members
+                ADD CONSTRAINT ck_project_members_role
+                  CHECK (role IN ('OWNER', 'EDITOR', 'VIEWER'))

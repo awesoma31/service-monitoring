@@ -1,9 +1,5 @@
 package org.awesoma.monitoring.web.controller;
 
-import static org.awesoma.monitoring.domain.enums.MemberRole.EDITOR;
-import static org.awesoma.monitoring.domain.enums.MemberRole.OWNER;
-import static org.awesoma.monitoring.domain.enums.MemberRole.VIEWER;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,13 +11,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.ChannelService;
-import org.awesoma.monitoring.web.access.AllowedRoles;
 import org.awesoma.monitoring.web.dto.channel.ChannelCreateRequest;
 import org.awesoma.monitoring.web.dto.channel.ChannelResponse;
 import org.awesoma.monitoring.web.dto.channel.ChannelUpdateRequest;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,14 +24,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Tag(name = "Channels")
-@AllowedRoles({OWNER, EDITOR, VIEWER})
 public class ChannelController {
 
     private final ChannelService channelService;
@@ -49,13 +41,12 @@ public class ChannelController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public Page<ChannelResponse> listByProject(
+    public ResponseEntity<Page<ChannelResponse>> listByProject(
             @PathVariable @Positive Long projectId, @Valid PageParams page) {
-        return channelService.listByProject(projectId, page.toPageable());
+        return ResponseEntity.ok(channelService.listByProject(projectId, page.toPageable()));
     }
 
     @PostMapping("/projects/{projectId}/channels")
-    @AllowedRoles({OWNER, EDITOR})
     @Operation(summary = "Create a notification channel")
     @ApiResponses({
         @ApiResponse(
@@ -83,12 +74,11 @@ public class ChannelController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public ChannelResponse get(@PathVariable @Positive Long id) {
-        return channelService.get(id);
+    public ResponseEntity<ChannelResponse> get(@PathVariable @Positive Long id) {
+        return ResponseEntity.ok(channelService.get(id));
     }
 
     @PutMapping("/channels/{id}")
-    @AllowedRoles({OWNER, EDITOR})
     @Operation(summary = "Update a notification channel", description = "Changes its destination and enabled state.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Channel updated"),
@@ -96,21 +86,20 @@ public class ChannelController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
-    public ChannelResponse update(
+    public ResponseEntity<ChannelResponse> update(
             @PathVariable @Positive Long id, @Valid @RequestBody ChannelUpdateRequest request) {
-        return channelService.update(id, request);
+        return ResponseEntity.ok(channelService.update(id, request));
     }
 
     @DeleteMapping("/channels/{id}")
-    @AllowedRoles({OWNER, EDITOR})
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a notification channel")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Channel deleted"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public void delete(@PathVariable @Positive Long id) {
+    public ResponseEntity<Void> delete(@PathVariable @Positive Long id) {
         channelService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

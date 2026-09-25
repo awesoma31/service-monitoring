@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.Optional;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
+import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 import org.awesoma.monitoring.domain.entity.User;
-import org.awesoma.monitoring.domain.enums.MemberRole;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
@@ -63,7 +63,6 @@ class ProjectServiceTest {
         ArgumentCaptor<Project> saved = ArgumentCaptor.forClass(Project.class);
         verify(projects).save(saved.capture());
         assertThat(saved.getValue().getMembers()).singleElement().satisfies(member -> {
-            assertThat(member.getRole()).isEqualTo(MemberRole.OWNER);
             assertThat(member.getUser()).isEqualTo(owner);
         });
     }
@@ -71,52 +70,15 @@ class ProjectServiceTest {
     @Test
     void refusesToAddTheSameUserTwice() {
         when(projects.findById(1L)).thenReturn(Optional.of(new Project()));
-        when(members.findByProjectIdAndUserId(1L, 2L))
-                .thenReturn(Optional.of(new ProjectMember()));
+        when(members.existsById(new ProjectMemberId(1L, 2L))).thenReturn(true);
 
-        assertThatThrownBy(() -> service.addMember(1L, new ProjectMemberRequest(2L, MemberRole.VIEWER)))
+        assertThatThrownBy(() -> service.addMember(1L, new ProjectMemberRequest(2L)))
                 .isInstanceOf(ConflictStateException.class);
-    }
-
-    @Test
-    void refusesToRemoveTheLastOwner() {
-        ProjectMember owner = new ProjectMember(new Project(), new User(), MemberRole.OWNER);
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.of(owner));
-        when(members.countByProjectIdAndRole(1L, MemberRole.OWNER)).thenReturn(1L);
-
-        assertThatThrownBy(() -> service.removeMember(1L, 2L))
-                .isInstanceOf(ConflictStateException.class)
-                .hasMessageContaining("without an owner");
-
-        verify(members, never()).delete(any());
-    }
-
-    @Test
-    void removesAnOwnerWhenAnotherOneRemains() {
-        ProjectMember owner = new ProjectMember(new Project(), new User(), MemberRole.OWNER);
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.of(owner));
-        when(members.countByProjectIdAndRole(1L, MemberRole.OWNER)).thenReturn(2L);
-
-        service.removeMember(1L, 2L);
-
-        verify(members).delete(owner);
-    }
-
-    @Test
-    void refusesToDemoteTheLastOwner() {
-        ProjectMember owner = new ProjectMember(new Project(), new User(), MemberRole.OWNER);
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.of(owner));
-        when(members.countByProjectIdAndRole(1L, MemberRole.OWNER)).thenReturn(1L);
-
-        assertThatThrownBy(() -> service.changeRole(1L, 2L, MemberRole.VIEWER))
-                .isInstanceOf(ConflictStateException.class);
-
-        assertThat(owner.getRole()).isEqualTo(MemberRole.OWNER);
     }
 
     @Test
     void reportsAMissingMembershipAsNotFound() {
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.empty());
+        when(members.findById(new ProjectMemberId(1L, 2L))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.removeMember(1L, 2L))
                 .isInstanceOf(NotFoundException.class)
@@ -162,31 +124,20 @@ class ProjectServiceTest {
     }
 
     @Test
-    void addMemberPersistsTheRequestedRole() {
+    void addMemberLinksTheUserToTheProject() {
         Project project = new Project();
         User user = new User();
         when(projects.findById(1L)).thenReturn(Optional.of(project));
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.empty());
+        when(members.existsById(new ProjectMemberId(1L, 2L))).thenReturn(false);
         when(users.require(2L)).thenReturn(user);
-        when(members.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(members.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.addMember(1L, new ProjectMemberRequest(2L, MemberRole.EDITOR));
+        service.addMember(1L, new ProjectMemberRequest(2L));
 
         ArgumentCaptor<ProjectMember> saved = ArgumentCaptor.forClass(ProjectMember.class);
-        verify(members).save(saved.capture());
+        verify(members).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getProject()).isEqualTo(project);
         assertThat(saved.getValue().getUser()).isEqualTo(user);
-        assertThat(saved.getValue().getRole()).isEqualTo(MemberRole.EDITOR);
     }
 
-    @Test
-    void aNonOwnerCanChangeRoleWithoutCountingOwners() {
-        ProjectMember member = new ProjectMember(new Project(), new User(), MemberRole.VIEWER);
-        when(members.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.of(member));
-
-        service.changeRole(1L, 2L, MemberRole.EDITOR);
-
-        assertThat(member.getRole()).isEqualTo(MemberRole.EDITOR);
-        verify(members, never()).countByProjectIdAndRole(any(), any());
-    }
 }
