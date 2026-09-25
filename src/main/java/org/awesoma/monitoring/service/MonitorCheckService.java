@@ -2,6 +2,7 @@ package org.awesoma.monitoring.service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.entity.CheckResult;
 import org.awesoma.monitoring.domain.entity.Incident;
@@ -88,10 +89,13 @@ public class MonitorCheckService {
 
     /** A monitor already DOWN keeps its incident: a failure is one event, not one per probe. */
     private void openIncidentIfAbsent(Monitor monitor, ProbeOutcome outcome, OffsetDateTime at) {
-        if (monitor.getCurrentState() == MonitorState.DOWN) {
+        MonitorState state = monitor.getCurrentState();
+        boolean incidentAlreadyOpen = state == MonitorState.DOWN
+                || (state != MonitorState.UP && findOpenIncident(monitor).isPresent());
+        monitor.setCurrentState(MonitorState.DOWN);
+        if (incidentAlreadyOpen) {
             return;
         }
-        monitor.setCurrentState(MonitorState.DOWN);
 
         Incident incident = new Incident();
         incident.setMonitor(monitor);
@@ -104,17 +108,24 @@ public class MonitorCheckService {
     }
 
     private void resolveOpenIncident(Monitor monitor, OffsetDateTime at) {
-        boolean wasDown = monitor.getCurrentState() == MonitorState.DOWN;
+        boolean mayHaveOpenIncident = monitor.getCurrentState() != MonitorState.UP;
         monitor.setCurrentState(MonitorState.UP);
-        if (!wasDown) {
+        if (!mayHaveOpenIncident) {
             return;
         }
-        incidentRepository
-                .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
-                .ifPresent(incident -> {
-                    incident.resolve(at);
-                    notifyEnabledChannels(monitor, incident);
-                });
+        findOpenIncident(monitor).ifPresent(incident -> {
+            incident.resolve(at);
+            notifyEnabledChannels(monitor, incident);
+        });
+    }
+
+    /**
+     * The monitor's state alone does not tell whether an incident is open: pausing a monitor
+     * that is down, or resuming it afterwards, changes the state but leaves the incident open.
+     * Only UP and DOWN are conclusive, so any other state asks the database.
+     */
+    private Optional<Incident> findOpenIncident(Monitor monitor) {
+        return incidentRepository.findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN);
     }
 
     private void notifyEnabledChannels(Monitor monitor, Incident incident) {

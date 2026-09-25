@@ -17,16 +17,32 @@ import org.awesoma.monitoring.web.controller.UserController;
 import org.awesoma.monitoring.web.dto.user.UserCreateRequest;
 import org.awesoma.monitoring.web.exception.ConflictStateException;
 import org.awesoma.monitoring.web.exception.NotFoundException;
+import org.awesoma.monitoring.web.access.RoleAuthorizationInterceptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(UserController.class)
+@Import(ErrorHandlingWebTest.OwnerRoleHeaderConfig.class)
 class ErrorHandlingWebTest {
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class OwnerRoleHeaderConfig {
+
+        @Bean
+        MockMvcBuilderCustomizer ownerRoleHeader() {
+            return builder -> builder.defaultRequest(get("/")
+                    .header(RoleAuthorizationInterceptor.ROLE_HEADER, "OWNER"));
+        }
+    }
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private UserService users;

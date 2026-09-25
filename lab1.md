@@ -1,9 +1,20 @@
 # Лаба 1 — Монолит на Spring Boot
 
-Общая структура репозитория и git-flow — в [README.md](README.md). Полный текст задания по
-всем лабам — в [TASK.md](TASK.md). Здесь — то, что специфично только для лабы 1.
+Запуск и процесс разработки — в [README.md](README.md), отчёт — в
+[docs/report-lab1.md](docs/report-lab1.md). Полный текст задания по всем лабам — в
+[TASK.md](TASK.md). Здесь — то, что специфично только для лабы 1.
 
 Базовый пакет: `org.awesoma.monitoring`.
+
+## Технологии
+
+- Java 21, Gradle (Kotlin DSL), версии зависимостей — через Spring Boot BOM
+- Spring Boot 3.5 (Web, Data JPA, Validation, Actuator)
+- PostgreSQL 17, Liquibase (YAML-changelog'и)
+- MapStruct, Lombok
+- springdoc-openapi (Swagger UI)
+- JUnit 5, Mockito, Testcontainers; JaCoCo с порогом покрытия 70% в задаче `check`
+- Docker, Docker Compose
 
 ## Схема БД
 
