@@ -1,5 +1,9 @@
 package org.awesoma.monitoring.web.controller;
 
+import static org.awesoma.monitoring.domain.enums.MemberRole.EDITOR;
+import static org.awesoma.monitoring.domain.enums.MemberRole.OWNER;
+import static org.awesoma.monitoring.domain.enums.MemberRole.VIEWER;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.TagService;
+import org.awesoma.monitoring.web.access.AllowedRoles;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.tag.TagCreateRequest;
 import org.awesoma.monitoring.web.dto.tag.TagResponse;
@@ -30,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/tags")
 @RequiredArgsConstructor
 @Tag(name = "Tags")
+@AllowedRoles({OWNER, EDITOR, VIEWER})
 public class TagController {
 
     private final TagService tagService;
@@ -45,6 +51,7 @@ public class TagController {
     }
 
     @PostMapping
+    @AllowedRoles({OWNER, EDITOR})
     @Operation(summary = "Create a tag")
     @ApiResponses({
         @ApiResponse(
@@ -63,6 +70,7 @@ public class TagController {
     }
 
     @DeleteMapping("/{id}")
+    @AllowedRoles({OWNER, EDITOR})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a tag")
     @ApiResponses({

@@ -1,5 +1,9 @@
 package org.awesoma.monitoring.web.controller;
 
+import static org.awesoma.monitoring.domain.enums.MemberRole.EDITOR;
+import static org.awesoma.monitoring.domain.enums.MemberRole.OWNER;
+import static org.awesoma.monitoring.domain.enums.MemberRole.VIEWER;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.ChannelService;
+import org.awesoma.monitoring.web.access.AllowedRoles;
 import org.awesoma.monitoring.web.dto.channel.ChannelCreateRequest;
 import org.awesoma.monitoring.web.dto.channel.ChannelResponse;
 import org.awesoma.monitoring.web.dto.channel.ChannelUpdateRequest;
@@ -32,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Tag(name = "Channels")
+@AllowedRoles({OWNER, EDITOR, VIEWER})
 public class ChannelController {
 
     private final ChannelService channelService;
@@ -49,6 +55,7 @@ public class ChannelController {
     }
 
     @PostMapping("/projects/{projectId}/channels")
+    @AllowedRoles({OWNER, EDITOR})
     @Operation(summary = "Create a notification channel")
     @ApiResponses({
         @ApiResponse(
@@ -81,6 +88,7 @@ public class ChannelController {
     }
 
     @PutMapping("/channels/{id}")
+    @AllowedRoles({OWNER, EDITOR})
     @Operation(summary = "Update a notification channel", description = "Changes its destination and enabled state.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Channel updated"),
@@ -94,6 +102,7 @@ public class ChannelController {
     }
 
     @DeleteMapping("/channels/{id}")
+    @AllowedRoles({OWNER, EDITOR})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a notification channel")
     @ApiResponses({
