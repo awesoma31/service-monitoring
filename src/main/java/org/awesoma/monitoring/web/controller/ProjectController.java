@@ -15,7 +15,6 @@ import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberResponse;
-import org.awesoma.monitoring.web.dto.project.ProjectMemberRoleRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectResponse;
 import org.awesoma.monitoring.web.dto.project.ProjectUpdateRequest;
 import org.springframework.data.domain.Page;
@@ -141,33 +140,14 @@ public class ProjectController {
                 .body(created);
     }
 
-    @PutMapping("/{id}/members/{userId}")
-    @Operation(
-            summary = "Change a member role",
-            description = "The last project owner cannot be demoted.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Member role changed"),
-        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
-        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
-        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
-    })
-    public ProjectMemberResponse changeRole(
-            @PathVariable @Positive Long id,
-            @PathVariable @Positive Long userId,
-            @Valid @RequestBody ProjectMemberRoleRequest request) {
-        return projectService.changeRole(id, userId, request.role());
-    }
-
     @DeleteMapping("/{id}/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
-            summary = "Remove a project member",
-            description = "The last project owner cannot be removed.")
+            summary = "Remove a project member")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Member removed"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
-        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
-        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public void removeMember(
             @PathVariable @Positive Long id, @PathVariable @Positive Long userId) {

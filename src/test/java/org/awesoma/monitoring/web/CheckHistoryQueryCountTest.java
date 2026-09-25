@@ -9,7 +9,6 @@ import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.domain.enums.CheckResultType;
-import org.awesoma.monitoring.domain.enums.MemberRole;
 import org.awesoma.monitoring.service.IncidentService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.awesoma.monitoring.web.dto.incident.CheckResultResponse;
@@ -67,7 +66,7 @@ class CheckHistoryQueryCountTest extends AbstractIntegrationTest {
         project.setOwner(owner);
         project.setName("Project");
         project.setSlug("slice-count");
-        project.addMember(owner, MemberRole.OWNER);
+        project.addMember(owner);
         entityManager.persist(project);
 
         Monitor monitor = new Monitor();

@@ -41,3 +41,6 @@ databaseChangeLog:
   - include:
       file: changes/014-rename-users-password.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/015-drop-project-members-role.yaml
+      relativeToChangelogFile: true

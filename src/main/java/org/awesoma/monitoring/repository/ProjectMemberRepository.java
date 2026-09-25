@@ -13,5 +13,4 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Pr
 
     Optional<ProjectMember> findByProjectIdAndUserId(Long projectId, Long userId);
 
-    long countByProjectIdAndRole(Long projectId, org.awesoma.monitoring.domain.enums.MemberRole role);
 }

@@ -14,7 +14,6 @@ import org.awesoma.monitoring.domain.entity.Tag;
 import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.domain.enums.ChannelType;
 import org.awesoma.monitoring.domain.enums.CheckResultType;
-import org.awesoma.monitoring.domain.enums.MemberRole;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -73,7 +72,6 @@ class EntityMappingTest extends AbstractIntegrationTest {
         Project reloadedProject = entityManager.find(Project.class, project.getId());
         assertThat(reloadedProject.getCreatedAt()).isNotNull();
         assertThat(reloadedProject.getMembers()).singleElement().satisfies(member -> {
-            assertThat(member.getRole()).isEqualTo(MemberRole.OWNER);
             assertThat(member.getJoinedAt()).isNotNull();
             assertThat(member.getUser().getId()).isEqualTo(owner.getId());
         });
@@ -97,8 +95,6 @@ class EntityMappingTest extends AbstractIntegrationTest {
                 .isEqualTo("UNKNOWN");
         assertThat(column("SELECT http_method FROM monitors WHERE id = ?", monitor.getId()))
                 .isEqualTo("GET");
-        assertThat(column("SELECT role FROM project_members WHERE project_id = ?", project.getId()))
-                .isEqualTo("OWNER");
     }
 
     @Test
@@ -137,7 +133,7 @@ class EntityMappingTest extends AbstractIntegrationTest {
         project.setOwner(owner);
         project.setName("Graph");
         project.setSlug(slug);
-        project.addMember(owner, MemberRole.OWNER);
+        project.addMember(owner);
         entityManager.persist(project);
         return project;
     }

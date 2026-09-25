@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.User;
-import org.awesoma.monitoring.domain.enums.MemberRole;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
@@ -41,10 +40,9 @@ public class ProjectService {
     /**
      * Creates a project and enrols its owner as a member in one transaction.
      *
-     * <p>These two writes must not be separable: a project whose owner is missing from
-     * project_members has nobody who can administer it, and nothing in the API would let
-     * anyone repair that afterwards. A failure between the two inserts must leave no
-     * project at all.
+     * <p>These two writes must not be separable: a failure between the two inserts would
+     * leave a project whose owner is not among its members, a state the API offers no way
+     * to notice or repair. It must leave no project at all instead.
      */
     @Transactional
     public ProjectResponse create(ProjectCreateRequest request) {
@@ -57,7 +55,7 @@ public class ProjectService {
         project.setOwner(owner);
         project.setName(request.name());
         project.setSlug(request.slug());
-        project.addMember(owner, MemberRole.OWNER);
+        project.addMember(owner);
 
         return mapper.toResponse(projects.save(project));
     }
@@ -87,34 +85,12 @@ public class ProjectService {
                     "User %d is already a member of project %d".formatted(request.userId(), projectId));
         }
         User user = users.require(request.userId());
-        return mapper.toResponse(members.save(new ProjectMember(project, user, request.role())));
-    }
-
-    @Transactional
-    public ProjectMemberResponse changeRole(Long projectId, Long userId, MemberRole role) {
-        ProjectMember member = requireMember(projectId, userId);
-        if (member.getRole() == MemberRole.OWNER && role != MemberRole.OWNER) {
-            requireAnotherOwnerExists(projectId);
-        }
-        member.setRole(role);
-        return mapper.toResponse(member);
+        return mapper.toResponse(members.save(new ProjectMember(project, user)));
     }
 
     @Transactional
     public void removeMember(Long projectId, Long userId) {
-        ProjectMember member = requireMember(projectId, userId);
-        if (member.getRole() == MemberRole.OWNER) {
-            requireAnotherOwnerExists(projectId);
-        }
-        members.delete(member);
-    }
-
-    /** A project without an owner cannot be administered, so the last one cannot step down. */
-    private void requireAnotherOwnerExists(Long projectId) {
-        if (members.countByProjectIdAndRole(projectId, MemberRole.OWNER) <= 1) {
-            throw new ConflictStateException(
-                    "Project %d would be left without an owner".formatted(projectId));
-        }
+        members.delete(requireMember(projectId, userId));
     }
 
     private ProjectMember requireMember(Long projectId, Long userId) {

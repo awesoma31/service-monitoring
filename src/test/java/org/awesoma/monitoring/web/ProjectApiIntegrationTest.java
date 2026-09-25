@@ -48,8 +48,7 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/projects/{id}/members", projectId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].userId").value(ownerId))
-                .andExpect(jsonPath("$.content[0].role").value("OWNER"));
+                .andExpect(jsonPath("$.content[0].userId").value(ownerId));
     }
 
     @Test
@@ -62,15 +61,6 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Conflicting state"))
                 .andExpect(jsonPath("$.detail").exists());
-    }
-
-    @Test
-    void removingTheLastOwnerIsAConflict() throws Exception {
-        long ownerId = createUser("last-owner@example.com");
-        long projectId = createProject(ownerId, "last-owner");
-
-        mockMvc.perform(delete("/api/v1/projects/{id}/members/{userId}", projectId, ownerId))
-                .andExpect(status().isConflict());
     }
 
     @Test
@@ -129,25 +119,16 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void aMemberCanBeAddedPromotedAndRemoved() throws Exception {
+    void aMemberCanBeAddedAndRemoved() throws Exception {
         long ownerId = createUser("membership-owner@example.com");
         long memberId = createUser("membership-member@example.com");
         long projectId = createProject(ownerId, "membership-flow");
 
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/members", """
-                        {"userId":%d,"role":"VIEWER"}
+                        {"userId":%d}
                         """.formatted(memberId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.userId").value(memberId))
-                .andExpect(jsonPath("$.role").value("VIEWER"));
-
-        mockMvc.perform(put("/api/v1/projects/{id}/members/{userId}", projectId, memberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"role":"EDITOR"}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.role").value("EDITOR"));
+                .andExpect(jsonPath("$.userId").value(memberId));
 
         mockMvc.perform(delete("/api/v1/projects/{id}/members/{userId}", projectId, memberId))
                 .andExpect(status().isNoContent());
