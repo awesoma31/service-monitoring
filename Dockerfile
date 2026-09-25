@@ -13,6 +13,7 @@ COPY config-server/build.gradle.kts config-server/
 COPY eureka-server/build.gradle.kts eureka-server/
 COPY gateway/build.gradle.kts gateway/
 COPY monitor-service/build.gradle.kts monitor-service/
+COPY notification-service/build.gradle.kts notification-service/
 RUN ./gradlew --no-daemon :${MODULE}:dependencies --configuration runtimeClasspath
 
 COPY ${MODULE}/src ${MODULE}/src

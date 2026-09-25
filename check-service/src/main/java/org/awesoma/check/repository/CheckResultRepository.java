@@ -4,6 +4,7 @@ import org.awesoma.check.domain.CheckResult;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public interface CheckResultRepository extends ReactiveCrudRepository<CheckResult, Long> {
 
@@ -18,4 +19,6 @@ public interface CheckResultRepository extends ReactiveCrudRepository<CheckResul
             LIMIT :limit OFFSET :offset
             """)
     Flux<CheckResult> findPage(Long monitorId, int limit, long offset);
+
+    Mono<Long> deleteByMonitorId(Long monitorId);
 }

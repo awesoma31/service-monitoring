@@ -14,6 +14,11 @@ spring:
               order: 0
               predicates:
                 - Path=/api/v1/monitors/*/results
+            - id: notification-service
+              uri: lb://notification-service
+              order: 0
+              predicates:
+                - Path=/api/v1/projects/*/channels,/api/v1/channels/**,/api/v1/incidents/*/notifications
             - id: monitor-service
               uri: lb://monitor-service
               order: 100

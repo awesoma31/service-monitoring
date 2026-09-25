@@ -22,13 +22,14 @@ class GatewayRoutingTest {
     }
 
     @Test
-    void checkHistoryIsRoutedToTheCheckServiceBeforeTheCatchAllRoute() {
+    void specificServicesAreRoutedBeforeTheCatchAllRoute() {
         http.get().uri("/actuator/gateway/routes").exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$[0].route_id").isEqualTo("check-service")
                 .jsonPath("$[0].uri").isEqualTo("lb://check-service")
-                .jsonPath("$[1].route_id").isEqualTo("monitor-service");
+                .jsonPath("$[1].route_id").isEqualTo("notification-service")
+                .jsonPath("$[2].route_id").isEqualTo("monitor-service");
     }
 
     @Test

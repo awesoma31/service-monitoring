@@ -74,6 +74,18 @@ class CheckHistoryApiIntegrationTest extends AbstractIntegrationTest {
         http.get().uri("/api/v1/monitors/abc/results").exchange().expectStatus().isBadRequest();
     }
 
+    @Test
+    void theHistoryOfADeletedMonitorIsRemovedOnRequest() {
+        long monitorId = 1_002;
+        store(monitorId, ProbeOutcome.success(10, 200), OffsetDateTime.now());
+
+        http.delete().uri("/internal/results?monitor_id={id}", monitorId).exchange()
+                .expectStatus().isNoContent();
+
+        http.get().uri("/api/v1/monitors/{id}/results", monitorId).exchange()
+                .expectBody().jsonPath("$.content.length()").isEqualTo(0);
+    }
+
     private void store(long monitorId, ProbeOutcome outcome, OffsetDateTime at) {
         results.save(CheckResult.of(monitorId, outcome, at)).block();
     }

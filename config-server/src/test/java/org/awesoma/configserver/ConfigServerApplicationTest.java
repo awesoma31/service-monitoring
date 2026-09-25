@@ -34,6 +34,13 @@ class ConfigServerApplicationTest {
     }
 
     @Test
+    void servesTheNotificationServiceDatabase() {
+        JsonNode config = http.getForObject("/notification-service/default", JsonNode.class);
+
+        assertThat(config.toString()).contains("spring.datasource.url");
+    }
+
+    @Test
     void servesTheGatewayRoutes() {
         JsonNode config = http.getForObject("/gateway/default", JsonNode.class);
 
