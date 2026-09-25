@@ -8,6 +8,9 @@ WORKDIR /app
 COPY gradlew ./
 COPY gradle gradle
 COPY settings.gradle.kts build.gradle.kts lombok.config ./
+COPY config-server/build.gradle.kts config-server/
+COPY eureka-server/build.gradle.kts eureka-server/
+COPY gateway/build.gradle.kts gateway/
 COPY monitor-service/build.gradle.kts monitor-service/
 RUN ./gradlew --no-daemon :${MODULE}:dependencies --configuration runtimeClasspath
 

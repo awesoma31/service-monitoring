@@ -12,6 +12,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.cloud:spring-cloud-starter-config")
+    implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
     implementation("org.liquibase:liquibase-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
     implementation("org.mapstruct:mapstruct:$mapstructVersion")
@@ -40,3 +42,13 @@ extra["coverageExclusions"] = listOf(
     "**/web/dto/**",
     "**/web/mapper/*Impl.class",
 )
+
+// Tests read the same files the config server serves, without starting it or Eureka.
+val configRepo = rootProject.file("config-server/src/main/resources/config-repo")
+tasks.named<Test>("test") {
+    systemProperty(
+        "spring.config.import",
+        "optional:file:$configRepo/application.yml,optional:file:$configRepo/monitor-service.yml")
+    systemProperty("spring.cloud.config.enabled", "false")
+    systemProperty("eureka.client.enabled", "false")
+}
