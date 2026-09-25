@@ -16,7 +16,10 @@ services:
       retries: 10
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        MODULE: monitor-service
     depends_on:
       postgres:
         condition: service_healthy
