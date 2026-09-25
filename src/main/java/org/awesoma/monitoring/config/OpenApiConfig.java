@@ -1,6 +1,8 @@
 package org.awesoma.monitoring.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.core.converter.ModelConverters;
+import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.examples.Example;
@@ -17,6 +19,16 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
+
+    /**
+     * swagger-core builds schemas with an ObjectMapper of its own, which knows nothing of the
+     * snake_case strategy. Handing it the application's mapper keeps the documented field
+     * names identical to the ones the API actually reads and writes.
+     */
+    @Bean
+    public ModelResolver modelResolver(ObjectMapper objectMapper) {
+        return new ModelResolver(objectMapper);
+    }
 
     @Bean
     public OpenAPI serviceMonitoringOpenApi() {
