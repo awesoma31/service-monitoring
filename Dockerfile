@@ -3,8 +3,8 @@ FROM eclipse-temurin:21-jdk-alpine AS build
 ARG MODULE
 WORKDIR /app
 
-# Dependency layer: re-resolved only when the build scripts change. Gradle needs the build
-# script of every module listed in settings.gradle.kts, not only the one being packaged.
+# Gradle needs the build script of every module listed in settings.gradle.kts, not only the
+# one being packaged.
 COPY gradlew ./
 COPY gradle gradle
 COPY settings.gradle.kts build.gradle.kts lombok.config ./
@@ -14,12 +14,16 @@ COPY eureka-server/build.gradle.kts eureka-server/
 COPY gateway/build.gradle.kts gateway/
 COPY monitor-service/build.gradle.kts monitor-service/
 COPY notification-service/build.gradle.kts notification-service/
-RUN ./gradlew --no-daemon :${MODULE}:dependencies --configuration runtimeClasspath
-
 COPY ${MODULE}/src ${MODULE}/src
-# Tests run via `./gradlew check`; they need a Docker daemon (Testcontainers),
-# which is not available inside the image build.
-RUN ./gradlew --no-daemon :${MODULE}:bootJar -x test
+
+# The Gradle distribution and every dependency live in a BuildKit cache shared by all the
+# images and kept between builds, so they are downloaded once rather than per image and per
+# change of a build script. The images build in parallel, and two Gradle runs filling the
+# same fresh cache at once break each other, so the cache is taken by one build at a time.
+# Tests run via `./gradlew check`; they need a Docker daemon (Testcontainers), which is not
+# available inside the image build.
+RUN --mount=type=cache,target=/root/.gradle,sharing=locked \
+    ./gradlew --no-daemon :${MODULE}:bootJar -x test
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 ARG MODULE

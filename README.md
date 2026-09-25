@@ -25,7 +25,8 @@
 
 ## Быстрый старт
 
-Нужен Docker с `docker compose`; для запуска тестов — ещё JDK 21.
+Нужен Docker с `docker compose` и BuildKit (в Docker Desktop он встроен, для colima —
+`brew install docker-buildx`); для запуска тестов — ещё JDK 21.
 
 ```bash
 cp .env.example .env
