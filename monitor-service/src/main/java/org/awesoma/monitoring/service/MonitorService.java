@@ -102,6 +102,10 @@ public class MonitorService {
         monitors.delete(require(id));
     }
 
+    public boolean exists(Long id) {
+        return monitors.existsById(id);
+    }
+
     /** Existence check that does not load the row, for callers that only need the guard. */
     public void requireExists(Long id) {
         if (!monitors.existsById(id)) {

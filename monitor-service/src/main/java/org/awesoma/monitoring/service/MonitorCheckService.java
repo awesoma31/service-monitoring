@@ -4,7 +4,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.monitoring.domain.entity.CheckResult;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Notification;
@@ -13,7 +12,6 @@ import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
 import org.awesoma.monitoring.repository.ChannelRepository;
-import org.awesoma.monitoring.repository.CheckResultRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.repository.NotificationRepository;
@@ -29,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class MonitorCheckService {
 
     private final MonitorRepository monitorRepository;
-    private final CheckResultRepository checkResultRepository;
     private final IncidentRepository incidentRepository;
     private final ChannelRepository channelRepository;
     private final NotificationRepository notificationRepository;
@@ -47,7 +44,8 @@ public class MonitorCheckService {
     }
 
     /**
-     * Records one probe and reacts to it, all in a single transaction.
+     * Applies the outcome of one probe, reported by the check service, in a single
+     * transaction. The probe itself and its check history live in that service.
      *
      * <p>The monitor row is locked for the duration. Two workers probing the same monitor
      * concurrently would otherwise both read the same state and both decide to open an
@@ -67,24 +65,12 @@ public class MonitorCheckService {
         }
         OffsetDateTime now = OffsetDateTime.now();
         monitor.setLastCheckedAt(now);
-        saveCheckResult(monitor, outcome, now);
 
         if (outcome.isFailure()) {
             openIncidentIfAbsent(monitor, outcome, now);
         } else {
             resolveOpenIncident(monitor, now);
         }
-    }
-
-    private void saveCheckResult(Monitor monitor, ProbeOutcome outcome, OffsetDateTime at) {
-        CheckResult result = new CheckResult();
-        result.setMonitor(monitor);
-        result.setCheckedAt(at);
-        result.setResult(outcome.result());
-        result.setResponseMs(outcome.responseMs());
-        result.setHttpStatus(outcome.httpStatus());
-        result.setErrorMessage(outcome.errorMessage());
-        checkResultRepository.save(result);
     }
 
     /** A monitor already DOWN keeps its incident: a failure is one event, not one per probe. */

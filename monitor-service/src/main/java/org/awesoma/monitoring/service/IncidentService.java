@@ -6,10 +6,8 @@ import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
-import org.awesoma.monitoring.repository.CheckResultRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.NotificationRepository;
-import org.awesoma.monitoring.web.dto.incident.CheckResultResponse;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
 import org.awesoma.monitoring.web.dto.incident.NotificationResponse;
 import org.awesoma.monitoring.web.exception.ConflictStateException;
@@ -17,7 +15,6 @@ import org.awesoma.monitoring.web.exception.NotFoundException;
 import org.awesoma.monitoring.web.mapper.IncidentMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class IncidentService {
 
     private final IncidentRepository incidents;
-    private final CheckResultRepository checkResults;
     private final NotificationRepository notifications;
     private final MonitorService monitors;
     private final IncidentMapper mapper;
@@ -43,20 +39,6 @@ public class IncidentService {
 
     public IncidentResponse get(Long id) {
         return mapper.toResponse(require(id));
-    }
-
-    /**
-     * Check history for infinite scrolling.
-     *
-     * <p>A Slice rather than a Page on purpose: check_results grows without bound, and
-     * counting the rows of a busy monitor on every scroll would cost more than the page
-     * itself. The client only needs to know whether more rows follow.
-     */
-    public Slice<CheckResultResponse> listResults(Long monitorId, Pageable pageable) {
-        monitors.requireExists(monitorId);
-        return checkResults
-                .findByMonitorIdOrderByCheckedAtDesc(monitorId, pageable)
-                .map(mapper::toResponse);
     }
 
     public Page<NotificationResponse> listNotifications(Long incidentId, Pageable pageable) {

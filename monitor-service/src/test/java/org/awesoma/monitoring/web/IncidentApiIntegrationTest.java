@@ -22,7 +22,6 @@ import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.data.domain.Pageable;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,39 +33,6 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
     @Autowired private EntityManager entityManager;
     @Autowired private MonitorCheckService checks;
     @Autowired private IncidentRepository incidents;
-
-    @Test
-    void checkHistoryScrollsWithoutEverCountingTheRows() throws Exception {
-        Monitor monitor = seed("history");
-        record(monitor, ProbeOutcome.success(10, 200));
-        record(monitor, ProbeOutcome.connectionError(5, "refused"));
-        record(monitor, ProbeOutcome.success(12, 200));
-
-        mockMvc.perform(get("/api/v1/monitors/{id}/results", monitor.getId()).param("size", "2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(2))
-                .andExpect(jsonPath("$.last").value(false))
-                // A slice reports whether more rows follow, never how many exist.
-                .andExpect(jsonPath("$.total_elements").doesNotExist())
-                .andExpect(jsonPath("$.total_pages").doesNotExist());
-
-        mockMvc.perform(get("/api/v1/monitors/{id}/results", monitor.getId())
-                        .param("size", "2")
-                        .param("page", "1"))
-                .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.last").value(true));
-    }
-
-    @Test
-    void newestCheckComesFirst() throws Exception {
-        Monitor monitor = seed("ordering");
-        record(monitor, ProbeOutcome.success(10, 200));
-        record(monitor, ProbeOutcome.connectionError(5, "refused"));
-
-        mockMvc.perform(get("/api/v1/monitors/{id}/results", monitor.getId()))
-                .andExpect(jsonPath("$.content[0].result").value("CONNECTION_ERROR"))
-                .andExpect(jsonPath("$.content[1].result").value("SUCCESS"));
-    }
 
     @Test
     void incidentsCanBeFilteredByStatus() throws Exception {
@@ -120,9 +86,8 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void unknownIncidentAndUnknownMonitorAreNotFound() throws Exception {
+    void unknownIncidentIsNotFound() throws Exception {
         mockMvc.perform(get("/api/v1/incidents/{id}", 999_999)).andExpect(status().isNotFound());
-        mockMvc.perform(get("/api/v1/monitors/{id}/results", 999_999)).andExpect(status().isNotFound());
     }
 
     private void record(Monitor monitor, ProbeOutcome outcome) {

@@ -11,11 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.service.IncidentService;
 import org.awesoma.monitoring.web.dto.common.PageParams;
-import org.awesoma.monitoring.web.dto.incident.CheckResultResponse;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
 import org.awesoma.monitoring.web.dto.incident.NotificationResponse;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,26 +29,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class IncidentController {
 
     private final IncidentService incidentService;
-
-    /**
-     * Check history as an endless feed. The response carries no total count by design —
-     * see {@link IncidentService#listResults}.
-     */
-    @GetMapping("/monitors/{monitorId}/results")
-    @Operation(
-            summary = "Scroll monitor check history",
-            description = "Returns a Slice ordered from newest to oldest. The response intentionally "
-                    + "contains hasNext but no total count, so clients can implement infinite scrolling "
-                    + "without an additional count query.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Check-result slice returned"),
-        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
-        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
-    })
-    public ResponseEntity<Slice<CheckResultResponse>> listResults(
-            @PathVariable @Positive Long monitorId, @Valid PageParams page) {
-        return ResponseEntity.ok(incidentService.listResults(monitorId, page.toPageable()));
-    }
 
     @GetMapping("/monitors/{monitorId}/incidents")
     @Operation(

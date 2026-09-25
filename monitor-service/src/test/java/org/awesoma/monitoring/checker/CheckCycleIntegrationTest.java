@@ -14,7 +14,6 @@ import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.repository.CheckResultRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.NotificationRepository;
 import org.awesoma.monitoring.service.MonitorCheckService;
@@ -34,7 +33,6 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
     @Autowired private MonitorCheckService checks;
     @Autowired private IncidentRepository incidents;
     @Autowired private NotificationRepository notifications;
-    @Autowired private CheckResultRepository checkResults;
     @Autowired private MonitorService monitorService;
 
     @Test
@@ -68,8 +66,6 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(notifications.findByIncidentId(incident.getId(), Pageable.unpaged()))
                 .as("recovery is announced as well as the failure")
                 .hasSize(2);
-        assertThat(checkResults.findByMonitorIdOrderByCheckedAtDesc(monitor.getId(), Pageable.unpaged()))
-                .hasSize(3);
     }
 
     @Test
@@ -87,8 +83,6 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(incidents.findByMonitorId(monitor.getId(), Pageable.unpaged()))
                 .as("the incident left open by the pause is reused, not duplicated")
                 .hasSize(1);
-        assertThat(checkResults.findByMonitorIdOrderByCheckedAtDesc(monitor.getId(), Pageable.unpaged()))
-                .hasSize(2);
     }
 
     @Test

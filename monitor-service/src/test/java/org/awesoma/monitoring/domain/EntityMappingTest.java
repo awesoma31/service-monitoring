@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import org.awesoma.monitoring.domain.entity.Channel;
-import org.awesoma.monitoring.domain.entity.CheckResult;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Notification;
@@ -13,7 +12,6 @@ import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.Tag;
 import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.domain.enums.ChannelType;
-import org.awesoma.monitoring.domain.enums.CheckResultType;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -37,13 +35,6 @@ class EntityMappingTest extends AbstractIntegrationTest {
         Project project = project(owner, "graph");
         Tag tag = tag("production");
         Monitor monitor = monitor(project, tag);
-
-        CheckResult check = new CheckResult();
-        check.setMonitor(monitor);
-        check.setCheckedAt(OffsetDateTime.now());
-        check.setResult(CheckResultType.CONNECTION_ERROR);
-        check.setErrorMessage("connection refused");
-        entityManager.persist(check);
 
         Incident incident = new Incident();
         incident.setMonitor(monitor);

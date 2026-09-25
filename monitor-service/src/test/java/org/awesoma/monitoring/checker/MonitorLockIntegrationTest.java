@@ -19,7 +19,6 @@ import org.awesoma.monitoring.domain.enums.ChannelType;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.repository.CheckResultRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.service.MonitorCheckService;
@@ -43,7 +42,6 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
     @Autowired private MonitorCheckService checks;
     @Autowired private MonitorRepository monitors;
     @Autowired private IncidentRepository incidents;
-    @Autowired private CheckResultRepository checkResults;
     @Autowired private TransactionTemplate transactions;
     @Autowired private EntityManager entityManager;
 
@@ -124,8 +122,9 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
         holder.get(10, TimeUnit.SECONDS);
         recorder.get(10, TimeUnit.SECONDS);
 
-        assertThat(checkResults.findByMonitorIdOrderByCheckedAtDesc(monitorId, Pageable.unpaged()))
-                .hasSize(1);
+        assertThat(monitors.findById(monitorId).orElseThrow().getLastCheckedAt())
+                .as("the outcome is applied once the lock is released")
+                .isNotNull();
     }
 
     @Test
@@ -148,9 +147,6 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
         assertThat(incidents.findByMonitorId(monitorId, Pageable.unpaged()))
                 .singleElement()
                 .satisfies(incident -> assertThat(incident.getStatus()).isEqualTo(IncidentStatus.OPEN));
-        assertThat(checkResults.findByMonitorIdOrderByCheckedAtDesc(monitorId, Pageable.unpaged()))
-                .as("every probe is recorded, none is rolled back by a conflict")
-                .hasSize(workersCount);
         assertThat(monitors.findById(monitorId).orElseThrow().getCurrentState())
                 .isEqualTo(MonitorState.DOWN);
     }

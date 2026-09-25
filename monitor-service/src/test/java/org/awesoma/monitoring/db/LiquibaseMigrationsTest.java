@@ -30,7 +30,7 @@ class LiquibaseMigrationsTest {
 
     private static final List<String> DOMAIN_TABLES = List.of(
             "users", "projects", "project_members", "tags", "monitors",
-            "monitor_tags", "check_results", "incidents", "channels", "notifications");
+            "monitor_tags", "incidents", "channels", "notifications");
 
     /**
      * Rolling the schema back empties the database, so this test cannot share one with the

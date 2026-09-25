@@ -19,7 +19,6 @@ import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
 import org.awesoma.monitoring.repository.ChannelRepository;
-import org.awesoma.monitoring.repository.CheckResultRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.repository.NotificationRepository;
@@ -34,7 +33,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class MonitorCheckServiceTest {
 
     @Mock private MonitorRepository monitors;
-    @Mock private CheckResultRepository checkResults;
     @Mock private IncidentRepository incidents;
     @Mock private ChannelRepository channels;
     @Mock private NotificationRepository notifications;
@@ -58,7 +56,6 @@ class MonitorCheckServiceTest {
         assertThat(opened.getValue().getStatus()).isEqualTo(IncidentStatus.OPEN);
 
         verify(notifications, org.mockito.Mockito.times(2)).save(any(Notification.class));
-        verify(checkResults).save(any());
     }
 
     @Test
@@ -71,7 +68,6 @@ class MonitorCheckServiceTest {
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
         verify(incidents, never()).save(any());
         verify(notifications, never()).save(any());
-        verify(checkResults).save(any());
     }
 
     @Test
@@ -109,8 +105,6 @@ class MonitorCheckServiceTest {
         when(monitors.findWithLockById(1L)).thenReturn(Optional.empty());
 
         service.record(1L, ProbeOutcome.success(10, 200));
-
-        verify(checkResults, never()).save(any());
         verify(incidents, never()).save(any());
     }
 

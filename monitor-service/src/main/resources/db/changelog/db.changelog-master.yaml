@@ -44,3 +44,6 @@ databaseChangeLog:
   - include:
       file: changes/015-drop-project-members-role.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/016-drop-check-results.yaml
+      relativeToChangelogFile: true
