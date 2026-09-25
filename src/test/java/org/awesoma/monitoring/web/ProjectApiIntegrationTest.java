@@ -48,7 +48,7 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/projects/{id}/members", projectId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].userId").value(ownerId));
+                .andExpect(jsonPath("$.content[0].user_id").value(ownerId));
     }
 
     @Test
@@ -92,7 +92,7 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void invalidBodyIsRejectedBeforeReachingTheService() throws Exception {
         mockMvc.perform(postJson("/api/v1/users", """
-                        {"email":"not-an-email","password":"short","fullName":""}"""))
+                        {"email":"not-an-email","password":"short","full_name":""}"""))
                 .andExpect(status().isBadRequest());
     }
 
@@ -125,16 +125,16 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
         long projectId = createProject(ownerId, "membership-flow");
 
         mockMvc.perform(postJson("/api/v1/projects/" + projectId + "/members", """
-                        {"userId":%d}
+                        {"user_id":%d}
                         """.formatted(memberId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.userId").value(memberId));
+                .andExpect(jsonPath("$.user_id").value(memberId));
 
         mockMvc.perform(delete("/api/v1/projects/{id}/members/{userId}", projectId, memberId))
                 .andExpect(status().isNoContent());
         mockMvc.perform(get("/api/v1/projects/{id}/members", projectId))
                 .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].userId").value(ownerId));
+                .andExpect(jsonPath("$.content[0].user_id").value(ownerId));
     }
 
     private long createUser(String email) throws Exception {
@@ -160,11 +160,11 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
 
     private String user(String email) {
         return """
-                {"email":"%s","password":"password123","fullName":"Test User"}""".formatted(email);
+                {"email":"%s","password":"password123","full_name":"Test User"}""".formatted(email);
     }
 
     private String project(long ownerId, String slug) {
         return """
-                {"ownerId":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug);
+                {"owner_id":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug);
     }
 }

@@ -34,7 +34,7 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/v1/channels/")))
                 .andExpect(jsonPath("$.enabled").value(true))
-                .andExpect(jsonPath("$.projectId").value(projectId));
+                .andExpect(jsonPath("$.project_id").value(projectId));
     }
 
     @Test
@@ -77,7 +77,7 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/projects/{id}/channels", projectId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.total_elements").value(1));
 
         mockMvc.perform(get("/api/v1/projects/{id}/channels", 999_999))
                 .andExpect(status().isNotFound());
@@ -94,13 +94,13 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
 
     private long createProject(String slug) throws Exception {
         String userBody = mockMvc.perform(postJson("/api/v1/users", """
-                        {"email":"%s@example.com","password":"password123","fullName":"Owner"}"""
+                        {"email":"%s@example.com","password":"password123","full_name":"Owner"}"""
                         .formatted(slug)))
                 .andReturn().getResponse().getContentAsString();
         long ownerId = json.readTree(userBody).get("id").asLong();
 
         String projectBody = mockMvc.perform(postJson("/api/v1/projects", """
-                        {"ownerId":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug)))
+                        {"owner_id":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug)))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(projectBody).get("id").asLong();
     }

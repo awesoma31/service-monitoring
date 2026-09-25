@@ -47,8 +47,8 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.content.length()").value(2))
                 .andExpect(jsonPath("$.last").value(false))
                 // A slice reports whether more rows follow, never how many exist.
-                .andExpect(jsonPath("$.totalElements").doesNotExist())
-                .andExpect(jsonPath("$.totalPages").doesNotExist());
+                .andExpect(jsonPath("$.total_elements").doesNotExist())
+                .andExpect(jsonPath("$.total_pages").doesNotExist());
 
         mockMvc.perform(get("/api/v1/monitors/{id}/results", monitor.getId())
                         .param("size", "2")
@@ -75,13 +75,13 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
         record(monitor, ProbeOutcome.success(10, 200));
 
         mockMvc.perform(get("/api/v1/monitors/{id}/incidents", monitor.getId()))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.total_elements").value(1));
         mockMvc.perform(get("/api/v1/monitors/{id}/incidents", monitor.getId())
                         .param("status", "RESOLVED"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.total_elements").value(1));
         mockMvc.perform(get("/api/v1/monitors/{id}/incidents", monitor.getId())
                         .param("status", "OPEN"))
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.total_elements").value(0));
     }
 
     @Test
@@ -95,7 +95,7 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/v1/incidents/{id}/resolve", incident.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RESOLVED"))
-                .andExpect(jsonPath("$.resolvedAt").exists());
+                .andExpect(jsonPath("$.resolved_at").exists());
 
         // The monitor stops claiming to be DOWN, so a later failure opens a fresh incident.
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UNKNOWN);
@@ -114,7 +114,7 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/incidents/{id}/notifications", incident.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.total_elements").value(1))
                 .andExpect(jsonPath("$.content[0].status").value("PENDING"))
                 .andExpect(jsonPath("$.content[0].target").value("ops@example.com"));
     }

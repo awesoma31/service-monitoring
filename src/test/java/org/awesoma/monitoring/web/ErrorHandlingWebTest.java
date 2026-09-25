@@ -36,7 +36,7 @@ class ErrorHandlingWebTest {
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"not-an-email","password":"short","fullName":""}
+                                {"email":"not-an-email","password":"short","full_name":""}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -45,7 +45,7 @@ class ErrorHandlingWebTest {
                 .andExpect(jsonPath("$.detail").value("One or more request values are invalid"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/users"))
                 .andExpect(jsonPath("$.violations[*].field")
-                        .value(containsInAnyOrder("email", "password", "fullName")));
+                        .value(containsInAnyOrder("email", "password", "full_name")));
 
         verify(users, never()).create(any());
     }
@@ -77,7 +77,7 @@ class ErrorHandlingWebTest {
         mockMvc.perform(put("/api/v1/users/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"fullName":"User","status":"DELETED"}
+                                {"full_name":"User","status":"DELETED"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -144,7 +144,7 @@ class ErrorHandlingWebTest {
 
     private String validUser() {
         return """
-                {"email":"user@example.com","password":"password123","fullName":"User"}
+                {"email":"user@example.com","password":"password123","full_name":"User"}
                 """;
     }
 }

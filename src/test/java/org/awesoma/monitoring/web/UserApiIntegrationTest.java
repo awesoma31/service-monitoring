@@ -48,14 +48,14 @@ class UserApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(put("/api/v1/users/{id}", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"fullName":"New Name","status":"BLOCKED"}
+                                {"full_name":"New Name","status":"BLOCKED"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fullName").value("New Name"))
+                .andExpect(jsonPath("$.full_name").value("New Name"))
                 .andExpect(jsonPath("$.status").value("BLOCKED"));
 
         mockMvc.perform(get("/api/v1/users/{id}", userId))
-                .andExpect(jsonPath("$.fullName").value("New Name"))
+                .andExpect(jsonPath("$.full_name").value("New Name"))
                 .andExpect(jsonPath("$.status").value("BLOCKED"));
     }
 
@@ -91,7 +91,7 @@ class UserApiIntegrationTest extends AbstractIntegrationTest {
 
     private String user(String email, String fullName) {
         return """
-                {"email":"%s","password":"password123","fullName":"%s"}
+                {"email":"%s","password":"password123","full_name":"%s"}
                 """.formatted(email, fullName);
     }
 }

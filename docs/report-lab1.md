@@ -372,6 +372,12 @@ stateDiagram-v2
 Все ресурсы доступны по префиксу `/api/v1`. Документация: Swagger UI по адресу
 `/swagger-ui.html`, спецификация OpenAPI — `/v3/api-docs`.
 
+Имена полей JSON в запросах и ответах записываются в snake_case (`full_name`,
+`interval_sec`, `total_elements`). Стиль задан один раз стратегией именования Jackson
+(`spring.jackson.property-naming-strategy: SNAKE_CASE`) и применяется ко всем DTO, к схеме
+OpenAPI и к именам полей в ошибках валидации. Контроллеры возвращают `ResponseEntity`, в
+котором вместе с телом явно задаются код ответа и заголовки.
+
 | Ресурс | Операции |
 |---|---|
 | Пользователи | `GET, POST /users`; `GET, PUT, DELETE /users/{id}` |
@@ -435,7 +441,7 @@ stateDiagram-v2
   "instance": "/api/v1/projects/1/monitors",
   "violations": [
     { "field": "url", "message": "must be an http or https URL" },
-    { "field": "intervalSec", "message": "must be greater than or equal to 10" }
+    { "field": "interval_sec", "message": "must be greater than or equal to 10" }
   ]
 }
 ```

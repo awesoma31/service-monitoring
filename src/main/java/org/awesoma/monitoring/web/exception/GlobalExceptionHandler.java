@@ -1,8 +1,11 @@
 package org.awesoma.monitoring.web.exception;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -22,7 +25,10 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * implementation details without helping an API client fix its request.
  */
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final ObjectMapper objectMapper;
 
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFound(
@@ -50,7 +56,7 @@ public class GlobalExceptionHandler {
         List<ValidationViolation> violations = exception.getBindingResult().getAllErrors().stream()
                 .map(error -> new ValidationViolation(
                         error instanceof FieldError fieldError
-                                ? fieldError.getField()
+                                ? jsonName(fieldError.getField())
                                 : error.getObjectName(),
                         message(error)))
                 .toList();
@@ -126,7 +132,19 @@ public class GlobalExceptionHandler {
      * offending field, not the name of the controller's method argument.
      */
     private String fieldName(ParameterValidationResult result, MessageSourceResolvable error) {
-        return error instanceof FieldError fieldError ? fieldError.getField() : parameterName(result);
+        return error instanceof FieldError fieldError
+                ? jsonName(fieldError.getField())
+                : parameterName(result);
+    }
+
+    /**
+     * Field errors carry Java property names. The client wrote the JSON names, which follow
+     * the configured naming strategy, so the violation must name the field the same way.
+     */
+    private String jsonName(String field) {
+        return objectMapper.getPropertyNamingStrategy() instanceof PropertyNamingStrategies.NamingBase naming
+                ? naming.translate(field)
+                : field;
     }
 
     private String parameterName(ParameterValidationResult result) {
