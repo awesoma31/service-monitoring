@@ -3,6 +3,9 @@ package org.awesoma.monitoring.support;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.awesoma.monitoring.integration.CheckHistoryClient;
+import org.awesoma.monitoring.integration.NotificationClient;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * Boots the application against the shared Postgres, with Liquibase applying the real
@@ -11,6 +14,10 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest
 public abstract class AbstractIntegrationTest {
+
+    // The other services are replaced by mocks of their Feign clients.
+    @MockitoBean protected NotificationClient notificationClient;
+    @MockitoBean protected CheckHistoryClient checkHistoryClient;
 
     @DynamicPropertySource
     static void datasourceProperties(DynamicPropertyRegistry registry) {

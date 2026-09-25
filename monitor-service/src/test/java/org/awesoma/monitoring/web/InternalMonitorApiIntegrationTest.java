@@ -64,6 +64,25 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$").value(false));
     }
 
+    @Test
+    void projectsAndIncidentsCanBeLookedUpById() throws Exception {
+        long monitorId = createMonitor("internal-lookup");
+        mockMvc.perform(postJson("/internal/monitors/" + monitorId + "/outcomes", """
+                        {"result":"TIMEOUT","response_ms":1000,"error_message":"slow"}"""))
+                .andExpect(status().isNoContent());
+        String incidents = mockMvc.perform(get("/api/v1/monitors/{id}/incidents", monitorId))
+                .andReturn().getResponse().getContentAsString();
+        long incidentId = json.readTree(incidents).get("content").get(0).get("id").asLong();
+        String monitor = mockMvc.perform(get("/api/v1/monitors/{id}", monitorId))
+                .andReturn().getResponse().getContentAsString();
+        long projectId = json.readTree(monitor).get("project_id").asLong();
+
+        mockMvc.perform(get("/internal/projects/{id}/exists", projectId)).andExpect(jsonPath("$").value(true));
+        mockMvc.perform(get("/internal/incidents/{id}/exists", incidentId)).andExpect(jsonPath("$").value(true));
+        mockMvc.perform(get("/internal/projects/{id}/exists", 999_999)).andExpect(jsonPath("$").value(false));
+        mockMvc.perform(get("/internal/incidents/{id}/exists", 999_999)).andExpect(jsonPath("$").value(false));
+    }
+
     private long createMonitor(String slug) throws Exception {
         String user = mockMvc.perform(postJson("/api/v1/users", """
                         {"email":"%s@example.com","password":"password123","full_name":"Owner"}"""

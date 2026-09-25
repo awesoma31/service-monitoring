@@ -30,6 +30,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.context.ApplicationEventPublisher;
+import org.awesoma.monitoring.repository.MonitorRepository;
+import org.awesoma.monitoring.integration.ProjectDeleted;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectServiceTest {
@@ -38,6 +41,8 @@ class ProjectServiceTest {
     @Mock private ProjectMemberRepository members;
     @Mock private UserService users;
     @Mock private ProjectMapper mapper;
+    @Mock private ApplicationEventPublisher events;
+    @Mock private MonitorRepository monitorRepository;
     @InjectMocks private ProjectService service;
 
     @Test
@@ -140,4 +145,15 @@ class ProjectServiceTest {
         assertThat(saved.getValue().getUser()).isEqualTo(user);
     }
 
+    @Test
+    void deletingAProjectAnnouncesItWithItsMonitors() {
+        Project project = new Project();
+        when(projects.findById(4L)).thenReturn(Optional.of(project));
+        when(monitorRepository.findIdsByProjectId(4L)).thenReturn(List.of(10L, 11L));
+
+        service.delete(4L);
+
+        verify(projects).delete(project);
+        verify(events).publishEvent(new ProjectDeleted(4L, List.of(10L, 11L)));
+    }
 }

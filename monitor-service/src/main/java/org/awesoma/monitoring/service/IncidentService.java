@@ -7,9 +7,7 @@ import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.repository.IncidentRepository;
-import org.awesoma.monitoring.repository.NotificationRepository;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
-import org.awesoma.monitoring.web.dto.incident.NotificationResponse;
 import org.awesoma.monitoring.web.exception.ConflictStateException;
 import org.awesoma.monitoring.web.exception.NotFoundException;
 import org.awesoma.monitoring.web.mapper.IncidentMapper;
@@ -24,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class IncidentService {
 
     private final IncidentRepository incidents;
-    private final NotificationRepository notifications;
     private final MonitorService monitors;
     private final IncidentMapper mapper;
 
@@ -39,13 +36,6 @@ public class IncidentService {
 
     public IncidentResponse get(Long id) {
         return mapper.toResponse(require(id));
-    }
-
-    public Page<NotificationResponse> listNotifications(Long incidentId, Pageable pageable) {
-        if (!incidents.existsById(incidentId)) {
-            throw NotFoundException.of("Incident", incidentId);
-        }
-        return notifications.findByIncidentId(incidentId, pageable).map(mapper::toResponse);
     }
 
     /**
@@ -69,6 +59,10 @@ public class IncidentService {
             monitor.setCurrentState(MonitorState.UNKNOWN);
         }
         return mapper.toResponse(incident);
+    }
+
+    public boolean exists(Long id) {
+        return incidents.existsById(id);
     }
 
     private Incident require(Long id) {

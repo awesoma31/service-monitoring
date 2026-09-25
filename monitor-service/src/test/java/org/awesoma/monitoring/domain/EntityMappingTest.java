@@ -4,14 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
-import org.awesoma.monitoring.domain.entity.Channel;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Notification;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.Tag;
 import org.awesoma.monitoring.domain.entity.User;
-import org.awesoma.monitoring.domain.enums.ChannelType;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -42,16 +39,6 @@ class EntityMappingTest extends AbstractIntegrationTest {
         incident.setSeverity(Severity.HIGH);
         entityManager.persist(incident);
 
-        Channel channel = new Channel();
-        channel.setProject(project);
-        channel.setType(ChannelType.EMAIL);
-        channel.setTarget("ops@example.com");
-        entityManager.persist(channel);
-
-        Notification notification = new Notification();
-        notification.setIncident(incident);
-        notification.setChannel(channel);
-        entityManager.persist(notification);
 
         entityManager.flush();
         entityManager.clear();
@@ -67,10 +54,6 @@ class EntityMappingTest extends AbstractIntegrationTest {
             assertThat(member.getUser().getId()).isEqualTo(owner.getId());
         });
 
-        Notification reloadedNotification =
-                entityManager.find(Notification.class, notification.getId());
-        assertThat(reloadedNotification.getIncident().getId()).isEqualTo(incident.getId());
-        assertThat(reloadedNotification.getChannel().getId()).isEqualTo(channel.getId());
     }
 
     @Test

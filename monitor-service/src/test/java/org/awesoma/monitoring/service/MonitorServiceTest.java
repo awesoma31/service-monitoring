@@ -30,6 +30,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.context.ApplicationEventPublisher;
+import org.awesoma.monitoring.integration.MonitorDeleted;
 
 @ExtendWith(MockitoExtension.class)
 class MonitorServiceTest {
@@ -38,6 +40,7 @@ class MonitorServiceTest {
     @Mock private ProjectService projects;
     @Mock private TagService tags;
     @Mock private MonitorMapper mapper;
+    @Mock private ApplicationEventPublisher events;
     @InjectMocks private MonitorService service;
 
     @Test
@@ -166,6 +169,7 @@ class MonitorServiceTest {
         service.delete(5L);
 
         verify(monitors).delete(monitor);
+        verify(events).publishEvent(new MonitorDeleted(5L));
     }
 
     private MonitorCreateRequest request(String name) {

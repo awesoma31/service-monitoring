@@ -7,12 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.persistence.EntityManager;
-import org.awesoma.monitoring.domain.entity.Channel;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.User;
-import org.awesoma.monitoring.domain.enums.ChannelType;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
@@ -71,21 +69,6 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void notificationsOfAnIncidentAreListed() throws Exception {
-        Monitor monitor = seed("notified");
-        record(monitor, ProbeOutcome.timeout(5000, "timed out"));
-        Incident incident = incidents
-                .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
-                .orElseThrow();
-
-        mockMvc.perform(get("/api/v1/incidents/{id}/notifications", incident.getId()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.total_elements").value(1))
-                .andExpect(jsonPath("$.content[0].status").value("PENDING"))
-                .andExpect(jsonPath("$.content[0].target").value("ops@example.com"));
-    }
-
-    @Test
     void unknownIncidentIsNotFound() throws Exception {
         mockMvc.perform(get("/api/v1/incidents/{id}", 999_999)).andExpect(status().isNotFound());
     }
@@ -108,12 +91,6 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
         project.setSlug(slug);
         project.addMember(owner);
         entityManager.persist(project);
-
-        Channel channel = new Channel();
-        channel.setProject(project);
-        channel.setType(ChannelType.EMAIL);
-        channel.setTarget("ops@example.com");
-        entityManager.persist(channel);
 
         Monitor monitor = new Monitor();
         monitor.setProject(project);

@@ -76,7 +76,7 @@ public class OpenApiConfig {
                         .title("Service Monitoring API")
                         .version("v1")
                         .description("REST API for projects that periodically check HTTP endpoints, "
-                                + "record check history, open incidents and prepare notifications."))
+                                + "track their state and open incidents when they fail."))
                 .components(components)
                 .tags(List.of(
                         new io.swagger.v3.oas.models.tags.Tag()
@@ -93,10 +93,7 @@ public class OpenApiConfig {
                                 .description("Reusable monitor labels"),
                         new io.swagger.v3.oas.models.tags.Tag()
                                 .name("Incidents")
-                                .description("Check history, incidents and generated notifications"),
-                        new io.swagger.v3.oas.models.tags.Tag()
-                                .name("Channels")
-                                .description("Project notification destinations")));
+                                .description("Incidents opened when monitors fail")));
     }
 
     private ApiResponse problemResponse(String description, Map<String, Object> exampleValue) {

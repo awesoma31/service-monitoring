@@ -6,21 +6,20 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Notification;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.repository.ChannelRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
-import org.awesoma.monitoring.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.awesoma.monitoring.integration.IncidentChanged;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
- * Turns probe results into state: check history, monitor state, incidents and the
- * notifications they trigger.
+ * Turns probe outcomes reported by check-service into monitor state and incidents, and
+ * announces opened and closed incidents to notification-service once they are committed.
  */
 @Service
 @RequiredArgsConstructor
@@ -28,8 +27,7 @@ public class MonitorCheckService {
 
     private final MonitorRepository monitorRepository;
     private final IncidentRepository incidentRepository;
-    private final ChannelRepository channelRepository;
-    private final NotificationRepository notificationRepository;
+    private final ApplicationEventPublisher events;
 
     @Transactional(readOnly = true)
     public List<MonitorTarget> findDueTargets(int limit) {
@@ -53,8 +51,9 @@ public class MonitorCheckService {
      * quietly doing nothing. The lock also keeps a failure and a recovery arriving at the
      * same moment from interleaving into a monitor that is UP with an incident still open.
      *
-     * <p>Atomicity matters beyond the race: a monitor marked DOWN without an incident, or
-     * an incident without its notifications, is a state no later probe would repair.
+     * <p>Atomicity matters beyond the race: a monitor marked DOWN without an incident is a
+     * state no later probe would repair. Notifications are announced only after commit, so a
+     * rolled-back outcome never alerts anyone.
      */
     @Transactional
     public void record(Long monitorId, ProbeOutcome outcome) {
@@ -90,7 +89,8 @@ public class MonitorCheckService {
         incident.setCause(outcome.errorMessage());
         incidentRepository.save(incident);
 
-        notifyEnabledChannels(monitor, incident);
+        events.publishEvent(new IncidentChanged(
+                incident.getId(), monitor.getProject().getId(), IncidentChanged.Kind.OPENED));
     }
 
     private void resolveOpenIncident(Monitor monitor, OffsetDateTime at) {
@@ -101,7 +101,8 @@ public class MonitorCheckService {
         }
         findOpenIncident(monitor).ifPresent(incident -> {
             incident.resolve(at);
-            notifyEnabledChannels(monitor, incident);
+            events.publishEvent(new IncidentChanged(
+                    incident.getId(), monitor.getProject().getId(), IncidentChanged.Kind.RESOLVED));
         });
     }
 
@@ -112,14 +113,5 @@ public class MonitorCheckService {
      */
     private Optional<Incident> findOpenIncident(Monitor monitor) {
         return incidentRepository.findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN);
-    }
-
-    private void notifyEnabledChannels(Monitor monitor, Incident incident) {
-        channelRepository.findByProjectIdAndEnabledTrue(monitor.getProject().getId()).forEach(channel -> {
-            Notification notification = new Notification();
-            notification.setIncident(incident);
-            notification.setChannel(channel);
-            notificationRepository.save(notification);
-        });
     }
 }

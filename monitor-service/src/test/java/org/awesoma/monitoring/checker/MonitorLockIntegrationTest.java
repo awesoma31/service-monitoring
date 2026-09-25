@@ -11,11 +11,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.awesoma.monitoring.domain.entity.Channel;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.User;
-import org.awesoma.monitoring.domain.enums.ChannelType;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
@@ -29,6 +27,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.awesoma.monitoring.integration.IncidentChanged;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * The row lock taken by {@link MonitorCheckService#record} against a real database.
@@ -65,12 +67,6 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
             project.setSlug(slug);
             project.addMember(owner);
             entityManager.persist(project);
-
-            Channel channel = new Channel();
-            channel.setProject(project);
-            channel.setType(ChannelType.EMAIL);
-            channel.setTarget("ops@example.com");
-            entityManager.persist(channel);
 
             Monitor monitor = new Monitor();
             monitor.setProject(project);
@@ -149,6 +145,8 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
                 .satisfies(incident -> assertThat(incident.getStatus()).isEqualTo(IncidentStatus.OPEN));
         assertThat(monitors.findById(monitorId).orElseThrow().getCurrentState())
                 .isEqualTo(MonitorState.DOWN);
+        verify(notificationClient, times(1)).incidentChanged(
+                argThat(event -> event.kind() == IncidentChanged.Kind.OPENED));
     }
 
     private static boolean finishesWithin(Future<?> future, long millis) throws Exception {

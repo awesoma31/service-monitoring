@@ -4,18 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
 import java.util.List;
-import org.awesoma.monitoring.domain.entity.Channel;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.User;
-import org.awesoma.monitoring.domain.enums.ChannelType;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
 import org.awesoma.monitoring.repository.IncidentRepository;
-import org.awesoma.monitoring.repository.NotificationRepository;
 import org.awesoma.monitoring.service.MonitorCheckService;
 import org.awesoma.monitoring.service.MonitorService;
 import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
@@ -24,15 +21,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
+import org.awesoma.monitoring.integration.IncidentChanged;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 
 /** The failure-to-recovery cycle against a real database, indexes and constraints included. */
 @Transactional
+@RecordApplicationEvents
 class CheckCycleIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private EntityManager entityManager;
     @Autowired private MonitorCheckService checks;
     @Autowired private IncidentRepository incidents;
-    @Autowired private NotificationRepository notifications;
+    @Autowired private ApplicationEvents events;
     @Autowired private MonitorService monitorService;
 
     @Test
@@ -48,9 +49,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
                 .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
                 .orElseThrow();
         assertThat(incident.getCause()).isEqualTo("connection refused");
-        // Only the enabled channel is notified; the disabled one is skipped.
-        assertThat(notifications.findByIncidentId(incident.getId(), Pageable.unpaged()))
-                .hasSize(1);
+        assertThat(announced()).containsExactly(IncidentChanged.Kind.OPENED);
 
         // A monitor that is already down must not accumulate a second incident.
         checks.record(monitor.getId(), ProbeOutcome.connectionError(9, "connection refused"));
@@ -63,9 +62,9 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
         assertThat(incident.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
         assertThat(incident.getResolvedAt()).isNotNull();
-        assertThat(notifications.findByIncidentId(incident.getId(), Pageable.unpaged()))
-                .as("recovery is announced as well as the failure")
-                .hasSize(2);
+        assertThat(announced())
+                .as("recovery is announced as well as the failure, each exactly once")
+                .containsExactly(IncidentChanged.Kind.OPENED, IncidentChanged.Kind.RESOLVED);
     }
 
     @Test
@@ -101,7 +100,8 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
         assertThat(incident.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
-        assertThat(notifications.findByIncidentId(incident.getId(), Pageable.unpaged())).hasSize(2);
+        assertThat(announced())
+                .containsExactly(IncidentChanged.Kind.OPENED, IncidentChanged.Kind.RESOLVED);
     }
 
     @Test
@@ -147,6 +147,10 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UNKNOWN);
     }
 
+    private java.util.List<IncidentChanged.Kind> announced() {
+        return events.stream(IncidentChanged.class).map(IncidentChanged::kind).toList();
+    }
+
     private Monitor seed(String slug) {
         User owner = new User();
         owner.setEmail(slug + "@example.com");
@@ -160,19 +164,6 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         project.setSlug(slug);
         project.addMember(owner);
         entityManager.persist(project);
-
-        Channel enabled = new Channel();
-        enabled.setProject(project);
-        enabled.setType(ChannelType.EMAIL);
-        enabled.setTarget("ops@example.com");
-        entityManager.persist(enabled);
-
-        Channel disabled = new Channel();
-        disabled.setProject(project);
-        disabled.setType(ChannelType.WEBHOOK);
-        disabled.setTarget("https://hooks.example.com/" + slug);
-        disabled.setEnabled(false);
-        entityManager.persist(disabled);
 
         Monitor monitor = new Monitor();
         monitor.setProject(project);

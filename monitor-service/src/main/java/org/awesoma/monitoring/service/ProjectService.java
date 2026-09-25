@@ -19,6 +19,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import org.awesoma.monitoring.integration.ProjectDeleted;
+import org.awesoma.monitoring.repository.MonitorRepository;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +33,8 @@ public class ProjectService {
     private final ProjectMemberRepository members;
     private final UserService users;
     private final ProjectMapper mapper;
+    private final MonitorRepository monitors;
+    private final ApplicationEventPublisher events;
 
     public Page<ProjectResponse> list(Pageable pageable) {
         return projects.findAll(pageable).map(mapper::toResponse);
@@ -70,7 +76,9 @@ public class ProjectService {
 
     @Transactional
     public void delete(Long id) {
+        List<Long> monitorIds = monitors.findIdsByProjectId(id);
         projects.delete(require(id));
+        events.publishEvent(new ProjectDeleted(id, monitorIds));
     }
 
     public Page<ProjectMemberResponse> listMembers(Long projectId, Pageable pageable) {
@@ -100,6 +108,10 @@ public class ProjectService {
                 .findById(new ProjectMemberId(projectId, userId))
                 .orElseThrow(() -> new NotFoundException(
                         "User %d is not a member of project %d".formatted(userId, projectId)));
+    }
+
+    public boolean exists(Long id) {
+        return projects.existsById(id);
     }
 
     /** Existence check that does not load the row, for callers that only need the guard. */

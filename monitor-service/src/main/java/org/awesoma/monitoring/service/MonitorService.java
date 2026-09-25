@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
+import org.awesoma.monitoring.integration.MonitorDeleted;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class MonitorService {
     private final ProjectService projects;
     private final TagService tags;
     private final MonitorMapper mapper;
+    private final ApplicationEventPublisher events;
 
     /** An absent tag lists the whole project; a given one narrows the page to that label. */
     public Page<MonitorResponse> listByProject(Long projectId, String tag, Pageable pageable) {
@@ -100,6 +103,7 @@ public class MonitorService {
     @Transactional
     public void delete(Long id) {
         monitors.delete(require(id));
+        events.publishEvent(new MonitorDeleted(id));
     }
 
     public boolean exists(Long id) {

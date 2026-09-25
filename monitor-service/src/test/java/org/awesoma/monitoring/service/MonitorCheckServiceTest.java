@@ -7,42 +7,37 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Optional;
-import org.awesoma.monitoring.domain.entity.Channel;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Notification;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.repository.ChannelRepository;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
-import org.awesoma.monitoring.repository.NotificationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.awesoma.monitoring.integration.IncidentChanged;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class MonitorCheckServiceTest {
 
     @Mock private MonitorRepository monitors;
     @Mock private IncidentRepository incidents;
-    @Mock private ChannelRepository channels;
-    @Mock private NotificationRepository notifications;
+    @Mock private ApplicationEventPublisher events;
     @InjectMocks private MonitorCheckService service;
 
     @Test
-    void aFailureOnAHealthyMonitorOpensAnIncidentAndAlertsEveryEnabledChannel() {
+    void aFailureOnAHealthyMonitorOpensAnIncidentAndAnnouncesIt() {
         Monitor monitor = monitor(MonitorState.UP);
         when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
-        when(channels.findByProjectIdAndEnabledTrue(7L)).thenReturn(List.of(new Channel(), new Channel()));
 
         service.record(1L, ProbeOutcome.timeout(5000, "read timed out"));
 
@@ -55,7 +50,7 @@ class MonitorCheckServiceTest {
         assertThat(opened.getValue().getCause()).isEqualTo("read timed out");
         assertThat(opened.getValue().getStatus()).isEqualTo(IncidentStatus.OPEN);
 
-        verify(notifications, org.mockito.Mockito.times(2)).save(any(Notification.class));
+        verify(events).publishEvent(new IncidentChanged(null, 7L, IncidentChanged.Kind.OPENED));
     }
 
     @Test
@@ -67,7 +62,7 @@ class MonitorCheckServiceTest {
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
         verify(incidents, never()).save(any());
-        verify(notifications, never()).save(any());
+        verify(events, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -78,14 +73,13 @@ class MonitorCheckServiceTest {
         when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
         when(incidents.findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN))
                 .thenReturn(Optional.of(open));
-        when(channels.findByProjectIdAndEnabledTrue(7L)).thenReturn(List.of(new Channel()));
 
         service.record(1L, ProbeOutcome.success(120, 200));
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
         assertThat(open.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
         assertThat(open.getResolvedAt()).isNotNull();
-        verify(notifications).save(any());
+        verify(events).publishEvent(new IncidentChanged(null, 7L, IncidentChanged.Kind.RESOLVED));
     }
 
     @Test
@@ -97,7 +91,7 @@ class MonitorCheckServiceTest {
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
         verify(incidents, never()).findByMonitorIdAndStatus(any(), any());
-        verify(notifications, never()).save(any());
+        verify(events, never()).publishEvent(any(Object.class));
     }
 
     @Test

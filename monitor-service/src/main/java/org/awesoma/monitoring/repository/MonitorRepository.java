@@ -23,6 +23,9 @@ public interface MonitorRepository extends JpaRepository<Monitor, Long> {
 
     boolean existsByProjectIdAndName(Long projectId, String name);
 
+    @Query("select m.id from Monitor m where m.project.id = :projectId")
+    List<Long> findIdsByProjectId(@Param("projectId") Long projectId);
+
     /**
      * Monitors whose interval has elapsed, oldest first. Expressed in SQL because the due
      * time depends on each monitor's own interval, which JPQL cannot add to a timestamp.

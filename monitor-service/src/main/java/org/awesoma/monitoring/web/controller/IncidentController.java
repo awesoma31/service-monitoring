@@ -12,7 +12,6 @@ import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.service.IncidentService;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
-import org.awesoma.monitoring.web.dto.incident.NotificationResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -73,15 +72,4 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.resolve(id));
     }
 
-    @GetMapping("/incidents/{id}/notifications")
-    @Operation(summary = "List notifications created for an incident")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Notifications returned"),
-        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
-        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
-    })
-    public ResponseEntity<Page<NotificationResponse>> listNotifications(
-            @PathVariable @Positive Long id, @Valid PageParams page) {
-        return ResponseEntity.ok(incidentService.listNotifications(id, page.toPageable()));
-    }
 }
