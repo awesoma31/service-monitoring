@@ -6,6 +6,12 @@ spring:
     gateway:
       server:
         webflux:
+          # X-Forwarded-* headers are added only for requests from a trusted address. Without
+          # them the services would advertise their own container address in their API docs,
+          # and "Try it out" in the shared Swagger UI could not reach them. Trusted here are
+          # loopback and private networks: the host through the published port and the compose
+          # network itself.
+          trusted-proxies: (127\.0\.0\.1|0:0:0:0:0:0:0:1|10\..*|172\.(1[6-9]|2[0-9]|3[01])\..*|192\.168\..*)
           # More specific paths first: everything not claimed by another service goes to
           # monitor-service.
           routes:
