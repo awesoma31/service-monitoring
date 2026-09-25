@@ -376,14 +376,14 @@ stateDiagram-v2
 |---|---|
 | Пользователи | `GET, POST /users`; `GET, PUT, DELETE /users/{id}` |
 | Проекты | `GET, POST /projects`; `GET, PUT, DELETE /projects/{id}` |
-| Участники | `GET, POST /projects/{id}/members`; `PUT, DELETE /projects/{id}/members/{userId}` |
+| Участники | `GET, POST /projects/{id}/members`; `DELETE /projects/{id}/members/{userId}` |
 | Мониторы | `GET, POST /projects/{id}/monitors`; `GET, PUT, DELETE /monitors/{id}`; `PUT /monitors/{id}/tags` |
 | История проверок | `GET /monitors/{id}/results` |
 | Инциденты | `GET /monitors/{id}/incidents`; `GET /incidents/{id}`; `POST /incidents/{id}/resolve`; `GET /incidents/{id}/notifications` |
 | Каналы | `GET, POST /projects/{id}/channels`; `GET, PUT, DELETE /channels/{id}` |
 | Теги | `GET, POST /tags`; `DELETE /tags/{id}` |
 
-Всего 33 операции. Коды ответов:
+Всего 32 операции. Коды ответов:
 
 | Код | Когда |
 |---|---|
