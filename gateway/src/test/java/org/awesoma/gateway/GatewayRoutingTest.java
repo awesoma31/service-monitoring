@@ -1,5 +1,10 @@
 package org.awesoma.gateway;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
@@ -38,14 +43,31 @@ class GatewayRoutingTest {
     }
 
     @Test
-    void specificServicesAreRoutedBeforeTheCatchAllRoute() {
-        http.get().uri("/actuator/gateway/routes").exchange()
+    void theCatchAllRouteComesAfterEveryServiceSpecificOne() {
+        JsonNode routes = http.get().uri("/actuator/gateway/routes").exchange()
+                .expectStatus().isOk()
+                .expectBody(JsonNode.class).returnResult().getResponseBody();
+
+        List<String> ids = new ArrayList<>();
+        routes.forEach(route -> ids.add(route.get("route_id").asText()));
+        assertThat(ids).last().isEqualTo("monitor-service");
+        assertThat(ids).contains(
+                "check-service", "notification-service",
+                "monitor-service-api-docs", "check-service-api-docs", "notification-service-api-docs");
+    }
+
+    @Test
+    void theSharedSwaggerUiListsTheDocumentOfEveryService() {
+        http.get().uri("/v3/api-docs/swagger-config").exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$[0].route_id").isEqualTo("check-service")
-                .jsonPath("$[0].uri").isEqualTo("lb://check-service")
-                .jsonPath("$[1].route_id").isEqualTo("notification-service")
-                .jsonPath("$[2].route_id").isEqualTo("monitor-service");
+                .jsonPath("$.urls[*].name")
+                .value(names -> assertThat(names.toString())
+                        .contains("monitor-service", "check-service", "notification-service"))
+                .jsonPath("$.urls[?(@.name == 'monitor-service')].url")
+                .isEqualTo(List.of("/v3/api-docs/monitor-service"));
+
+        http.get().uri("/swagger-ui.html").exchange().expectStatus().is3xxRedirection();
     }
 
     @Test

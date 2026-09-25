@@ -9,6 +9,28 @@ spring:
           # More specific paths first: everything not claimed by another service goes to
           # monitor-service.
           routes:
+            # The API docs of every service, served under the gateway for the shared Swagger UI.
+            - id: monitor-service-api-docs
+              uri: lb://monitor-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/monitor-service
+              filters:
+                - RewritePath=/v3/api-docs/monitor-service, /v3/api-docs
+            - id: check-service-api-docs
+              uri: lb://check-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/check-service
+              filters:
+                - RewritePath=/v3/api-docs/check-service, /v3/api-docs
+            - id: notification-service-api-docs
+              uri: lb://notification-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/notification-service
+              filters:
+                - RewritePath=/v3/api-docs/notification-service, /v3/api-docs
             - id: check-service
               uri: lb://check-service
               order: 0
@@ -45,3 +67,15 @@ spring:
                   args:
                     name: monitor-service
                     fallbackUri: forward:/fallback/monitor-service
+
+# One Swagger UI for the whole API: each service's document, fetched through the routes above.
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: monitor-service
+        url: /v3/api-docs/monitor-service
+      - name: check-service
+        url: /v3/api-docs/check-service
+      - name: notification-service
+        url: /v3/api-docs/notification-service

@@ -1,5 +1,6 @@
 package org.awesoma.gateway;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import java.net.URI;
 import java.util.Set;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ServerWebExchange;
  * service is down, not registered yet, too slow, or its circuit is open. The answer uses the
  * same RFC 7807 shape as the services behind the gateway.
  */
+@Hidden
 @RestController
 public class FallbackController {
 

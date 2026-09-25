@@ -13,6 +13,12 @@ spring:
         # just registered; keep it in step with the registry refresh below.
         ttl: 5s
 
+server:
+  # Requests arrive through the gateway, which adds X-Forwarded-* headers. Honouring them makes
+  # the server URL in each service's API document point at the gateway, so "Try it out" in the
+  # shared Swagger UI goes through it too.
+  forward-headers-strategy: framework
+
 eureka:
   client:
     service-url:
