@@ -8,7 +8,8 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
  * Routes come from the config repository. With no instance of the target service registered,
- * a routed path answers 503 from the load balancer, while an unrouted one is simply not found.
+ * a routed path is answered by the circuit breaker fallback, while an unrouted one is simply
+ * not found.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -17,8 +18,23 @@ class GatewayRoutingTest {
     @Autowired private WebTestClient http;
 
     @Test
-    void apiPathsAreRoutedToTheMonitorService() {
-        http.get().uri("/api/v1/users").exchange().expectStatus().isEqualTo(503);
+    void anUnavailableServiceAnswersThroughTheCircuitBreakerFallback() {
+        http.get().uri("/api/v1/users").exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Service unavailable")
+                .jsonPath("$.detail").isEqualTo("monitor-service is temporarily unavailable, try again later")
+                .jsonPath("$.instance").isEqualTo("/api/v1/users");
+    }
+
+    @Test
+    void eachRouteFallsBackForItsOwnService() {
+        http.get().uri("/api/v1/monitors/1/results").exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody().jsonPath("$.detail").isEqualTo("check-service is temporarily unavailable, try again later");
+        http.post().uri("/api/v1/projects/1/channels").exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody().jsonPath("$.detail").isEqualTo("notification-service is temporarily unavailable, try again later");
     }
 
     @Test
