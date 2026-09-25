@@ -14,6 +14,11 @@ for tool in curl jq; do
   command -v "$tool" >/dev/null || { echo "Нужен $tool: brew install $tool" >&2; exit 1; }
 done
 curl -sf "$HEALTH" >/dev/null || { echo "Сервис не отвечает на $HEALTH — запустите docker compose up" >&2; exit 1; }
+# Сразу после старта gateway ещё не знает адресов сервисов из Eureka и отвечает 503.
+for _ in $(seq 1 30); do
+  [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/users?size=1")" = 200 ] && break
+  sleep 2
+done
 
 say()  { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 call() { local m=$1 p=$2 b=${3:-}; curl -s -X "$m" -H 'Content-Type: application/json' ${b:+-d "$b"} -w '\n%{http_code}' "$API$p"; }
@@ -53,7 +58,7 @@ show POST "/projects/$PROJECT_ID/monitors" '{"name":"Minimal","url":"https://exa
 
 say "8. Монитор ждёт 500 от health самого приложения, получает 200 → DOWN, инцидент, уведомление"
 R=$(call POST "/projects/$PROJECT_ID/monitors" \
-  '{"name":"Self","url":"http://app:8080/actuator/health","interval_sec":10,"timeout_ms":2000,"expected_status":500}')
+  '{"name":"Self","url":"http://monitor-service:8080/actuator/health","interval_sec":10,"timeout_ms":2000,"expected_status":500}')
 BROKEN=$(body "$R" | jq .id)
 wait_state "$BROKEN" DOWN
 show GET "/monitors/$BROKEN/incidents"
@@ -62,7 +67,7 @@ show GET "/incidents/$INCIDENT/notifications"
 
 say "9. Ожидаем 200 → следующая проверка закрывает инцидент сама"
 call PUT "/monitors/$BROKEN" \
-  '{"name":"Self","url":"http://app:8080/actuator/health","http_method":"GET","interval_sec":10,"timeout_ms":2000,"expected_status":200,"active":true}' >/dev/null
+  '{"name":"Self","url":"http://monitor-service:8080/actuator/health","http_method":"GET","interval_sec":10,"timeout_ms":2000,"expected_status":200,"active":true}' >/dev/null
 wait_state "$BROKEN" UP
 show GET "/incidents/$INCIDENT"
 echo "уведомлений по инциденту: $(curl -s "$API/incidents/$INCIDENT/notifications" | jq '.content | length') (падение + восстановление)"
