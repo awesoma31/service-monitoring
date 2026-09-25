@@ -15,7 +15,6 @@ import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.tag.TagCreateRequest;
 import org.awesoma.monitoring.web.dto.tag.TagResponse;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -40,8 +38,8 @@ public class TagController {
         @ApiResponse(responseCode = "200", description = "Tags returned"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
-    public Page<TagResponse> list(@Valid PageParams page) {
-        return tagService.list(page.toPageable());
+    public ResponseEntity<Page<TagResponse>> list(@Valid PageParams page) {
+        return ResponseEntity.ok(tagService.list(page.toPageable()));
     }
 
     @PostMapping
@@ -63,14 +61,14 @@ public class TagController {
     }
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a tag")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Tag deleted"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public void delete(@PathVariable @Positive Long id) {
+    public ResponseEntity<Void> delete(@PathVariable @Positive Long id) {
         tagService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

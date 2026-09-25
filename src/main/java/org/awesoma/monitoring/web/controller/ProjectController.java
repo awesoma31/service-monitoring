@@ -18,7 +18,6 @@ import org.awesoma.monitoring.web.dto.project.ProjectMemberResponse;
 import org.awesoma.monitoring.web.dto.project.ProjectResponse;
 import org.awesoma.monitoring.web.dto.project.ProjectUpdateRequest;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +26,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -44,8 +42,8 @@ public class ProjectController {
         @ApiResponse(responseCode = "200", description = "Projects returned"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
-    public Page<ProjectResponse> list(@Valid PageParams page) {
-        return projectService.list(page.toPageable());
+    public ResponseEntity<Page<ProjectResponse>> list(@Valid PageParams page) {
+        return ResponseEntity.ok(projectService.list(page.toPageable()));
     }
 
     @GetMapping("/{id}")
@@ -55,8 +53,8 @@ public class ProjectController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public ProjectResponse get(@PathVariable @Positive Long id) {
-        return projectService.get(id);
+    public ResponseEntity<ProjectResponse> get(@PathVariable @Positive Long id) {
+        return ResponseEntity.ok(projectService.get(id));
     }
 
     @PostMapping
@@ -87,13 +85,12 @@ public class ProjectController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public ProjectResponse update(
+    public ResponseEntity<ProjectResponse> update(
             @PathVariable @Positive Long id, @Valid @RequestBody ProjectUpdateRequest request) {
-        return projectService.update(id, request);
+        return ResponseEntity.ok(projectService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a project")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Project deleted"),
@@ -101,8 +98,9 @@ public class ProjectController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
-    public void delete(@PathVariable @Positive Long id) {
+    public ResponseEntity<Void> delete(@PathVariable @Positive Long id) {
         projectService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/members")
@@ -112,9 +110,9 @@ public class ProjectController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public Page<ProjectMemberResponse> listMembers(
+    public ResponseEntity<Page<ProjectMemberResponse>> listMembers(
             @PathVariable @Positive Long id, @Valid PageParams page) {
-        return projectService.listMembers(id, page.toPageable());
+        return ResponseEntity.ok(projectService.listMembers(id, page.toPageable()));
     }
 
     @PostMapping("/{id}/members")
@@ -141,7 +139,6 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}/members/{userId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
             summary = "Remove a project member")
     @ApiResponses({
@@ -149,8 +146,9 @@ public class ProjectController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
-    public void removeMember(
+    public ResponseEntity<Void> removeMember(
             @PathVariable @Positive Long id, @PathVariable @Positive Long userId) {
         projectService.removeMember(id, userId);
+        return ResponseEntity.noContent().build();
     }
 }
