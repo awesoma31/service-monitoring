@@ -87,7 +87,7 @@ config-server (`spring.config.import`). Секреты — через перем
 - [x] Регистрация в Eureka — все сервисы и gateway, адресация по имени (`lb://…`, Feign)
 - [x] Конфигурация из Config Server — native backend, `config-repo/`
 - [x] Доступ через Spring Cloud Gateway — единственный опубликованный порт API (8080)
-- [x] Взаимодействие через Feign Client — 6 внутренних вызовов, таблица выше
+- [x] Взаимодействие через Feign Client — 8 внутренних вызовов, таблица выше
 - [x] Circuit Breaker — Resilience4j на всех Feign-клиентах и на маршрутах gateway
 - [x] Reactor + R2DBC — check-service
 - [x] Reactor + Spring Data JPA — notification-service
