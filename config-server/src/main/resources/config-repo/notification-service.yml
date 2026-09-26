@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema is owned by Liquibase; Hibernate only verifies it matches the entities.
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+server:
+  port: ${APP_PORT:8080}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

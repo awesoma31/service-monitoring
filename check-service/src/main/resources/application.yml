@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: check-service
+  config:
+    # Database, scheduler and discovery settings come from the config server.
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  cloud:
+    config:
+      fail-fast: ${CONFIG_FAIL_FAST:false}

@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: changes/001-create-channels.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/002-create-notifications.yaml
+      relativeToChangelogFile: true
