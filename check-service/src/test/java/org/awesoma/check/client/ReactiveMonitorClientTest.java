@@ -23,9 +23,9 @@ class ReactiveMonitorClientTest {
                 new MonitorTarget(1L, "https://a.example", HttpMethod.GET, 1000, 200, UUID.randomUUID());
         MonitorTarget second =
                 new MonitorTarget(2L, "https://b.example", HttpMethod.HEAD, 1000, 204, UUID.randomUUID());
-        when(feign.due(5, 90_000)).thenReturn(List.of(first, second));
+        when(feign.due(5, 4)).thenReturn(List.of(first, second));
 
-        StepVerifier.create(client.due(5, 90_000)).expectNext(first, second).verifyComplete();
+        StepVerifier.create(client.due(5, 4)).expectNext(first, second).verifyComplete();
     }
 
     @Test

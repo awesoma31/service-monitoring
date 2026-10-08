@@ -331,7 +331,7 @@ check-service работает с базой через R2DBC, а Liquibase тр
 
 | Кто → кому | Вызов | Назначение |
 |---|---|---|
-| check-service → monitor-service | `GET /internal/monitors/due?limit=&lease_ms=` | атомарное резервирование мониторов, которым пора на проверку |
+| check-service → monitor-service | `GET /internal/monitors/due?limit=&concurrency=` | атомарное резервирование мониторов, которым пора на проверку |
 | check-service → monitor-service | `POST /internal/monitors/{id}/outcomes` | результат проверки с токеном резервирования |
 | check-service → monitor-service | `GET /internal/monitors/{id}/exists` | проверка монитора для запроса истории |
 | notification-service → monitor-service | `GET /internal/projects/{id}/exists`, `GET /internal/incidents/{id}/exists` | проверка проекта и инцидента |
@@ -348,7 +348,7 @@ sequenceDiagram
     participant N as notification-service
 
     loop каждые CHECKER_INTERVAL_MS
-        C->>M: GET /internal/monitors/due (limit, lease_ms)
+        C->>M: GET /internal/monitors/due (limit, concurrency)
         Note over M: SELECT FOR UPDATE SKIP LOCKED,<br/>уникальный claim_token для каждой строки
         M-->>C: зарезервированные мониторы и claim_token
         par для каждого монитора
@@ -365,11 +365,12 @@ sequenceDiagram
     end
 ```
 
-1. **Резервирование мониторов.** check-service рассчитывает lease, достаточный для всех
-   последовательных волн batch при максимальном таймауте, и запрашивает у monitor-service
-   активные мониторы, срок проверки которых наступил. monitor-service в транзакции выбирает
-   не более `CHECKER_BATCH_SIZE` строк через `FOR UPDATE SKIP LOCKED`, присваивает каждой
-   уникальный `claim_token` и время `check_claimed_until`. Поэтому параллельные инстансы
+1. **Резервирование мониторов.** check-service запрашивает у monitor-service активные
+   мониторы, срок проверки которых наступил, и сообщает, сколько проверок выполняет
+   одновременно. monitor-service в транзакции выбирает не более `CHECKER_BATCH_SIZE` строк
+   через `FOR UPDATE SKIP LOCKED`, присваивает каждой уникальный `claim_token` и время
+   `check_claimed_until`: lease покрывает все волны выбранного batch при наибольшем
+   `timeout_ms` в нём плюс 5 с на запись и отчёт. Поэтому параллельные инстансы
    получают непересекающиеся наборы без общей блокировки всего планировщика.
 2. **Проверка.** Мониторы проверяются параллельно (не более `CHECKER_CONCURRENCY`
    одновременно) через `WebClient`; таймаут монитора ограничивает весь обмен, включая
@@ -674,8 +675,8 @@ monitor-service записывает неудавшееся уведомлени
 
 | Модуль | Тестов | Покрытие строк | Что проверяется |
 |---|---|---|---|
-| monitor-service | 122 | 97,2% | бизнес-правила, API, миграции, конкурентная выдача lease, защита от устаревших результатов, настройка уведомлений владельца, публикация событий, внутренний API |
-| check-service | 25 | 89,9% | HTTP-проверка на реальном сервере, проход планировщика, расчёт lease, история (Slice), Circuit Breaker |
+| monitor-service | 124 | 97,3% | бизнес-правила, API, миграции, конкурентная выдача и срок lease, защита от устаревших результатов, настройка уведомлений владельца, публикация событий, внутренний API |
+| check-service | 25 | 89,7% | HTTP-проверка на реальном сервере, проход планировщика, история (Slice), Circuit Breaker |
 | notification-service | 25 | 85,1% | каналы, очередь и состояния уведомлений, SMTP и Telegram, конкурентная выдача lease, миграции и 503 при недоступности monitor-service |
 | gateway | 5 | 90,9% | маршруты и их порядок, fallback, общий Swagger UI |
 | config-server | 4 | — | выдача конфигурации каждому сервису |

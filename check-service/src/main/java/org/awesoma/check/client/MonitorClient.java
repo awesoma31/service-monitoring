@@ -19,7 +19,7 @@ public interface MonitorClient {
 
     @GetMapping("/due")
     List<MonitorTarget> due(
-            @RequestParam("limit") int limit, @RequestParam("lease_ms") long leaseMs);
+            @RequestParam("limit") int limit, @RequestParam("concurrency") int concurrency);
 
     @PostMapping("/{id}/outcomes")
     void report(@PathVariable("id") Long monitorId, @RequestBody ProbeOutcome outcome);
