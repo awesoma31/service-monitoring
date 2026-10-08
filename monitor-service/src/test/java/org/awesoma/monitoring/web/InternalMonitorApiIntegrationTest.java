@@ -30,7 +30,7 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/internal/monitors/due")
                         .param("limit", "50")
-                        .param("lease_ms", "90000"))
+                        .param("concurrency", "4"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].monitor_id").value(hasItem((int) monitorId)))
                 .andExpect(jsonPath("$[?(@.monitor_id == %d)].url".formatted(monitorId))
@@ -121,7 +121,7 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
     private String claimToken(long monitorId) throws Exception {
         String targets = mockMvc.perform(get("/internal/monitors/due")
                         .param("limit", "50")
-                        .param("lease_ms", "90000"))
+                        .param("concurrency", "4"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()

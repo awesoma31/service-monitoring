@@ -39,7 +39,7 @@
 
 | Кто → кого | Вызов | Fallback |
 |---|---|---|
-| check-service → monitor-service | `GET /internal/monitors/due?limit=&lease_ms=` | пустой список — проход пропускается |
+| check-service → monitor-service | `GET /internal/monitors/due?limit=&concurrency=` | пустой список — проход пропускается |
 | check-service → monitor-service | `POST /internal/monitors/{id}/outcomes` | результат уже в истории, состояние догонит следующая проверка |
 | check-service → monitor-service | `GET /internal/monitors/{id}/exists` | история отвечает 503 |
 | notification-service → monitor-service | `GET /internal/projects/{id}/exists`, `/internal/incidents/{id}/exists` | 503 |
@@ -52,7 +52,9 @@
 
 Несколько инстансов check-service безопасно делят работу через lease. monitor-service
 атомарно резервирует due-мониторы запросом `FOR UPDATE SKIP LOCKED`, возвращает уникальный
-`claim_token`, а результат принимается только пока этот токен актуален. После аварии worker-а
+`claim_token`, а результат принимается только пока этот токен актуален. Срок lease —
+число волн batch при заданном `concurrency`, умноженное на наибольший `timeout_ms` в batch
+плюс 5 с на запись и отчёт. После аварии worker-а
 lease истекает и монитор снова выдаётся; поздний результат старого worker-а игнорируется.
 
 Владелец проекта может отключить будущие уведомления об инцидентах через

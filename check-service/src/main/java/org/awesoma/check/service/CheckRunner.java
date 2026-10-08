@@ -22,9 +22,6 @@ import reactor.core.publisher.Mono;
 @Service
 public class CheckRunner {
 
-    private static final int MAX_MONITOR_TIMEOUT_MS = 60_000;
-    private static final int COMPLETION_GRACE_PER_WAVE_MS = 30_000;
-
     private final ReactiveMonitorClient monitors;
     private final MonitorProbe probe;
     private final CheckResultRepository results;
@@ -51,7 +48,7 @@ public class CheckRunner {
     }
 
     public Mono<Void> runOnce() {
-        return monitors.due(batchSize, leaseDurationMs())
+        return monitors.due(batchSize, concurrency)
                 .flatMap(target -> check(target).onErrorResume(failure -> {
                     // One failing monitor must not stop the rest of the batch.
                     log.warn("Failed to check monitor {}", target.monitorId(), failure);
@@ -67,11 +64,5 @@ public class CheckRunner {
                     .save(CheckResult.of(target.monitorId(), outcome, OffsetDateTime.now()))
                     .then(monitors.report(target.monitorId(), claimedOutcome));
         });
-    }
-
-    /** Covers every sequential wave in a batch at the largest allowed per-monitor timeout. */
-    long leaseDurationMs() {
-        long waves = (batchSize + (long) concurrency - 1) / concurrency;
-        return waves * (MAX_MONITOR_TIMEOUT_MS + COMPLETION_GRACE_PER_WAVE_MS);
     }
 }

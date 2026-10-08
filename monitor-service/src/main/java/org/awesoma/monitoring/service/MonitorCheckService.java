@@ -33,12 +33,27 @@ public class MonitorCheckService {
     private final IncidentRepository incidentRepository;
     private final ApplicationEventPublisher events;
 
+    /** Time a worker gets on top of the probe timeout to store and report the outcome. */
+    static final Duration REPORT_GRACE = Duration.ofSeconds(5);
+
+    /**
+     * Leases a batch of due monitors to a worker that probes up to {@code concurrency} of them
+     * at a time. The lease covers every wave of the batch at its longest timeout, so a worker
+     * that never reports blocks the monitors for no longer than the batch could really take.
+     */
     @Transactional
-    public List<MonitorTarget> claimDueTargets(int limit, Duration leaseDuration) {
-        OffsetDateTime claimedUntil = OffsetDateTime.now().plus(leaseDuration);
-        return monitorRepository.findDueForClaim(limit).stream()
+    public List<MonitorTarget> claimDueTargets(int limit, int concurrency) {
+        List<Monitor> due = monitorRepository.findDueForClaim(limit);
+        OffsetDateTime claimedUntil = OffsetDateTime.now().plus(leaseDuration(due, concurrency));
+        return due.stream()
                 .map(monitor -> claim(monitor, claimedUntil))
                 .toList();
+    }
+
+    static Duration leaseDuration(List<Monitor> batch, int concurrency) {
+        int longestTimeoutMs = batch.stream().mapToInt(Monitor::getTimeoutMs).max().orElse(0);
+        long waves = (batch.size() + (long) concurrency - 1) / concurrency;
+        return Duration.ofMillis(longestTimeoutMs).plus(REPORT_GRACE).multipliedBy(waves);
     }
 
     private MonitorTarget claim(Monitor monitor, OffsetDateTime claimedUntil) {

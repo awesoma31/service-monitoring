@@ -26,7 +26,7 @@ public class MonitorClientFallbackFactory implements FallbackFactory<MonitorClie
     public MonitorClient create(Throwable cause) {
         return new MonitorClient() {
             @Override
-            public List<MonitorTarget> due(int limit, long leaseMs) {
+            public List<MonitorTarget> due(int limit, int concurrency) {
                 log.warn("monitor-service unavailable, skipping this check pass: {}", cause.toString());
                 return List.of();
             }

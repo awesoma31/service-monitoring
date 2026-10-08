@@ -3,7 +3,6 @@ package org.awesoma.monitoring.checker;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -131,7 +130,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         Monitor monitor = seed("due");
         entityManager.flush();
 
-        List<MonitorTarget> due = checks.claimDueTargets(10, Duration.ofMinutes(1));
+        List<MonitorTarget> due = checks.claimDueTargets(10, 4);
         assertThat(due).extracting(MonitorTarget::monitorId).contains(monitor.getId());
 
         UUID claimToken = due.stream()
@@ -142,7 +141,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         checks.record(monitor.getId(), ProbeOutcome.success(40, 200).forClaim(claimToken));
         entityManager.flush();
 
-        assertThat(checks.claimDueTargets(10, Duration.ofMinutes(1)))
+        assertThat(checks.claimDueTargets(10, 4))
                 .as("the interval has not elapsed yet")
                 .extracting(MonitorTarget::monitorId)
                 .doesNotContain(monitor.getId());
@@ -154,7 +153,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         monitor.setActive(false);
         entityManager.flush();
 
-        assertThat(checks.claimDueTargets(10, Duration.ofMinutes(1)))
+        assertThat(checks.claimDueTargets(10, 4))
                 .extracting(MonitorTarget::monitorId)
                 .doesNotContain(monitor.getId());
     }

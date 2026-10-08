@@ -138,16 +138,32 @@ class MonitorCheckServiceTest {
     void claimingDueMonitorsAssignsUniqueTokensAndADeadline() {
         Monitor first = monitor(MonitorState.UP);
         first.setId(1L);
+        first.setTimeoutMs(1_000);
         Monitor second = monitor(MonitorState.UP);
         second.setId(2L);
+        second.setTimeoutMs(3_000);
         when(monitors.findDueForClaim(2)).thenReturn(List.of(first, second));
 
-        var targets = service.claimDueTargets(2, Duration.ofMinutes(2));
+        OffsetDateTime before = OffsetDateTime.now();
+        var targets = service.claimDueTargets(2, 1);
 
         assertThat(targets).hasSize(2);
         assertThat(targets).extracting(target -> target.claimToken()).doesNotHaveDuplicates();
         assertThat(first.getCheckClaimToken()).isEqualTo(targets.get(0).claimToken());
-        assertThat(first.getCheckClaimedUntil()).isAfter(OffsetDateTime.now().plusMinutes(1));
+        // One at a time: two waves of the longer 3 s timeout plus the report grace.
+        assertThat(first.getCheckClaimedUntil())
+                .isBetween(before.plusSeconds(16), OffsetDateTime.now().plusSeconds(16));
+        assertThat(second.getCheckClaimedUntil()).isEqualTo(first.getCheckClaimedUntil());
+    }
+
+    @Test
+    void theLeaseCoversEachWaveOfTheBatchAtItsLongestTimeout() {
+        List<Monitor> batch = List.of(
+                monitorWithTimeout(5_000), monitorWithTimeout(2_000), monitorWithTimeout(5_000));
+
+        assertThat(MonitorCheckService.leaseDuration(batch, 8)).isEqualTo(Duration.ofSeconds(10));
+        assertThat(MonitorCheckService.leaseDuration(batch, 2)).isEqualTo(Duration.ofSeconds(20));
+        assertThat(MonitorCheckService.leaseDuration(List.of(), 8)).isZero();
     }
 
     @Test
@@ -188,6 +204,12 @@ class MonitorCheckServiceTest {
         monitor.setId(1L);
         monitor.setProject(project);
         monitor.setCurrentState(state);
+        return monitor;
+    }
+
+    private Monitor monitorWithTimeout(int timeoutMs) {
+        Monitor monitor = monitor(MonitorState.UP);
+        monitor.setTimeoutMs(timeoutMs);
         return monitor;
     }
 

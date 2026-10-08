@@ -1,6 +1,5 @@
 package org.awesoma.check.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -26,8 +25,6 @@ import reactor.test.StepVerifier;
 
 class CheckRunnerTest {
 
-    private static final long LEASE_MS = 270_000;
-
     private final ReactiveMonitorClient monitors = mock(ReactiveMonitorClient.class);
     private final MonitorProbe probe = mock(MonitorProbe.class);
     private final CheckResultRepository results = mock(CheckResultRepository.class);
@@ -43,7 +40,7 @@ class CheckRunnerTest {
     void storesTheResultBeforeReportingIt() {
         ProbeOutcome outcome = ProbeOutcome.success(12, 200);
         MonitorTarget target = target(1L);
-        when(monitors.due(10, LEASE_MS)).thenReturn(Flux.just(target));
+        when(monitors.due(10, 4)).thenReturn(Flux.just(target));
         when(probe.probe(target)).thenReturn(Mono.just(outcome));
 
         StepVerifier.create(runner.runOnce()).verifyComplete();
@@ -57,7 +54,7 @@ class CheckRunnerTest {
     void oneFailingMonitorDoesNotStopTheRestOfTheBatch() {
         MonitorTarget first = target(1L);
         MonitorTarget second = target(2L);
-        when(monitors.due(10, LEASE_MS)).thenReturn(Flux.just(first, second));
+        when(monitors.due(10, 4)).thenReturn(Flux.just(first, second));
         when(probe.probe(first)).thenReturn(Mono.error(new IllegalStateException("broken")));
         when(probe.probe(second)).thenReturn(Mono.just(ProbeOutcome.success(5, 200)));
 
@@ -69,17 +66,12 @@ class CheckRunnerTest {
 
     @Test
     void doesNothingWhenNoMonitorIsDue() {
-        when(monitors.due(10, LEASE_MS)).thenReturn(Flux.empty());
+        when(monitors.due(10, 4)).thenReturn(Flux.empty());
 
         StepVerifier.create(runner.runOnce()).verifyComplete();
 
         verify(probe, never()).probe(any());
         verify(results, never()).save(any());
-    }
-
-    @Test
-    void leaseCoversEveryPossibleTimeoutWaveAndReportingGrace() {
-        assertThat(runner.leaseDurationMs()).isEqualTo(LEASE_MS);
     }
 
     private MonitorTarget target(Long id) {

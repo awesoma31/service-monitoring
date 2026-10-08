@@ -3,7 +3,6 @@ package org.awesoma.monitoring.checker;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -107,13 +106,13 @@ class MonitorClaimIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void anExpiredLeaseCanBeReclaimedAndItsOldOutcomeCannotWin() {
-        MonitorTarget oldClaim = checks.claimDueTargets(4, Duration.ofMinutes(1)).get(0);
+        MonitorTarget oldClaim = checks.claimDueTargets(4, 4).get(0);
         transactions.executeWithoutResult(status -> {
             Monitor monitor = monitors.findById(oldClaim.monitorId()).orElseThrow();
             monitor.setCheckClaimedUntil(OffsetDateTime.now().minusSeconds(1));
         });
 
-        MonitorTarget newClaim = checks.claimDueTargets(1, Duration.ofMinutes(1)).get(0);
+        MonitorTarget newClaim = checks.claimDueTargets(1, 4).get(0);
         assertThat(newClaim.monitorId()).isEqualTo(oldClaim.monitorId());
         assertThat(newClaim.claimToken()).isNotEqualTo(oldClaim.claimToken());
 
@@ -134,7 +133,7 @@ class MonitorClaimIntegrationTest extends AbstractIntegrationTest {
 
     private List<MonitorTarget> claimAfter(CountDownLatch start, int limit) {
         await(start);
-        return checks.claimDueTargets(limit, Duration.ofMinutes(1));
+        return checks.claimDueTargets(limit, 4);
     }
 
     private Set<Long> ids(List<MonitorTarget> targets) {
