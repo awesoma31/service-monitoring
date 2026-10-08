@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.servers.Server;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,9 +20,11 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI notificationServiceOpenApi() {
-        return new OpenAPI().info(new Info()
-                .title("Notification Service API")
-                .description("Notification channels of projects and the alerts sent about incidents")
-                .version("v1"));
+        return new OpenAPI()
+                .servers(List.of(new Server().url("/")))
+                .info(new Info()
+                        .title("Notification Service API")
+                        .description("Notification channels of projects and the alerts sent about incidents")
+                        .version("v1"));
     }
 }

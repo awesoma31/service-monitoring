@@ -16,5 +16,16 @@ public record ProjectCreateRequest(
                 @Pattern(
                         regexp = "^[a-z0-9]+(-[a-z0-9]+)*$",
                         message = "must be lowercase words separated by single hyphens")
-                String slug) {
+                String slug,
+        @Schema(
+                        description = "Whether incident notifications are enabled for the project owner",
+                        example = "false",
+                        defaultValue = "true")
+                Boolean ownerNotificationsEnabled) {
+
+    public ProjectCreateRequest {
+        ownerNotificationsEnabled = ownerNotificationsEnabled == null
+                ? Boolean.TRUE
+                : ownerNotificationsEnabled;
+    }
 }

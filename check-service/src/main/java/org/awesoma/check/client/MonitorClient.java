@@ -18,7 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface MonitorClient {
 
     @GetMapping("/due")
-    List<MonitorTarget> due(@RequestParam("limit") int limit);
+    List<MonitorTarget> due(
+            @RequestParam("limit") int limit, @RequestParam("lease_ms") long leaseMs);
 
     @PostMapping("/{id}/outcomes")
     void report(@PathVariable("id") Long monitorId, @RequestBody ProbeOutcome outcome);

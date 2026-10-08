@@ -15,7 +15,7 @@ class MonitorClientFallbackFactoryTest {
 
     @Test
     void noMonitorIsDueWhileMonitorServiceIsDown() {
-        assertThat(fallback.due(50)).isEmpty();
+        assertThat(fallback.due(50, 450_000)).isEmpty();
     }
 
     @Test

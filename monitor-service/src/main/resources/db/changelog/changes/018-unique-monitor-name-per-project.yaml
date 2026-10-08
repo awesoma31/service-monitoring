@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-unique-monitor-name-per-project
+      author: nifreebie
+      comment: A monitor name is unique inside its project, as enforced by the REST API
+      changes:
+        - addUniqueConstraint:
+            tableName: monitors
+            columnNames: project_id, name
+            constraintName: uk_monitors_project_name
+      rollback:
+        - dropUniqueConstraint:
+            tableName: monitors
+            constraintName: uk_monitors_project_name

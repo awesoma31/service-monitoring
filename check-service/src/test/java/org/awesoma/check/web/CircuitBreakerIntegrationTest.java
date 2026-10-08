@@ -25,7 +25,7 @@ class CircuitBreakerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void aCheckPassIsSkippedAndTheCircuitOpensWhileMonitorServiceIsDown() {
         for (int call = 0; call < 6; call++) {
-            assertThat(monitorService.due(10)).isEmpty();
+            assertThat(monitorService.due(10, 90_000)).isEmpty();
         }
 
         assertThat(circuitBreakers.getAllCircuitBreakers())

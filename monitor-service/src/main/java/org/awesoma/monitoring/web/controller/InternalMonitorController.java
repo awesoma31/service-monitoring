@@ -1,9 +1,11 @@
 package org.awesoma.monitoring.web.controller;
 
 import io.swagger.v3.oas.annotations.Hidden;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
+import java.time.Duration;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
@@ -36,13 +38,15 @@ public class InternalMonitorController {
 
     @GetMapping("/due")
     public ResponseEntity<List<MonitorTarget>> due(
-            @RequestParam(defaultValue = "50") @Min(1) @Max(500) int limit) {
-        return ResponseEntity.ok(monitorCheckService.findDueTargets(limit));
+            @RequestParam(defaultValue = "50") @Min(1) @Max(500) int limit,
+            @RequestParam(name = "lease_ms") @Min(1_000) @Max(86_400_000) long leaseMs) {
+        return ResponseEntity.ok(
+                monitorCheckService.claimDueTargets(limit, Duration.ofMillis(leaseMs)));
     }
 
     @PostMapping("/{id}/outcomes")
     public ResponseEntity<Void> recordOutcome(
-            @PathVariable @Positive Long id, @RequestBody ProbeOutcome outcome) {
+            @PathVariable @Positive Long id, @Valid @RequestBody ProbeOutcome outcome) {
         monitorCheckService.record(id, outcome);
         return ResponseEntity.noContent().build();
     }

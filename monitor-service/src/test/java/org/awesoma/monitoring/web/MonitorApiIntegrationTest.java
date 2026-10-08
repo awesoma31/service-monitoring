@@ -120,6 +120,20 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void renamingAMonitorToAnotherMonitorsNameIsAConflict() throws Exception {
+        long projectId = createProject("duplicate-name-update");
+        createMonitor(projectId, "Taken", "https://taken.example");
+        long renamedId = createMonitor(projectId, "Original", "https://original.example");
+
+        updateMonitor(renamedId, "Taken", true)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Conflicting state"));
+
+        mockMvc.perform(get("/api/v1/monitors/{id}", renamedId))
+                .andExpect(jsonPath("$.name").value("Original"));
+    }
+
+    @Test
     void anIntervalBelowTheAllowedMinimumIsRejected() throws Exception {
         long projectId = createProject("bad-interval");
 

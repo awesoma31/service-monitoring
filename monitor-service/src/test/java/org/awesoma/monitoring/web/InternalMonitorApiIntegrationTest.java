@@ -28,21 +28,27 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
     void aNewMonitorIsListedAsDueWithWhatTheProbeNeeds() throws Exception {
         long monitorId = createMonitor("internal-due");
 
-        mockMvc.perform(get("/internal/monitors/due").param("limit", "50"))
+        mockMvc.perform(get("/internal/monitors/due")
+                        .param("limit", "50")
+                        .param("lease_ms", "90000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].monitor_id").value(hasItem((int) monitorId)))
                 .andExpect(jsonPath("$[?(@.monitor_id == %d)].url".formatted(monitorId))
                         .value(hasItem("https://internal.example")))
                 .andExpect(jsonPath("$[?(@.monitor_id == %d)].timeout_ms".formatted(monitorId))
-                        .value(hasItem(5000)));
+                        .value(hasItem(5000)))
+                .andExpect(jsonPath("$[?(@.monitor_id == %d)].claim_token".formatted(monitorId))
+                        .isNotEmpty());
     }
 
     @Test
     void aReportedFailureOpensAnIncident() throws Exception {
         long monitorId = createMonitor("internal-outcome");
+        String claimToken = claimToken(monitorId);
 
         mockMvc.perform(postJson("/internal/monitors/" + monitorId + "/outcomes", """
-                        {"result":"CONNECTION_ERROR","response_ms":7,"error_message":"refused"}"""))
+                        {"result":"CONNECTION_ERROR","response_ms":7,"error_message":"refused",
+                         "claim_token":"%s"}""".formatted(claimToken)))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/monitors/{id}", monitorId))
@@ -50,6 +56,16 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/monitors/{id}/incidents", monitorId))
                 .andExpect(jsonPath("$.content[0].status").value("OPEN"))
                 .andExpect(jsonPath("$.content[0].cause").value("refused"));
+    }
+
+    @Test
+    void anInvalidOutcomeIsRejectedWithAReadableValidationError() throws Exception {
+        long monitorId = createMonitor("invalid-internal-outcome");
+
+        mockMvc.perform(postJson("/internal/monitors/" + monitorId + "/outcomes", "{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Request validation failed"))
+                .andExpect(jsonPath("$.violations[*].field").value(hasItem("result")));
     }
 
     @Test
@@ -67,8 +83,10 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void projectsAndIncidentsCanBeLookedUpById() throws Exception {
         long monitorId = createMonitor("internal-lookup");
+        String claimToken = claimToken(monitorId);
         mockMvc.perform(postJson("/internal/monitors/" + monitorId + "/outcomes", """
-                        {"result":"TIMEOUT","response_ms":1000,"error_message":"slow"}"""))
+                        {"result":"TIMEOUT","response_ms":1000,"error_message":"slow",
+                         "claim_token":"%s"}""".formatted(claimToken)))
                 .andExpect(status().isNoContent());
         String incidents = mockMvc.perform(get("/api/v1/monitors/{id}/incidents", monitorId))
                 .andReturn().getResponse().getContentAsString();
@@ -98,6 +116,22 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
                         {"name":"Internal","url":"https://internal.example"}"""))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(monitor).get("id").asLong();
+    }
+
+    private String claimToken(long monitorId) throws Exception {
+        String targets = mockMvc.perform(get("/internal/monitors/due")
+                        .param("limit", "50")
+                        .param("lease_ms", "90000"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        for (var target : json.readTree(targets)) {
+            if (target.get("monitor_id").asLong() == monitorId) {
+                return target.get("claim_token").asText();
+            }
+        }
+        throw new AssertionError("Monitor %d was not claimed".formatted(monitorId));
     }
 
     private MockHttpServletRequestBuilder postJson(String path, String body) {

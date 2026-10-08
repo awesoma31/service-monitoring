@@ -9,8 +9,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.Tag;
@@ -79,7 +81,9 @@ class MonitorServiceTest {
         Monitor monitor = new Monitor();
         monitor.setName("Old");
         monitor.setActive(true);
-        when(monitors.findById(5L)).thenReturn(Optional.of(monitor));
+        monitor.setProject(project(1L));
+        monitor.claimForCheck(UUID.randomUUID(), OffsetDateTime.now().plusMinutes(1));
+        when(monitors.findWithLockById(5L)).thenReturn(Optional.of(monitor));
 
         service.update(
                 5L, new MonitorUpdateRequest("New", "https://new.example", HttpMethod.HEAD, 120, 3000, 204, false));
@@ -91,14 +95,18 @@ class MonitorServiceTest {
         assertThat(monitor.getExpectedStatus()).isEqualTo(204);
         assertThat(monitor.isActive()).isFalse();
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.PAUSED);
+        assertThat(monitor.getCheckClaimToken()).isNull();
+        assertThat(monitor.getCheckClaimedUntil()).isNull();
     }
 
     @Test
     void enablingAPausedMonitorReturnsItToUnknown() {
         Monitor monitor = new Monitor();
+        monitor.setName("Paused");
         monitor.setCurrentState(MonitorState.PAUSED);
         monitor.setActive(false);
-        when(monitors.findById(5L)).thenReturn(Optional.of(monitor));
+        monitor.setProject(project(1L));
+        when(monitors.findWithLockById(5L)).thenReturn(Optional.of(monitor));
 
         service.update(
                 5L,
@@ -107,6 +115,24 @@ class MonitorServiceTest {
 
         assertThat(monitor.isActive()).isTrue();
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UNKNOWN);
+    }
+
+    @Test
+    void updateRefusesANameUsedByAnotherMonitorInTheProject() {
+        Monitor monitor = new Monitor();
+        monitor.setName("Old");
+        monitor.setProject(project(1L));
+        when(monitors.findWithLockById(5L)).thenReturn(Optional.of(monitor));
+        when(monitors.existsByProjectIdAndNameAndIdNot(1L, "Taken", 5L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(
+                        5L,
+                        new MonitorUpdateRequest(
+                                "Taken", "https://taken.example", HttpMethod.GET, 60, 5000, 200, true)))
+                .isInstanceOf(ConflictStateException.class)
+                .hasMessageContaining("Taken");
+
+        assertThat(monitor.getName()).isEqualTo("Old");
     }
 
     @Test
@@ -175,5 +201,11 @@ class MonitorServiceTest {
     private MonitorCreateRequest request(String name) {
         return new MonitorCreateRequest(
                 name, "https://example.com", null, 60, 5000, null, Set.of("prod"));
+    }
+
+    private Project project(long id) {
+        Project project = new Project();
+        project.setId(id);
+        return project;
     }
 }

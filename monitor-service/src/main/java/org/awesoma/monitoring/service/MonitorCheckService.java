@@ -1,9 +1,12 @@
 package org.awesoma.monitoring.service;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
@@ -23,22 +26,31 @@ import org.springframework.context.ApplicationEventPublisher;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MonitorCheckService {
 
     private final MonitorRepository monitorRepository;
     private final IncidentRepository incidentRepository;
     private final ApplicationEventPublisher events;
 
-    @Transactional(readOnly = true)
-    public List<MonitorTarget> findDueTargets(int limit) {
-        return monitorRepository.findDue(limit).stream()
-                .map(monitor -> new MonitorTarget(
-                        monitor.getId(),
-                        monitor.getUrl(),
-                        monitor.getHttpMethod(),
-                        monitor.getTimeoutMs(),
-                        monitor.getExpectedStatus()))
+    @Transactional
+    public List<MonitorTarget> claimDueTargets(int limit, Duration leaseDuration) {
+        OffsetDateTime claimedUntil = OffsetDateTime.now().plus(leaseDuration);
+        return monitorRepository.findDueForClaim(limit).stream()
+                .map(monitor -> claim(monitor, claimedUntil))
                 .toList();
+    }
+
+    private MonitorTarget claim(Monitor monitor, OffsetDateTime claimedUntil) {
+        UUID token = UUID.randomUUID();
+        monitor.claimForCheck(token, claimedUntil);
+        return new MonitorTarget(
+                monitor.getId(),
+                monitor.getUrl(),
+                monitor.getHttpMethod(),
+                monitor.getTimeoutMs(),
+                monitor.getExpectedStatus(),
+                token);
     }
 
     /**
@@ -63,6 +75,11 @@ public class MonitorCheckService {
             return;
         }
         OffsetDateTime now = OffsetDateTime.now();
+        if (!monitor.ownsActiveCheckClaim(outcome.claimToken(), now)) {
+            log.info("Ignoring stale or unclaimed outcome for monitor {}", monitorId);
+            return;
+        }
+        monitor.clearCheckClaim();
         monitor.setLastCheckedAt(now);
 
         if (outcome.isFailure()) {
@@ -89,8 +106,7 @@ public class MonitorCheckService {
         incident.setCause(outcome.errorMessage());
         incidentRepository.save(incident);
 
-        events.publishEvent(new IncidentChanged(
-                incident.getId(), monitor.getProject().getId(), IncidentChanged.Kind.OPENED));
+        publishIncidentChanged(monitor, incident, IncidentChanged.Kind.OPENED);
     }
 
     private void resolveOpenIncident(Monitor monitor, OffsetDateTime at) {
@@ -101,9 +117,16 @@ public class MonitorCheckService {
         }
         findOpenIncident(monitor).ifPresent(incident -> {
             incident.resolve(at);
-            events.publishEvent(new IncidentChanged(
-                    incident.getId(), monitor.getProject().getId(), IncidentChanged.Kind.RESOLVED));
+            publishIncidentChanged(monitor, incident, IncidentChanged.Kind.RESOLVED);
         });
+    }
+
+    private void publishIncidentChanged(
+            Monitor monitor, Incident incident, IncidentChanged.Kind kind) {
+        if (monitor.getProject().isOwnerNotificationsEnabled()) {
+            events.publishEvent(
+                    new IncidentChanged(incident.getId(), monitor.getProject().getId(), kind));
+        }
     }
 
     /**
