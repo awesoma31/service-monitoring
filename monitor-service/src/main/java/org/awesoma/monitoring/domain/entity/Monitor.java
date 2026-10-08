@@ -19,6 +19,7 @@ import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -80,6 +81,31 @@ public class Monitor extends BaseEntity {
     /** Null until the first probe, which makes a fresh monitor due straight away. */
     @Column(name = "last_checked_at")
     private OffsetDateTime lastCheckedAt;
+
+    /** Identifies the check-service job that currently owns this monitor's next probe. */
+    @Column(name = "check_claim_token", columnDefinition = "uuid")
+    private UUID checkClaimToken;
+
+    /** A crashed worker releases its claim implicitly when this instant is reached. */
+    @Column(name = "check_claimed_until")
+    private OffsetDateTime checkClaimedUntil;
+
+    public void claimForCheck(UUID token, OffsetDateTime until) {
+        this.checkClaimToken = token;
+        this.checkClaimedUntil = until;
+    }
+
+    public boolean ownsActiveCheckClaim(UUID token, OffsetDateTime now) {
+        return token != null
+                && token.equals(checkClaimToken)
+                && checkClaimedUntil != null
+                && checkClaimedUntil.isAfter(now);
+    }
+
+    public void clearCheckClaim() {
+        this.checkClaimToken = null;
+        this.checkClaimedUntil = null;
+    }
 
     /**
      * Plain many-to-many: the join table carries nothing but the two keys.

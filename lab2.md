@@ -39,7 +39,7 @@
 
 | Кто → кого | Вызов | Fallback |
 |---|---|---|
-| check-service → monitor-service | `GET /internal/monitors/due` | пустой список — проход пропускается |
+| check-service → monitor-service | `GET /internal/monitors/due?limit=&concurrency=` | пустой список — проход пропускается |
 | check-service → monitor-service | `POST /internal/monitors/{id}/outcomes` | результат уже в истории, состояние догонит следующая проверка |
 | check-service → monitor-service | `GET /internal/monitors/{id}/exists` | история отвечает 503 |
 | notification-service → monitor-service | `GET /internal/projects/{id}/exists`, `/internal/incidents/{id}/exists` | 503 |
@@ -49,6 +49,21 @@
 Вызовы monitor-service идут из `@TransactionalEventListener` — только после коммита.
 Реактивные сервисы выполняют блокирующие Feign-вызовы на `Schedulers.boundedElastic()`.
 `/internal/**` gateway не маршрутизирует, в Swagger эти методы скрыты.
+
+Несколько инстансов check-service безопасно делят работу через lease. monitor-service
+атомарно резервирует due-мониторы запросом `FOR UPDATE SKIP LOCKED`, возвращает уникальный
+`claim_token`, а результат принимается только пока этот токен актуален. Срок lease —
+число волн batch при заданном `concurrency`, умноженное на наибольший `timeout_ms` в batch
+плюс 5 с на запись и отчёт. После аварии worker-а
+lease истекает и монитор снова выдаётся; поздний результат старого worker-а игнорируется.
+
+Владелец проекта может отключить будущие уведомления об инцидентах через
+`PUT /api/v1/projects/{id}/owner-notifications` с телом `{ "enabled": false }`. Инциденты
+продолжают создаваться и закрываться, а каналы сохраняются; monitor-service лишь не
+публикует для них `IncidentChanged`. Проверка владельца на уровне Spring Security относится
+к лабораторной №3, поскольку в лабораторной №2 аутентификации ещё нет.
+Настройку также можно передать при создании проекта как необязательное поле
+`owner_notifications_enabled` (по умолчанию `true`).
 
 ## Маршруты gateway
 
@@ -70,8 +85,9 @@
 Настройки общие, в `config-repo/application.yml`: размыкается при ≥ 50% ошибок из
 последних 10 вызовов (не раньше 5 вызовов), 10 с в разомкнутом состоянии, затем 2 пробных
 вызова; вызов дольше 3 с считается ошибкой. Состояние —
-`/actuator/circuitbreakers` каждого сервиса. Сценарий с остановкой notification-service —
-`scripts/circuit-breaker-demo.sh`.
+`/actuator/circuitbreakers` каждого сервиса. Сценарий `scripts/circuit-breaker-demo.sh`
+останавливает notification-service, размыкает Circuit Breaker gateway шестью неудачными
+вызовами и проверяет состояние `OPEN`.
 
 ## Конфигурация
 

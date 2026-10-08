@@ -3,8 +3,10 @@ package org.awesoma.monitoring.checker;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -50,6 +52,7 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
     private final ExecutorService workers = Executors.newFixedThreadPool(8);
     private Long monitorId;
     private Long ownerId;
+    private UUID claimToken;
 
     @BeforeEach
     void seed() {
@@ -74,6 +77,8 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
             monitor.setUrl("https://example.com");
             monitor.setIntervalSec(60);
             monitor.setTimeoutMs(5000);
+            claimToken = UUID.randomUUID();
+            monitor.claimForCheck(claimToken, OffsetDateTime.now().plusMinutes(5));
             entityManager.persist(monitor);
 
             ownerId = owner.getId();
@@ -108,7 +113,9 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
         assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
 
         Future<?> recorder = workers.submit(
-                () -> checks.record(monitorId, ProbeOutcome.connectionError(5, "refused")));
+                () -> checks.record(
+                        monitorId,
+                        ProbeOutcome.connectionError(5, "refused").forClaim(claimToken)));
 
         assertThat(finishesWithin(recorder, 1_000))
                 .as("record must block on the row lock held by the other transaction")
@@ -131,7 +138,9 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
         for (int i = 0; i < workersCount; i++) {
             results.add(workers.submit(() -> {
                 await(start);
-                checks.record(monitorId, ProbeOutcome.connectionError(5, "refused"));
+                checks.record(
+                        monitorId,
+                        ProbeOutcome.connectionError(5, "refused").forClaim(claimToken));
             }));
         }
         start.countDown();

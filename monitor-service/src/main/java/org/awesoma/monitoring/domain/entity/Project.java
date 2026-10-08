@@ -48,6 +48,10 @@ public class Project extends BaseEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    /** Whether incident changes should be announced through this project's channels. */
+    @Column(name = "owner_notifications_enabled", nullable = false)
+    private boolean ownerNotificationsEnabled = true;
+
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProjectMember> members = new LinkedHashSet<>();
 

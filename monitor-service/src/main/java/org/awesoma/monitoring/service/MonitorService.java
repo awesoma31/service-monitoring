@@ -68,13 +68,22 @@ public class MonitorService {
 
     @Transactional
     public MonitorResponse update(Long id, MonitorUpdateRequest request) {
-        Monitor monitor = require(id);
+        // Serializes configuration changes with an in-flight check outcome. Whichever gets
+        // the row first wins cleanly: an update clears the claim, so a later old outcome is ignored.
+        Monitor monitor = monitors.findWithLockById(id)
+                .orElseThrow(() -> NotFoundException.of("Monitor", id));
+        Long projectId = monitor.getProject().getId();
+        if (monitors.existsByProjectIdAndNameAndIdNot(projectId, request.name(), id)) {
+            throw new ConflictStateException(
+                    "Project %d already has a monitor named %s".formatted(projectId, request.name()));
+        }
         monitor.setName(request.name());
         monitor.setUrl(request.url());
         monitor.setHttpMethod(request.httpMethod());
         monitor.setIntervalSec(request.intervalSec());
         monitor.setTimeoutMs(request.timeoutMs());
         monitor.setExpectedStatus(request.expectedStatus());
+        monitor.clearCheckClaim();
         applyActiveFlag(monitor, request.active());
         return mapper.toResponse(monitor);
     }

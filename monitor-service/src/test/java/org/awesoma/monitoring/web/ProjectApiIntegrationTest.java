@@ -52,6 +52,22 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void creatingAProjectCanDisableOwnerIncidentNotifications() throws Exception {
+        long ownerId = createUser("silent-from-start@example.com");
+
+        mockMvc.perform(postJson("/api/v1/projects", """
+                        {
+                          "owner_id": %d,
+                          "name": "Silent Project",
+                          "slug": "silent-from-start",
+                          "owner_notifications_enabled": false
+                        }
+                        """.formatted(ownerId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.owner_notifications_enabled").value(false));
+    }
+
+    @Test
     void duplicateSlugIsAConflict() throws Exception {
         long ownerId = createUser("duplicate-slug@example.com");
         mockMvc.perform(postJson("/api/v1/projects", project(ownerId, "duplicate")))
@@ -119,6 +135,45 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void ownerIncidentNotificationsCanBeDisabledAndEnabledAgain() throws Exception {
+        long projectId = createProject(createUser("silent-owner@example.com"), "silent-owner");
+
+        mockMvc.perform(get("/api/v1/projects/{id}", projectId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.owner_notifications_enabled").value(true));
+
+        mockMvc.perform(put("/api/v1/projects/{id}/owner-notifications", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"enabled":false}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.owner_notifications_enabled").value(false));
+
+        mockMvc.perform(get("/api/v1/projects/{id}", projectId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.owner_notifications_enabled").value(false));
+
+        mockMvc.perform(put("/api/v1/projects/{id}/owner-notifications", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"enabled":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.owner_notifications_enabled").value(true));
+    }
+
+    @Test
+    void ownerNotificationPreferenceRequiresEnabledFlag() throws Exception {
+        long projectId = createProject(createUser("invalid-preference@example.com"), "invalid-preference");
+
+        mockMvc.perform(put("/api/v1/projects/{id}/owner-notifications", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void aMemberCanBeAddedAndRemoved() throws Exception {
         long ownerId = createUser("membership-owner@example.com");
         long memberId = createUser("membership-member@example.com");
@@ -135,6 +190,19 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isNoContent());
         mockMvc.perform(get("/api/v1/projects/{id}/members", projectId))
                 .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].user_id").value(ownerId));
+    }
+
+    @Test
+    void projectOwnerCannotBeRemovedFromMembers() throws Exception {
+        long ownerId = createUser("irremovable-owner@example.com");
+        long projectId = createProject(ownerId, "irremovable-owner");
+
+        mockMvc.perform(delete("/api/v1/projects/{id}/members/{userId}", projectId, ownerId))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Conflicting state"));
+
+        mockMvc.perform(get("/api/v1/projects/{id}/members", projectId))
                 .andExpect(jsonPath("$.content[0].user_id").value(ownerId));
     }
 

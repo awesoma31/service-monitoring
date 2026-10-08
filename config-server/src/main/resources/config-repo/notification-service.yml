@@ -10,6 +10,48 @@ spring:
       ddl-auto: validate
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          connectiontimeout: ${MAIL_CONNECTION_TIMEOUT_MS:10000}
+          timeout: ${MAIL_READ_TIMEOUT_MS:10000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT_MS:10000}
+          starttls:
+            enable: ${MAIL_STARTTLS:false}
+            required: ${MAIL_STARTTLS_REQUIRED:false}
+
+notifications:
+  delivery:
+    enabled: ${NOTIFICATION_DELIVERY_ENABLED:false}
+    interval-ms: ${NOTIFICATION_DELIVERY_INTERVAL_MS:5000}
+    batch-size: ${NOTIFICATION_DELIVERY_BATCH_SIZE:20}
+    concurrency: ${NOTIFICATION_DELIVERY_CONCURRENCY:4}
+    lease-duration: ${NOTIFICATION_DELIVERY_LEASE:PT2M}
+    max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:5}
+    retry-delay: ${NOTIFICATION_DELIVERY_RETRY_DELAY:PT30S}
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    from: ${MAIL_FROM:monitoring@localhost}
+  telegram:
+    enabled: ${TELEGRAM_ENABLED:false}
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    api-base-url: ${TELEGRAM_API_BASE_URL:https://api.telegram.org}
+    proxy-host: ${TELEGRAM_PROXY_HOST:}
+    proxy-port: ${TELEGRAM_PROXY_PORT:3128}
+    request-timeout: ${TELEGRAM_REQUEST_TIMEOUT:PT15S}
+
+management:
+  health:
+    mail:
+      # Without this the health check probes SMTP even when email is off, and an
+      # unreachable server keeps the service, and the gateway behind it, from starting.
+      enabled: ${EMAIL_ENABLED:false}
 
 server:
   port: ${APP_PORT:8080}

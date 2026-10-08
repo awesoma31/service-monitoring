@@ -1,9 +1,12 @@
 package org.awesoma.monitoring.service;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
@@ -23,22 +26,46 @@ import org.springframework.context.ApplicationEventPublisher;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MonitorCheckService {
 
     private final MonitorRepository monitorRepository;
     private final IncidentRepository incidentRepository;
     private final ApplicationEventPublisher events;
 
-    @Transactional(readOnly = true)
-    public List<MonitorTarget> findDueTargets(int limit) {
-        return monitorRepository.findDue(limit).stream()
-                .map(monitor -> new MonitorTarget(
-                        monitor.getId(),
-                        monitor.getUrl(),
-                        monitor.getHttpMethod(),
-                        monitor.getTimeoutMs(),
-                        monitor.getExpectedStatus()))
+    /** Time a worker gets on top of the probe timeout to store and report the outcome. */
+    static final Duration REPORT_GRACE = Duration.ofSeconds(5);
+
+    /**
+     * Leases a batch of due monitors to a worker that probes up to {@code concurrency} of them
+     * at a time. The lease covers every wave of the batch at its longest timeout, so a worker
+     * that never reports blocks the monitors for no longer than the batch could really take.
+     */
+    @Transactional
+    public List<MonitorTarget> claimDueTargets(int limit, int concurrency) {
+        List<Monitor> due = monitorRepository.findDueForClaim(limit);
+        OffsetDateTime claimedUntil = OffsetDateTime.now().plus(leaseDuration(due, concurrency));
+        return due.stream()
+                .map(monitor -> claim(monitor, claimedUntil))
                 .toList();
+    }
+
+    static Duration leaseDuration(List<Monitor> batch, int concurrency) {
+        int longestTimeoutMs = batch.stream().mapToInt(Monitor::getTimeoutMs).max().orElse(0);
+        long waves = (batch.size() + (long) concurrency - 1) / concurrency;
+        return Duration.ofMillis(longestTimeoutMs).plus(REPORT_GRACE).multipliedBy(waves);
+    }
+
+    private MonitorTarget claim(Monitor monitor, OffsetDateTime claimedUntil) {
+        UUID token = UUID.randomUUID();
+        monitor.claimForCheck(token, claimedUntil);
+        return new MonitorTarget(
+                monitor.getId(),
+                monitor.getUrl(),
+                monitor.getHttpMethod(),
+                monitor.getTimeoutMs(),
+                monitor.getExpectedStatus(),
+                token);
     }
 
     /**
@@ -63,6 +90,11 @@ public class MonitorCheckService {
             return;
         }
         OffsetDateTime now = OffsetDateTime.now();
+        if (!monitor.ownsActiveCheckClaim(outcome.claimToken(), now)) {
+            log.info("Ignoring stale or unclaimed outcome for monitor {}", monitorId);
+            return;
+        }
+        monitor.clearCheckClaim();
         monitor.setLastCheckedAt(now);
 
         if (outcome.isFailure()) {
@@ -89,8 +121,7 @@ public class MonitorCheckService {
         incident.setCause(outcome.errorMessage());
         incidentRepository.save(incident);
 
-        events.publishEvent(new IncidentChanged(
-                incident.getId(), monitor.getProject().getId(), IncidentChanged.Kind.OPENED));
+        publishIncidentChanged(monitor, incident, IncidentChanged.Kind.OPENED);
     }
 
     private void resolveOpenIncident(Monitor monitor, OffsetDateTime at) {
@@ -101,9 +132,16 @@ public class MonitorCheckService {
         }
         findOpenIncident(monitor).ifPresent(incident -> {
             incident.resolve(at);
-            events.publishEvent(new IncidentChanged(
-                    incident.getId(), monitor.getProject().getId(), IncidentChanged.Kind.RESOLVED));
+            publishIncidentChanged(monitor, incident, IncidentChanged.Kind.RESOLVED);
         });
+    }
+
+    private void publishIncidentChanged(
+            Monitor monitor, Incident incident, IncidentChanged.Kind kind) {
+        if (monitor.getProject().isOwnerNotificationsEnabled()) {
+            events.publishEvent(
+                    new IncidentChanged(incident.getId(), monitor.getProject().getId(), kind));
+        }
     }
 
     /**
