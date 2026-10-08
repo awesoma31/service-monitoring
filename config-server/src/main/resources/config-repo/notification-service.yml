@@ -46,6 +46,13 @@ notifications:
     proxy-port: ${TELEGRAM_PROXY_PORT:3128}
     request-timeout: ${TELEGRAM_REQUEST_TIMEOUT:PT15S}
 
+management:
+  health:
+    mail:
+      # Without this the health check probes SMTP even when email is off, and an
+      # unreachable server keeps the service, and the gateway behind it, from starting.
+      enabled: ${EMAIL_ENABLED:false}
+
 server:
   port: ${APP_PORT:8080}
 
