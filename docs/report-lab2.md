@@ -250,9 +250,16 @@ erDiagram
         bigint id PK
         bigint incident_id "инцидент monitor-service"
         bigint channel_id FK
+        varchar incident_kind
+        varchar subject
+        varchar message
         timestamptz sent_at
         varchar status
         int attempts
+        timestamptz next_attempt_at
+        varchar last_error
+        uuid delivery_claim_token
+        timestamptz delivery_claimed_until
     }
 ```
 
@@ -280,6 +287,7 @@ notification-service — каналы проекта (раздел 5.3).
 | `HttpMethod` | `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE` | monitor-service, check-service |
 | `CheckResultType` | `SUCCESS`, `TIMEOUT`, `BAD_STATUS`, `CONNECTION_ERROR` | monitor-service, check-service |
 | `ChannelType` | `EMAIL`, `WEBHOOK`, `TELEGRAM` | notification-service |
+| `IncidentKind` | `OPENED`, `RESOLVED` | notification-service |
 | `NotificationStatus` | `PENDING`, `SENT`, `FAILED` | notification-service |
 
 ### 4.3. Ограничения целостности
@@ -288,13 +296,16 @@ notification-service — каналы проекта (раздел 5.3).
   `UNIQUE (monitor_id) WHERE status = 'OPEN'`;
 - инцидент в статусе `RESOLVED` обязан иметь время закрытия, в статусе `OPEN` — не иметь;
 - уведомление в статусе `SENT` обязано иметь время отправки;
+- token и срок lease уведомления либо заполнены вместе, либо оба отсутствуют;
 - диапазоны интервала (10–86400 с), таймаута (100–60000 мс) и кода ответа (100–599);
 - уникальность email, slug проекта, имени тега, имени монитора внутри проекта и пары
   «тип + адрес» канала в проекте.
 
 Индексы: `check_results (monitor_id, checked_at DESC)` — выборка истории проверок;
 `incidents (monitor_id, status)` — поиск открытого инцидента;
-`notifications (incident_id)` — уведомления инцидента.
+`notifications (incident_id)` — уведомления инцидента;
+`notifications (status, next_attempt_at, delivery_claimed_until)` — готовая к отправке
+очередь.
 
 ### 4.4. Миграции
 
@@ -305,7 +316,7 @@ notification-service — каналы проекта (раздел 5.3).
 |---|---|
 | monitor-service | 20: 001–015 из лабораторной работы №1; 016 удаляет `check_results`, 017 — `channels` и `notifications`, перенесённые в другие сервисы; 018 закрепляет уникальность имени монитора внутри проекта; 019 добавляет настройку уведомлений владельца; 020 добавляет lease для распределения проверок между инстансами. Откаты 016 и 017 восстанавливают таблицы пустыми |
 | check-service | 1: `check_results` с ограничениями и индексом |
-| notification-service | 2: `channels`, `notifications` |
+| notification-service | 3: `channels`, `notifications`; 003 добавляет текст сообщения, расписание повторов и lease доставки |
 
 check-service работает с базой через R2DBC, а Liquibase требует JDBC, поэтому миграции
 выполняются по отдельному JDBC-подключению до начала работы сервиса.
@@ -434,7 +445,7 @@ config-server:
 | `application.yml` | общее для всех: именование полей JSON (snake_case), Eureka, Circuit Breaker, actuator, учёт заголовков `X-Forwarded-*` |
 | `monitor-service.yml` | подключение к базе, JPA, Liquibase |
 | `check-service.yml` | R2DBC, Liquibase по JDBC, параметры планировщика |
-| `notification-service.yml` | подключение к базе, JPA, Liquibase |
+| `notification-service.yml` | подключение к базе, JPA, Liquibase, SMTP, Telegram и параметры диспетчера |
 | `gateway.yml` | маршруты, Circuit Breaker маршрутов, общий Swagger UI |
 
 Сервис хранит у себя только имя и адрес Config Server (`spring.config.import`); значения
@@ -505,6 +516,14 @@ Spring WebFlux и Spring Data R2DBC. HTTP-проверки выполняютс�
 Декларативный `@Transactional` не применяется: транзакция привязана к потоку, а
 реактивная цепочка переходит между потоками.
 
+Диспетчер уведомлений выбирает готовые записи через `FOR UPDATE SKIP LOCKED`, присваивает
+им token и ограниченный срок lease, после чего отправляет их параллельно. SMTP как
+блокирующий API выполняется на `boundedElastic`, Telegram — неблокирующим `WebClient`.
+Успех записывается как `SENT`; ошибка планирует повтор с backoff, а после лимита переводит
+запись в `FAILED`. Поэтому несколько инстансов notification-service не выбирают одно
+сообщение одновременно. Семантика доставки — at least once: авария после внешней отправки,
+но до записи `SENT` может привести к повтору.
+
 Feign-клиенты блокирующие, поэтому в обоих сервисах их вызовы также выполняются на
 `boundedElastic`.
 
@@ -516,6 +535,7 @@ Feign-клиенты блокирующие, поэтому в обоих сер
 | Применение результата проверки (`MonitorCheckService.record`) | monitor-service | проверка lease, блокировка строки монитора, смена состояния, открытие или закрытие инцидента | устаревший результат не должен перезаписать новый, а частичное выполнение не должно оставить монитор в `DOWN` без инцидента |
 | Создание проекта (`ProjectService.create`) | monitor-service | создание проекта, добавление владельца в участники | сбой между вставками оставил бы проект, владелец которого не числится среди участников |
 | Создание уведомлений инцидента (`NotificationService.record`) | notification-service | уведомление для каждого включённого канала проекта | либо уведомления получают все каналы, либо ни один |
+| Резервирование batch уведомлений (`NotificationDeliveryService`) | notification-service | `FOR UPDATE SKIP LOCKED`, token и срок lease | несколько инстансов не должны одновременно отправить одну запись |
 
 Блокировка строки монитора (`@Lock(PESSIMISTIC_WRITE)`, в SQL — `SELECT ... FOR UPDATE`)
 выстраивает параллельные обработчики одного монитора в очередь. Частичный уникальный индекс
@@ -524,9 +544,9 @@ Feign-клиенты блокирующие, поэтому в обоих сер
 Операции, затрагивающие несколько сервисов, распределённой транзакцией не объединяются:
 запись результата проверки выполняется check-service до применения результата, а
 уведомления создаются после коммита транзакции инцидента (раздел 5.3). Возможное
-расхождение ограничено: история проверок записывается раньше, чем результат сообщается, а
-надёжная доставка уведомлений через брокер сообщений запланирована в лабораторной
-работе №4.
+расхождение ограничено: история проверок записывается раньше, чем результат сообщается.
+Повтор внешней доставки реализован в notification-service; гарантированная доставка самого
+межсервисного события через брокер сообщений запланирована в лабораторной работе №4.
 
 ## 10. REST API
 
@@ -624,6 +644,9 @@ JSON запроса. Технические подробности в ответ
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | monitor-service, notification-service | подключение к базе по JDBC |
 | `DB_R2DBC_URL`, `DB_JDBC_URL` | check-service | подключение по R2DBC и JDBC (для миграций) |
 | `CHECKER_INTERVAL_MS`, `CHECKER_BATCH_SIZE`, `CHECKER_CONCURRENCY` | check-service | параметры планировщика (по умолчанию 15000, 50, 8) |
+| `NOTIFICATION_DELIVERY_*` | notification-service | включение диспетчера, interval, batch, concurrency, lease, число попыток и backoff |
+| `EMAIL_ENABLED`, `MAIL_*` | notification-service | SMTP, отправитель, аутентификация и STARTTLS |
+| `TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_PROXY_*` | notification-service | Bot API и отдельный HTTP-прокси через VPN хоста |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | compose | параметры PostgreSQL |
 
 Запуск и проверка:
@@ -653,7 +676,7 @@ monitor-service записывает неудавшееся уведомлени
 |---|---|---|---|
 | monitor-service | 122 | 97,2% | бизнес-правила, API, миграции, конкурентная выдача lease, защита от устаревших результатов, настройка уведомлений владельца, публикация событий, внутренний API |
 | check-service | 25 | 89,9% | HTTP-проверка на реальном сервере, проход планировщика, расчёт lease, история (Slice), Circuit Breaker |
-| notification-service | 16 | 96,7% | каналы, создание и чтение уведомлений, удаление каналов проекта, 503 при недоступности monitor-service |
+| notification-service | 25 | 85,1% | каналы, очередь и состояния уведомлений, SMTP и Telegram, конкурентная выдача lease, миграции и 503 при недоступности monitor-service |
 | gateway | 5 | 90,9% | маршруты и их порядок, fallback, общий Swagger UI |
 | config-server | 4 | — | выдача конфигурации каждому сервису |
 | eureka-server | 1 | — | работа реестра |

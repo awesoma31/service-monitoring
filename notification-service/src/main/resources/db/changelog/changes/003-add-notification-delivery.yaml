@@ -1,0 +1,90 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-notification-delivery
+      author: nifreebie
+      comment: Adds persisted payload, retry schedule and leases for real notification delivery
+      changes:
+        - addColumn:
+            tableName: notifications
+            columns:
+              - column:
+                  name: incident_kind
+                  type: VARCHAR(20)
+                  defaultValue: OPENED
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject
+                  type: VARCHAR(255)
+                  defaultValue: Service monitoring incident
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: VARCHAR(2000)
+                  defaultValue: Incident status changed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_attempt_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error
+                  type: VARCHAR(1000)
+              - column:
+                  name: delivery_claim_token
+                  type: UUID
+              - column:
+                  name: delivery_claimed_until
+                  type: TIMESTAMP WITH TIME ZONE
+        - sql:
+            sql: >-
+              ALTER TABLE notifications
+                ADD CONSTRAINT ck_notifications_incident_kind
+                  CHECK (incident_kind IN ('OPENED', 'RESOLVED')),
+                ADD CONSTRAINT ck_notifications_delivery_claim_pair
+                  CHECK ((delivery_claim_token IS NULL AND delivery_claimed_until IS NULL)
+                      OR (delivery_claim_token IS NOT NULL AND delivery_claimed_until IS NOT NULL))
+        - createIndex:
+            indexName: idx_notifications_delivery_queue
+            tableName: notifications
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: next_attempt_at
+              - column:
+                  name: delivery_claimed_until
+      rollback:
+        - dropIndex:
+            indexName: idx_notifications_delivery_queue
+            tableName: notifications
+        - sql:
+            sql: >-
+              ALTER TABLE notifications
+                DROP CONSTRAINT ck_notifications_delivery_claim_pair,
+                DROP CONSTRAINT ck_notifications_incident_kind
+        - dropColumn:
+            tableName: notifications
+            columnName: delivery_claimed_until
+        - dropColumn:
+            tableName: notifications
+            columnName: delivery_claim_token
+        - dropColumn:
+            tableName: notifications
+            columnName: last_error
+        - dropColumn:
+            tableName: notifications
+            columnName: next_attempt_at
+        - dropColumn:
+            tableName: notifications
+            columnName: message
+        - dropColumn:
+            tableName: notifications
+            columnName: subject
+        - dropColumn:
+            tableName: notifications
+            columnName: incident_kind

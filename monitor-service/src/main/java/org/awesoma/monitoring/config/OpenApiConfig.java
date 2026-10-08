@@ -11,6 +11,7 @@ import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
 import java.util.Map;
 import org.awesoma.monitoring.web.dto.common.ApiErrorResponse;
@@ -72,6 +73,7 @@ public class OpenApiConfig {
                                         "instance", "/api/v1/projects")));
 
         return new OpenAPI()
+                .servers(List.of(new Server().url("/")))
                 .info(new Info()
                         .title("Service Monitoring API")
                         .version("v1")

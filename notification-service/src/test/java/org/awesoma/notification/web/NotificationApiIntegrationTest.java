@@ -37,6 +37,8 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
                 .jsonPath("$.content.length()").isEqualTo(2)
                 .jsonPath("$.content[0].channel_type").isEqualTo("EMAIL")
                 .jsonPath("$.content[0].target").isEqualTo("ops@example.com")
+                .jsonPath("$.content[0].incident_kind").isEqualTo("OPENED")
+                .jsonPath("$.content[0].subject").isEqualTo("Incident #" + incidentId + " opened")
                 .jsonPath("$.content[0].status").isEqualTo("PENDING");
     }
 

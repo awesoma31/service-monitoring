@@ -26,13 +26,20 @@ public class NotificationService {
 
     /**
      * Queues one alert per enabled channel of the project, in one transaction: either every
-     * channel gets its notification or none does. Delivery itself comes with lab 4.
+     * channel gets its notification or none does.
      */
     public Mono<Integer> record(IncidentEvent event) {
         return jpa.write(() -> {
+            String state = event.kind() == org.awesoma.notification.domain.IncidentKind.OPENED
+                    ? "opened"
+                    : "resolved";
+            String subject = "Incident #%d %s".formatted(event.incidentId(), state);
+            String message = "Incident #%d in project #%d was %s."
+                    .formatted(event.incidentId(), event.projectId(), state);
             List<Notification> created = channels.findByProjectIdAndEnabledTrue(event.projectId())
                     .stream()
-                    .map(channel -> new Notification(event.incidentId(), channel))
+                    .map(channel -> new Notification(
+                            event.incidentId(), channel, event.kind(), subject, message))
                     .toList();
             return notifications.saveAll(created).size();
         });
