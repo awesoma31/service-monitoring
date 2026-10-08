@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.util.UUID;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import org.awesoma.check.domain.CheckResultType;
@@ -108,6 +109,7 @@ class MonitorProbeTest {
     }
 
     private MonitorTarget target(String url, int expectedStatus, int timeoutMs) {
-        return new MonitorTarget(1L, url, HttpMethod.GET, timeoutMs, expectedStatus);
+        return new MonitorTarget(
+                1L, url, HttpMethod.GET, timeoutMs, expectedStatus, UUID.randomUUID());
     }
 }

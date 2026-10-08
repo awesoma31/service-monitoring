@@ -12,6 +12,7 @@ import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.ProjectService;
 import org.awesoma.monitoring.web.dto.common.PageParams;
+import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberResponse;
@@ -90,6 +91,22 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.update(id, request));
     }
 
+    @PutMapping("/{id}/owner-notifications")
+    @Operation(
+            summary = "Enable or disable incident notifications for the project owner",
+            description = "Keeps the notification channels and affects only future incident changes. "
+                    + "The owner check will be enforced when authentication is added in lab 3.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Notification preference updated"),
+        @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
+    })
+    public ResponseEntity<ProjectResponse> updateOwnerNotifications(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody OwnerNotificationsUpdateRequest request) {
+        return ResponseEntity.ok(projectService.updateOwnerNotifications(id, request));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a project")
     @ApiResponses({
@@ -144,7 +161,8 @@ public class ProjectController {
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Member removed"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
-        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound"),
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<Void> removeMember(
             @PathVariable @Positive Long id, @PathVariable @Positive Long userId) {

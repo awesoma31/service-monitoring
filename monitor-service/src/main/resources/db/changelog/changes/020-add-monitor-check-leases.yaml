@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-add-monitor-check-leases
+      author: nifreebie
+      comment: Atomically leases due monitors to horizontally scaled check-service workers
+      changes:
+        - addColumn:
+            tableName: monitors
+            columns:
+              - column:
+                  name: check_claim_token
+                  type: UUID
+              - column:
+                  name: check_claimed_until
+                  type: TIMESTAMP WITH TIME ZONE
+        - sql:
+            sql: >-
+              ALTER TABLE monitors
+                ADD CONSTRAINT ck_monitors_check_claim_pair
+                  CHECK ((check_claim_token IS NULL AND check_claimed_until IS NULL)
+                      OR (check_claim_token IS NOT NULL AND check_claimed_until IS NOT NULL))
+        - createIndex:
+            indexName: idx_monitors_check_claimed_until
+            tableName: monitors
+            columns:
+              - column:
+                  name: check_claimed_until
+      rollback:
+        - dropIndex:
+            indexName: idx_monitors_check_claimed_until
+            tableName: monitors
+        - sql:
+            sql: ALTER TABLE monitors DROP CONSTRAINT ck_monitors_check_claim_pair
+        - dropColumn:
+            tableName: monitors
+            columnName: check_claimed_until
+        - dropColumn:
+            tableName: monitors
+            columnName: check_claim_token

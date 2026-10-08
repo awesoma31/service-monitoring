@@ -28,7 +28,7 @@
 | Понятие | Описание | Сервис |
 |---|---|---|
 | Пользователь | учётная запись | monitor-service |
-| Проект | рабочее пространство с владельцем, участниками, мониторами и каналами | monitor-service |
+| Проект | рабочее пространство с владельцем, участниками, мониторами, каналами и настройкой уведомлений владельца | monitor-service |
 | Участник | пользователь, добавленный в проект; хранится дата вступления | monitor-service |
 | Монитор | проверяемый адрес: URL, HTTP-метод, интервал, таймаут, ожидаемый код ответа | monitor-service |
 | Тег | метка для группировки и фильтрации мониторов | monitor-service |
@@ -177,6 +177,7 @@ erDiagram
         bigint owner_id FK
         varchar name
         varchar slug UK
+        boolean owner_notifications_enabled
         timestamptz created_at
     }
     PROJECT_MEMBERS {
@@ -196,6 +197,8 @@ erDiagram
         boolean active
         varchar current_state
         timestamptz last_checked_at
+        uuid check_claim_token
+        timestamptz check_claimed_until
     }
     TAGS {
         bigint id PK
@@ -286,7 +289,8 @@ notification-service — каналы проекта (раздел 5.3).
 - инцидент в статусе `RESOLVED` обязан иметь время закрытия, в статусе `OPEN` — не иметь;
 - уведомление в статусе `SENT` обязано иметь время отправки;
 - диапазоны интервала (10–86400 с), таймаута (100–60000 мс) и кода ответа (100–599);
-- уникальность email, slug проекта, имени тега, пары «тип + адрес» канала в проекте.
+- уникальность email, slug проекта, имени тега, имени монитора внутри проекта и пары
+  «тип + адрес» канала в проекте.
 
 Индексы: `check_results (monitor_id, checked_at DESC)` — выборка истории проверок;
 `incidents (monitor_id, status)` — поиск открытого инцидента;
@@ -299,7 +303,7 @@ notification-service — каналы проекта (раздел 5.3).
 
 | Сервис | Наборы изменений |
 |---|---|
-| monitor-service | 17: 001–015 из лабораторной работы №1; 016 удаляет `check_results`, 017 — `channels` и `notifications`, перенесённые в другие сервисы. Откаты 016 и 017 восстанавливают таблицы пустыми |
+| monitor-service | 20: 001–015 из лабораторной работы №1; 016 удаляет `check_results`, 017 — `channels` и `notifications`, перенесённые в другие сервисы; 018 закрепляет уникальность имени монитора внутри проекта; 019 добавляет настройку уведомлений владельца; 020 добавляет lease для распределения проверок между инстансами. Откаты 016 и 017 восстанавливают таблицы пустыми |
 | check-service | 1: `check_results` с ограничениями и индексом |
 | notification-service | 2: `channels`, `notifications` |
 
@@ -316,8 +320,8 @@ check-service работает с базой через R2DBC, а Liquibase тр
 
 | Кто → кому | Вызов | Назначение |
 |---|---|---|
-| check-service → monitor-service | `GET /internal/monitors/due` | мониторы, которым пора на проверку |
-| check-service → monitor-service | `POST /internal/monitors/{id}/outcomes` | результат проверки |
+| check-service → monitor-service | `GET /internal/monitors/due?limit=&lease_ms=` | атомарное резервирование мониторов, которым пора на проверку |
+| check-service → monitor-service | `POST /internal/monitors/{id}/outcomes` | результат проверки с токеном резервирования |
 | check-service → monitor-service | `GET /internal/monitors/{id}/exists` | проверка монитора для запроса истории |
 | notification-service → monitor-service | `GET /internal/projects/{id}/exists`, `GET /internal/incidents/{id}/exists` | проверка проекта и инцидента |
 | monitor-service → notification-service | `POST /internal/notifications` | инцидент открыт или закрыт |
@@ -333,12 +337,13 @@ sequenceDiagram
     participant N as notification-service
 
     loop каждые CHECKER_INTERVAL_MS
-        C->>M: GET /internal/monitors/due
-        M-->>C: мониторы, которым пора на проверку
+        C->>M: GET /internal/monitors/due (limit, lease_ms)
+        Note over M: SELECT FOR UPDATE SKIP LOCKED,<br/>уникальный claim_token для каждой строки
+        M-->>C: зарезервированные мониторы и claim_token
         par для каждого монитора
             C->>C: HTTP-проверка (WebClient)
             C->>C: запись результата в check_db (R2DBC)
-            C->>M: POST /internal/monitors/{id}/outcomes
+            C->>M: POST /internal/monitors/{id}/outcomes + claim_token
             Note over M: транзакция: блокировка строки монитора,<br/>состояние, открытие или закрытие инцидента
             opt инцидент открыт или закрыт
                 M->>N: POST /internal/notifications (после коммита)
@@ -349,9 +354,12 @@ sequenceDiagram
     end
 ```
 
-1. **Выбор мониторов.** check-service запрашивает у monitor-service активные мониторы,
-   которые ещё не проверялись или с момента последней проверки которых прошло не меньше их
-   интервала, — не более `CHECKER_BATCH_SIZE` за проход.
+1. **Резервирование мониторов.** check-service рассчитывает lease, достаточный для всех
+   последовательных волн batch при максимальном таймауте, и запрашивает у monitor-service
+   активные мониторы, срок проверки которых наступил. monitor-service в транзакции выбирает
+   не более `CHECKER_BATCH_SIZE` строк через `FOR UPDATE SKIP LOCKED`, присваивает каждой
+   уникальный `claim_token` и время `check_claimed_until`. Поэтому параллельные инстансы
+   получают непересекающиеся наборы без общей блокировки всего планировщика.
 2. **Проверка.** Мониторы проверяются параллельно (не более `CHECKER_CONCURRENCY`
    одновременно) через `WebClient`; таймаут монитора ограничивает весь обмен, включая
    установку соединения. Совпадение кода ответа с ожидаемым даёт `SUCCESS`,
@@ -361,7 +369,10 @@ sequenceDiagram
    сообщается monitor-service. Если monitor-service недоступен, история остаётся полной, а
    состояние монитора обновит следующая проверка.
 4. **Применение результата.** monitor-service в одной транзакции блокирует строку монитора,
-   обновляет его состояние и открывает или закрывает инцидент (раздел 9).
+   проверяет совпадение и срок действия `claim_token`, очищает lease, обновляет состояние и
+   открывает или закрывает инцидент (раздел 9). Результат от просроченного или уже
+   перевыданного задания игнорируется. Если worker завершился аварийно, после
+   `check_claimed_until` монитор снова доступен для резервирования.
 
 ### 5.3. События после коммита
 
@@ -371,12 +382,16 @@ monitor-service не вызывает другие сервисы внутри �
 
 | Событие | Когда | Вызов |
 |---|---|---|
-| `IncidentChanged` | инцидент открыт или закрыт | notification-service: уведомления |
+| `IncidentChanged` | инцидент открыт или закрыт и владелец не отключил уведомления проекта | notification-service: уведомления |
 | `MonitorDeleted` | монитор удалён | check-service: удаление истории |
 | `ProjectDeleted` | проект удалён | check-service: история всех мониторов проекта; notification-service: каналы проекта |
 
 Откатившаяся транзакция не порождает уведомлений, а недоступность другого сервиса не
 отменяет уже совершённое изменение.
+
+Владелец может отключить будущие уведомления об инцидентах, не удаляя настроенные каналы.
+При `owner_notifications_enabled = false` monitor-service продолжает открывать и закрывать
+инциденты, но не публикует `IncidentChanged`; уже созданные уведомления не изменяются.
 
 ### 5.4. Состояния монитора
 
@@ -497,7 +512,8 @@ Feign-клиенты блокирующие, поэтому в обоих сер
 
 | Операция | Сервис | Действия | Обоснование |
 |---|---|---|---|
-| Применение результата проверки (`MonitorCheckService.record`) | monitor-service | блокировка строки монитора, смена состояния, открытие или закрытие инцидента | частичное выполнение оставило бы монитор в `DOWN` без инцидента; следующие проверки такое состояние не исправят |
+| Резервирование batch (`MonitorCheckService.claimDueTargets`) | monitor-service | `FOR UPDATE SKIP LOCKED`, токен и срок lease | конкурентные инстансы не должны проверять один монитор одновременно |
+| Применение результата проверки (`MonitorCheckService.record`) | monitor-service | проверка lease, блокировка строки монитора, смена состояния, открытие или закрытие инцидента | устаревший результат не должен перезаписать новый, а частичное выполнение не должно оставить монитор в `DOWN` без инцидента |
 | Создание проекта (`ProjectService.create`) | monitor-service | создание проекта, добавление владельца в участники | сбой между вставками оставил бы проект, владелец которого не числится среди участников |
 | Создание уведомлений инцидента (`NotificationService.record`) | notification-service | уведомление для каждого включённого канала проекта | либо уведомления получают все каналы, либо ни один |
 
@@ -520,7 +536,7 @@ Feign-клиенты блокирующие, поэтому в обоих сер
 | Ресурс | Операции | Сервис |
 |---|---|---|
 | Пользователи | `GET, POST /users`; `GET, PUT, DELETE /users/{id}` | monitor-service |
-| Проекты | `GET, POST /projects`; `GET, PUT, DELETE /projects/{id}` | monitor-service |
+| Проекты | `GET, POST /projects`; `GET, PUT, DELETE /projects/{id}`; `PUT /projects/{id}/owner-notifications` | monitor-service |
 | Участники | `GET, POST /projects/{id}/members`; `DELETE /projects/{id}/members/{userId}` | monitor-service |
 | Мониторы | `GET, POST /projects/{id}/monitors`; `GET, PUT, DELETE /monitors/{id}`; `PUT /monitors/{id}/tags` | monitor-service |
 | Теги | `GET, POST /tags`; `DELETE /tags/{id}` | monitor-service |
@@ -529,7 +545,16 @@ Feign-клиенты блокирующие, поэтому в обоих сер
 | Каналы | `GET, POST /projects/{id}/channels`; `GET, PUT, DELETE /channels/{id}` | notification-service |
 | Уведомления | `GET /incidents/{id}/notifications` | notification-service |
 
-Всего 32 операции. Контроллеры возвращают `ResponseEntity`.
+Всего 33 операции. Контроллеры возвращают `ResponseEntity`.
+
+`PUT /projects/{id}/owner-notifications` принимает `{ "enabled": false }` и действует
+только на будущие открытия и закрытия инцидентов. В лабораторной №2 аутентификации ещё нет;
+проверка, что запрос выполнил именно владелец проекта, добавляется вместе с JWT и Spring
+Security в лабораторной №3.
+
+Ту же настройку можно задать сразу при создании проекта полем
+`owner_notifications_enabled` в `POST /projects`. Поле необязательное и по умолчанию равно
+`true`.
 
 | Код | Когда |
 |---|---|
@@ -617,16 +642,17 @@ docker compose up --build            # 8 контейнеров; API и Swagger 
 Скрипт `scripts/demo.sh` выполняет основной сценарий через gateway: создание пользователей и
 проекта, добавление участника, канал, конфликтные и некорректные запросы, обе формы
 пагинации и полный цикл инцидента. Скрипт `scripts/circuit-breaker-demo.sh` останавливает
-notification-service и показывает, что gateway отвечает 503, инцидент открывается, а
-monitor-service записывает неудавшееся уведомление в журнал; в конце сервис запускается
-снова.
+notification-service, шестью неудачными вызовами размыкает Circuit Breaker gateway и
+проверяет его состояние `OPEN`; затем показывает, что инцидент всё равно открывается, а
+monitor-service записывает неудавшееся уведомление в журнал. В конце или при ошибке сервис
+запускается снова.
 
 ## 13. Тестирование
 
 | Модуль | Тестов | Покрытие строк | Что проверяется |
 |---|---|---|---|
-| monitor-service | 102 | 96,9% | бизнес-правила, API, миграции, блокировка строки при параллельных проверках, публикация событий, внутренний API |
-| check-service | 22 | 90,2% | HTTP-проверка на реальном сервере, проход планировщика, история (Slice), Circuit Breaker |
+| monitor-service | 122 | 97,2% | бизнес-правила, API, миграции, конкурентная выдача lease, защита от устаревших результатов, настройка уведомлений владельца, публикация событий, внутренний API |
+| check-service | 25 | 89,9% | HTTP-проверка на реальном сервере, проход планировщика, расчёт lease, история (Slice), Circuit Breaker |
 | notification-service | 16 | 96,7% | каналы, создание и чтение уведомлений, удаление каналов проекта, 503 при недоступности monitor-service |
 | gateway | 5 | 90,9% | маршруты и их порядок, fallback, общий Swagger UI |
 | config-server | 4 | — | выдача конфигурации каждому сервису |

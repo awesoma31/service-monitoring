@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.UUID;
 import org.awesoma.check.domain.HttpMethod;
 import org.awesoma.check.domain.MonitorTarget;
 import org.awesoma.check.domain.ProbeOutcome;
@@ -18,11 +19,13 @@ class ReactiveMonitorClientTest {
 
     @Test
     void emitsEveryDueTarget() {
-        MonitorTarget first = new MonitorTarget(1L, "https://a.example", HttpMethod.GET, 1000, 200);
-        MonitorTarget second = new MonitorTarget(2L, "https://b.example", HttpMethod.HEAD, 1000, 204);
-        when(feign.due(5)).thenReturn(List.of(first, second));
+        MonitorTarget first =
+                new MonitorTarget(1L, "https://a.example", HttpMethod.GET, 1000, 200, UUID.randomUUID());
+        MonitorTarget second =
+                new MonitorTarget(2L, "https://b.example", HttpMethod.HEAD, 1000, 204, UUID.randomUUID());
+        when(feign.due(5, 90_000)).thenReturn(List.of(first, second));
 
-        StepVerifier.create(client.due(5)).expectNext(first, second).verifyComplete();
+        StepVerifier.create(client.due(5, 90_000)).expectNext(first, second).verifyComplete();
     }
 
     @Test

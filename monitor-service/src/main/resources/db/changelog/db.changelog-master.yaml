@@ -50,3 +50,12 @@ databaseChangeLog:
   - include:
       file: changes/017-drop-channels-and-notifications.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/018-unique-monitor-name-per-project.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/019-add-owner-notification-preference.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/020-add-monitor-check-leases.yaml
+      relativeToChangelogFile: true

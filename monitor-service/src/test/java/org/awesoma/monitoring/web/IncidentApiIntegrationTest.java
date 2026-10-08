@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.persistence.EntityManager;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
@@ -74,7 +76,9 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     private void record(Monitor monitor, ProbeOutcome outcome) {
-        checks.record(monitor.getId(), outcome);
+        UUID token = UUID.randomUUID();
+        monitor.claimForCheck(token, OffsetDateTime.now().plusMinutes(1));
+        checks.record(monitor.getId(), outcome.forClaim(token));
         entityManager.flush();
     }
 

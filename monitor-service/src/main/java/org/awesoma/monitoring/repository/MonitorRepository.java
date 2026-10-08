@@ -23,12 +23,14 @@ public interface MonitorRepository extends JpaRepository<Monitor, Long> {
 
     boolean existsByProjectIdAndName(Long projectId, String name);
 
+    boolean existsByProjectIdAndNameAndIdNot(Long projectId, String name, Long id);
+
     @Query("select m.id from Monitor m where m.project.id = :projectId")
     List<Long> findIdsByProjectId(@Param("projectId") Long projectId);
 
     /**
-     * Monitors whose interval has elapsed, oldest first. Expressed in SQL because the due
-     * time depends on each monitor's own interval, which JPQL cannot add to a timestamp.
+     * Locks a disjoint batch of due monitors. SKIP LOCKED lets concurrent check-service
+     * instances claim different rows rather than wait for and then duplicate the same batch.
      */
     @Query(
             value = """
@@ -36,11 +38,13 @@ public interface MonitorRepository extends JpaRepository<Monitor, Long> {
                     WHERE active
                       AND (last_checked_at IS NULL
                            OR last_checked_at + make_interval(secs => interval_sec) <= now())
+                      AND (check_claimed_until IS NULL OR check_claimed_until <= now())
                     ORDER BY last_checked_at NULLS FIRST
                     LIMIT :limit
+                    FOR UPDATE SKIP LOCKED
                     """,
             nativeQuery = true)
-    List<Monitor> findDue(@Param("limit") int limit);
+    List<Monitor> findDueForClaim(@Param("limit") int limit);
 
     /**
      * Locks the monitor row for the duration of the transaction.

@@ -18,8 +18,8 @@ public class ReactiveMonitorClient {
 
     private final MonitorClient client;
 
-    public Flux<MonitorTarget> due(int limit) {
-        return Mono.fromCallable(() -> client.due(limit))
+    public Flux<MonitorTarget> due(int limit, long leaseMs) {
+        return Mono.fromCallable(() -> client.due(limit, leaseMs))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMapIterable(targets -> targets);
     }

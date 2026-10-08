@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-add-owner-notification-preference
+      author: nifreebie
+      comment: Lets a project owner opt out of future incident notifications
+      changes:
+        - addColumn:
+            tableName: projects
+            columns:
+              - column:
+                  name: owner_notifications_enabled
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: projects
+            columnName: owner_notifications_enabled

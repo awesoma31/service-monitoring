@@ -6,11 +6,13 @@ import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
+import org.awesoma.monitoring.integration.IncidentChanged;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
 import org.awesoma.monitoring.web.exception.ConflictStateException;
 import org.awesoma.monitoring.web.exception.NotFoundException;
 import org.awesoma.monitoring.web.mapper.IncidentMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ public class IncidentService {
     private final IncidentRepository incidents;
     private final MonitorService monitors;
     private final IncidentMapper mapper;
+    private final ApplicationEventPublisher events;
 
     public Page<IncidentResponse> listByMonitor(
             Long monitorId, IncidentStatus status, Pageable pageable) {
@@ -57,6 +60,10 @@ public class IncidentService {
         Monitor monitor = incident.getMonitor();
         if (monitor.getCurrentState() == MonitorState.DOWN) {
             monitor.setCurrentState(MonitorState.UNKNOWN);
+        }
+        if (monitor.getProject().isOwnerNotificationsEnabled()) {
+            events.publishEvent(new IncidentChanged(
+                    incident.getId(), monitor.getProject().getId(), IncidentChanged.Kind.RESOLVED));
         }
         return mapper.toResponse(incident);
     }

@@ -10,6 +10,7 @@ import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberResponse;
+import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectResponse;
 import org.awesoma.monitoring.web.dto.project.ProjectUpdateRequest;
 import org.awesoma.monitoring.web.exception.ConflictStateException;
@@ -62,6 +63,7 @@ public class ProjectService {
         project.setOwner(owner);
         project.setName(request.name());
         project.setSlug(request.slug());
+        project.setOwnerNotificationsEnabled(request.ownerNotificationsEnabled());
         project.addMember(owner);
 
         return mapper.toResponse(projects.save(project));
@@ -71,6 +73,18 @@ public class ProjectService {
     public ProjectResponse update(Long id, ProjectUpdateRequest request) {
         Project project = require(id);
         project.setName(request.name());
+        return mapper.toResponse(project);
+    }
+
+    /**
+     * Changes the owner's incident-notification preference without deleting project channels.
+     * Ownership is enforced by authentication starting with lab 3; lab 2 has no current user.
+     */
+    @Transactional
+    public ProjectResponse updateOwnerNotifications(
+            Long id, OwnerNotificationsUpdateRequest request) {
+        Project project = require(id);
+        project.setOwnerNotificationsEnabled(request.enabled());
         return mapper.toResponse(project);
     }
 
@@ -100,6 +114,11 @@ public class ProjectService {
 
     @Transactional
     public void removeMember(Long projectId, Long userId) {
+        Project project = require(projectId);
+        if (project.getOwner().getId().equals(userId)) {
+            throw new ConflictStateException(
+                    "The owner of project %d cannot be removed from its members".formatted(projectId));
+        }
         members.delete(requireMember(projectId, userId));
     }
 

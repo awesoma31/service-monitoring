@@ -3,7 +3,10 @@ package org.awesoma.monitoring.checker;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
@@ -41,7 +44,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         Monitor monitor = seed("cycle");
         entityManager.flush();
 
-        checks.record(monitor.getId(), ProbeOutcome.connectionError(12, "connection refused"));
+        record(monitor, ProbeOutcome.connectionError(12, "connection refused"));
         entityManager.flush();
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
@@ -52,11 +55,11 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(announced()).containsExactly(IncidentChanged.Kind.OPENED);
 
         // A monitor that is already down must not accumulate a second incident.
-        checks.record(monitor.getId(), ProbeOutcome.connectionError(9, "connection refused"));
+        record(monitor, ProbeOutcome.connectionError(9, "connection refused"));
         entityManager.flush();
         assertThat(incidents.findByMonitorId(monitor.getId(), Pageable.unpaged())).hasSize(1);
 
-        checks.record(monitor.getId(), ProbeOutcome.success(85, 200));
+        record(monitor, ProbeOutcome.success(85, 200));
         entityManager.flush();
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
@@ -68,14 +71,33 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void disabledOwnerNotificationsDoNotChangeTheIncidentLifecycle() {
+        Monitor monitor = seed("silent-cycle");
+        monitor.getProject().setOwnerNotificationsEnabled(false);
+        entityManager.flush();
+
+        record(monitor, ProbeOutcome.connectionError(12, "connection refused"));
+        entityManager.flush();
+        Incident incident = incidents
+                .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
+                .orElseThrow();
+
+        record(monitor, ProbeOutcome.success(85, 200));
+        entityManager.flush();
+
+        assertThat(incident.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
+        assertThat(announced()).isEmpty();
+    }
+
+    @Test
     void aMonitorPausedWhileDownKeepsItsIncidentWhenItFailsAgain() {
         Monitor monitor = seed("paused-failing");
         entityManager.flush();
-        checks.record(monitor.getId(), ProbeOutcome.connectionError(12, "connection refused"));
+        record(monitor, ProbeOutcome.connectionError(12, "connection refused"));
         entityManager.flush();
 
         pauseAndResume(monitor);
-        checks.record(monitor.getId(), ProbeOutcome.connectionError(9, "connection refused"));
+        record(monitor, ProbeOutcome.connectionError(9, "connection refused"));
         entityManager.flush();
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
@@ -88,14 +110,14 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
     void aMonitorPausedWhileDownClosesItsIncidentWhenItRecovers() {
         Monitor monitor = seed("paused-recovering");
         entityManager.flush();
-        checks.record(monitor.getId(), ProbeOutcome.connectionError(12, "connection refused"));
+        record(monitor, ProbeOutcome.connectionError(12, "connection refused"));
         entityManager.flush();
         Incident incident = incidents
                 .findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN)
                 .orElseThrow();
 
         pauseAndResume(monitor);
-        checks.record(monitor.getId(), ProbeOutcome.success(85, 200));
+        record(monitor, ProbeOutcome.success(85, 200));
         entityManager.flush();
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
@@ -109,13 +131,18 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         Monitor monitor = seed("due");
         entityManager.flush();
 
-        List<MonitorTarget> due = checks.findDueTargets(10);
+        List<MonitorTarget> due = checks.claimDueTargets(10, Duration.ofMinutes(1));
         assertThat(due).extracting(MonitorTarget::monitorId).contains(monitor.getId());
 
-        checks.record(monitor.getId(), ProbeOutcome.success(40, 200));
+        UUID claimToken = due.stream()
+                .filter(target -> target.monitorId().equals(monitor.getId()))
+                .findFirst()
+                .orElseThrow()
+                .claimToken();
+        checks.record(monitor.getId(), ProbeOutcome.success(40, 200).forClaim(claimToken));
         entityManager.flush();
 
-        assertThat(checks.findDueTargets(10))
+        assertThat(checks.claimDueTargets(10, Duration.ofMinutes(1)))
                 .as("the interval has not elapsed yet")
                 .extracting(MonitorTarget::monitorId)
                 .doesNotContain(monitor.getId());
@@ -127,7 +154,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         monitor.setActive(false);
         entityManager.flush();
 
-        assertThat(checks.findDueTargets(10))
+        assertThat(checks.claimDueTargets(10, Duration.ofMinutes(1)))
                 .extracting(MonitorTarget::monitorId)
                 .doesNotContain(monitor.getId());
     }
@@ -149,6 +176,12 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
 
     private java.util.List<IncidentChanged.Kind> announced() {
         return events.stream(IncidentChanged.class).map(IncidentChanged::kind).toList();
+    }
+
+    private void record(Monitor monitor, ProbeOutcome outcome) {
+        UUID token = UUID.randomUUID();
+        monitor.claimForCheck(token, OffsetDateTime.now().plusMinutes(1));
+        checks.record(monitor.getId(), outcome.forClaim(token));
     }
 
     private Monitor seed(String slug) {

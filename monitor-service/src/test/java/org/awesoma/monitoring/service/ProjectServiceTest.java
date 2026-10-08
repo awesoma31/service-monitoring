@@ -15,6 +15,7 @@ import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
+import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectResponse;
@@ -49,7 +50,7 @@ class ProjectServiceTest {
     void rejectsASlugThatIsAlreadyTaken() {
         when(projects.existsBySlug("taken")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(new ProjectCreateRequest(1L, "Name", "taken")))
+        assertThatThrownBy(() -> service.create(new ProjectCreateRequest(1L, "Name", "taken", true)))
                 .isInstanceOf(ConflictStateException.class);
 
         verify(projects, never()).save(any());
@@ -63,13 +64,28 @@ class ProjectServiceTest {
         when(users.require(7L)).thenReturn(owner);
         when(projects.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.create(new ProjectCreateRequest(7L, "Name", "fresh"));
+        service.create(new ProjectCreateRequest(7L, "Name", "fresh", null));
 
         ArgumentCaptor<Project> saved = ArgumentCaptor.forClass(Project.class);
         verify(projects).save(saved.capture());
+        assertThat(saved.getValue().isOwnerNotificationsEnabled()).isTrue();
         assertThat(saved.getValue().getMembers()).singleElement().satisfies(member -> {
             assertThat(member.getUser()).isEqualTo(owner);
         });
+    }
+
+    @Test
+    void createCanDisableOwnerIncidentNotifications() {
+        User owner = new User();
+        when(projects.existsBySlug("silent")).thenReturn(false);
+        when(users.require(7L)).thenReturn(owner);
+        when(projects.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.create(new ProjectCreateRequest(7L, "Name", "silent", false));
+
+        ArgumentCaptor<Project> saved = ArgumentCaptor.forClass(Project.class);
+        verify(projects).save(saved.capture());
+        assertThat(saved.getValue().isOwnerNotificationsEnabled()).isFalse();
     }
 
     @Test
@@ -83,11 +99,24 @@ class ProjectServiceTest {
 
     @Test
     void reportsAMissingMembershipAsNotFound() {
+        Project project = projectWithOwner(9L);
+        when(projects.findById(1L)).thenReturn(Optional.of(project));
         when(members.findById(new ProjectMemberId(1L, 2L))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.removeMember(1L, 2L))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("not a member");
+    }
+
+    @Test
+    void refusesToRemoveTheProjectOwnerFromMembers() {
+        when(projects.findById(1L)).thenReturn(Optional.of(projectWithOwner(2L)));
+
+        assertThatThrownBy(() -> service.removeMember(1L, 2L))
+                .isInstanceOf(ConflictStateException.class)
+                .hasMessageContaining("owner");
+
+        verify(members, never()).delete(any());
     }
 
     @Test
@@ -102,8 +131,8 @@ class ProjectServiceTest {
     void listMapsEveryProjectFromTheRequestedPage() {
         Project first = new Project();
         Project second = new Project();
-        ProjectResponse firstResponse = new ProjectResponse(1L, 10L, "First", "first", null);
-        ProjectResponse secondResponse = new ProjectResponse(2L, 10L, "Second", "second", null);
+        ProjectResponse firstResponse = new ProjectResponse(1L, 10L, "First", "first", null, true);
+        ProjectResponse secondResponse = new ProjectResponse(2L, 10L, "Second", "second", null, true);
         PageRequest pageable = PageRequest.of(1, 2);
         when(projects.findAll(pageable)).thenReturn(new PageImpl<>(List.of(first, second), pageable, 4));
         when(mapper.toResponse(first)).thenReturn(firstResponse);
@@ -126,6 +155,16 @@ class ProjectServiceTest {
 
         assertThat(project.getName()).isEqualTo("New");
         assertThat(project.getSlug()).isEqualTo("stable-slug");
+    }
+
+    @Test
+    void ownerCanDisableIncidentNotificationsForTheProject() {
+        Project project = new Project();
+        when(projects.findById(3L)).thenReturn(Optional.of(project));
+
+        service.updateOwnerNotifications(3L, new OwnerNotificationsUpdateRequest(false));
+
+        assertThat(project.isOwnerNotificationsEnabled()).isFalse();
     }
 
     @Test
@@ -155,5 +194,13 @@ class ProjectServiceTest {
 
         verify(projects).delete(project);
         verify(events).publishEvent(new ProjectDeleted(4L, List.of(10L, 11L)));
+    }
+
+    private Project projectWithOwner(long ownerId) {
+        User owner = new User();
+        owner.setId(ownerId);
+        Project project = new Project();
+        project.setOwner(owner);
+        return project;
     }
 }

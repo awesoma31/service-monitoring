@@ -1,5 +1,6 @@
 package org.awesoma.monitoring.domain.model;
 
+import java.util.UUID;
 import org.awesoma.monitoring.domain.enums.HttpMethod;
 
 /**
@@ -7,5 +8,10 @@ import org.awesoma.monitoring.domain.enums.HttpMethod;
  * never touches persistence and can be lifted out into its own service unchanged.
  */
 public record MonitorTarget(
-        Long monitorId, String url, HttpMethod httpMethod, int timeoutMs, int expectedStatus) {
+        Long monitorId,
+        String url,
+        HttpMethod httpMethod,
+        int timeoutMs,
+        int expectedStatus,
+        UUID claimToken) {
 }
