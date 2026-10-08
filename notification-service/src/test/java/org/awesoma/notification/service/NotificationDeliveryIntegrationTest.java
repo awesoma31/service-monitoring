@@ -2,12 +2,15 @@ package org.awesoma.notification.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.awesoma.notification.delivery.DeliveryException;
 import org.awesoma.notification.delivery.EmailNotificationSender;
 import org.awesoma.notification.delivery.TelegramNotificationSender;
@@ -22,15 +25,18 @@ import org.awesoma.notification.repository.NotificationRepository;
 import org.awesoma.notification.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 class NotificationDeliveryIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private NotificationDeliveryService delivery;
-    @Autowired private NotificationRepository notifications;
+    @MockitoSpyBean private NotificationRepository notifications;
     @Autowired private ChannelRepository channels;
 
     @MockitoBean private EmailNotificationSender emailSender;
@@ -91,6 +97,30 @@ class NotificationDeliveryIntegrationTest extends AbstractIntegrationTest {
         assertThat(failedAttempt.getLastError()).isEqualTo("SMTP unavailable");
         assertThat(failedAttempt.getNextAttemptAt()).isAfter(OffsetDateTime.now());
         assertThat(failedAttempt.getDeliveryClaimToken()).isNull();
+    }
+
+    @Test
+    void aFailedWriteAfterASuccessfulSendIsRetriedInsteadOfSendingAgain() {
+        Notification notification = pendingEmail();
+        // The repository is a proxy, so the real call goes through the spy's default answer.
+        Answer<?> real = mockingDetails(notifications).getMockCreationSettings().getDefaultAnswer();
+        AtomicBoolean firstWrite = new AtomicBoolean(true);
+        doAnswer(call -> {
+                    if (firstWrite.getAndSet(false)) {
+                        throw new TransientDataAccessResourceException("database blinked");
+                    }
+                    return real.answer(call);
+                })
+                .when(notifications)
+                .findForUpdateById(notification.getId());
+
+        assertThat(delivery.dispatchOnce().block()).isEqualTo(1);
+
+        Notification delivered = notifications.findById(notification.getId()).orElseThrow();
+        assertThat(delivered.getStatus()).isEqualTo(NotificationStatus.SENT);
+        assertThat(delivered.getAttempts()).isEqualTo(1);
+        assertThat(delivered.getLastError()).isNull();
+        verify(emailSender, times(1)).send(any());
     }
 
     private Notification pendingEmail() {

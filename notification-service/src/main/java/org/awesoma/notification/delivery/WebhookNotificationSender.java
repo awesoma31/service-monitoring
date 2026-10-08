@@ -10,7 +10,12 @@ import reactor.core.publisher.Mono;
 @Component
 public class WebhookNotificationSender implements NotificationSender {
 
-    private final WebClient webClient = WebClient.builder().build();
+    private final WebClient webClient;
+
+    /** The builder Spring configures, so the body is snake_case like the rest of the API. */
+    public WebhookNotificationSender(WebClient.Builder builder) {
+        this.webClient = builder.build();
+    }
 
     @Override
     public ChannelType supportedType() {
