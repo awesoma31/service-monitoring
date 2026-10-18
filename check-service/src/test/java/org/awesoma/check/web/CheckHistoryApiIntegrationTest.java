@@ -9,10 +9,12 @@ import org.awesoma.check.domain.CheckResult;
 import org.awesoma.check.domain.ProbeOutcome;
 import org.awesoma.check.repository.CheckResultRepository;
 import org.awesoma.check.support.AbstractIntegrationTest;
+import org.awesoma.check.web.dto.CheckResultResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -38,19 +40,32 @@ class CheckHistoryApiIntegrationTest extends AbstractIntegrationTest {
 
         http.get().uri("/api/v1/monitors/{id}/results?size=2", monitorId).exchange()
                 .expectStatus().isOk()
+                .expectHeader().valueEquals("X-Has-Next", "true")
+                .expectHeader().doesNotExist("X-Total-Count")
                 .expectBody()
-                .jsonPath("$.content.length()").isEqualTo(2)
-                .jsonPath("$.content[0].result").isEqualTo("SUCCESS")
-                .jsonPath("$.content[1].result").isEqualTo("CONNECTION_ERROR")
-                .jsonPath("$.content[1].error_message").isEqualTo("refused")
-                .jsonPath("$.last").isEqualTo(false)
-                // A slice reports whether more rows follow, never how many exist.
-                .jsonPath("$.total_elements").doesNotExist();
+                .jsonPath("$.length()").isEqualTo(2)
+                .jsonPath("$[0].result").isEqualTo("SUCCESS")
+                .jsonPath("$[1].result").isEqualTo("CONNECTION_ERROR")
+                .jsonPath("$[1].error_message").isEqualTo("refused");
 
         http.get().uri("/api/v1/monitors/{id}/results?size=2&page=1", monitorId).exchange()
+                .expectHeader().valueEquals("X-Has-Next", "false")
                 .expectBody()
-                .jsonPath("$.content.length()").isEqualTo(1)
-                .jsonPath("$.last").isEqualTo(true);
+                .jsonPath("$.length()").isEqualTo(1);
+    }
+
+    @Test
+    void historyCanAlsoBeReadAsAnNdjsonStream() {
+        long monitorId = 1_003;
+        OffsetDateTime now = OffsetDateTime.now();
+        store(monitorId, ProbeOutcome.success(10, 200), now.minusMinutes(1));
+        store(monitorId, ProbeOutcome.success(12, 200), now);
+
+        http.get().uri("/api/v1/monitors/{id}/results", monitorId)
+                .accept(MediaType.APPLICATION_NDJSON).exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_NDJSON)
+                .expectBodyList(CheckResultResponse.class).hasSize(2);
     }
 
     @Test
@@ -83,7 +98,7 @@ class CheckHistoryApiIntegrationTest extends AbstractIntegrationTest {
                 .expectStatus().isNoContent();
 
         http.get().uri("/api/v1/monitors/{id}/results", monitorId).exchange()
-                .expectBody().jsonPath("$.content.length()").isEqualTo(0);
+                .expectBody().jsonPath("$.length()").isEqualTo(0);
     }
 
     private void store(long monitorId, ProbeOutcome outcome, OffsetDateTime at) {

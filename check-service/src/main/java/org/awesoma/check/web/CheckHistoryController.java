@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.check.service.CheckHistoryService;
 import org.awesoma.check.web.dto.CheckResultResponse;
 import org.awesoma.check.web.dto.PageParams;
-import org.springframework.data.domain.Slice;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,19 +24,22 @@ public class CheckHistoryController {
 
     private final CheckHistoryService history;
 
-    @GetMapping(value = "/monitors/{monitorId}/results", produces = MediaType.APPLICATION_NDJSON_VALUE)
+    @GetMapping(value = "/monitors/{monitorId}/results",
+            produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_NDJSON_VALUE})
     @Operation(
             summary = "Scroll monitor check history",
-            description = "Returns a Slice ordered from newest to oldest. The response tells whether "
-                    + "more rows follow but carries no total count, so infinite scrolling costs "
-                    + "no count query.")
+            description = "Returns check results ordered from newest to oldest. X-Has-Next tells "
+                    + "whether more rows follow; no total count query is performed.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Check-result slice returned"),
         @ApiResponse(responseCode = "400", description = "Invalid paging parameters"),
         @ApiResponse(responseCode = "404", description = "Monitor not found")
     })
-    public Flux<Slice<CheckResultResponse>> listResults(
-            @PathVariable @Positive Long monitorId, @Valid PageParams page) {
-        return history.list(monitorId, page.toPageable()).flux();
+    public Flux<CheckResultResponse> listResults(
+            @PathVariable @Positive Long monitorId, @Valid PageParams page,
+            ServerHttpResponse response) {
+        return history.list(monitorId, page.toPageable())
+                .doOnNext(slice -> response.getHeaders().set("X-Has-Next", Boolean.toString(slice.hasNext())))
+                .flatMapIterable(slice -> slice.getContent());
     }
 }

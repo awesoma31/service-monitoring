@@ -70,13 +70,14 @@ call PUT "/monitors/$BROKEN" \
   '{"name":"Self","url":"http://monitor-service:8080/actuator/health","http_method":"GET","interval_sec":10,"timeout_ms":2000,"expected_status":200,"active":true}' >/dev/null
 wait_state "$BROKEN" UP
 show GET "/incidents/$INCIDENT"
-echo "уведомлений по инциденту: $(curl -s "$API/incidents/$INCIDENT/notifications" | jq '.content | length') (падение + восстановление)"
+echo "уведомлений по инциденту: $(curl -s "$API/incidents/$INCIDENT/notifications" | jq 'length') (падение + восстановление)"
 
 say "10. Повторное закрытие инцидента → 409"
 show POST "/incidents/$INCIDENT/resolve"
 
-say "11. История проверок — Slice, без total_elements"
-curl -s "$API/monitors/$BROKEN/results?size=2" | jq -c '{rows: (.content | map(.result)), has_total: has("total_elements"), last}'
+say "11. История проверок — список, следующая страница в X-Has-Next, без подсчёта общего числа"
+curl -s "$API/monitors/$BROKEN/results?size=2" | jq -c 'map(.result)'
+curl -s -D - -o /dev/null "$API/monitors/$BROKEN/results?size=2" | grep -i x-has-next
 
 say "12. Мониторы проекта — Page, общее число в X-Total-Count"
 curl -s -D - -o /dev/null "$API/projects/$PROJECT_ID/monitors?size=1" | grep -i x-total-count

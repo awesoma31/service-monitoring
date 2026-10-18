@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Called by monitor-service only: the gateway routes /api/v1/** alone, so this is reachable
@@ -32,13 +32,13 @@ public class InternalNotificationController {
 
     @PostMapping("/notifications")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Flux<Void> incidentChanged(@Valid @RequestBody IncidentEvent event) {
-        return notificationService.record(event).then().flux();
+    public Mono<Void> incidentChanged(@Valid @RequestBody IncidentEvent event) {
+        return notificationService.record(event).then();
     }
 
     @DeleteMapping("/projects/{projectId}/channels")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Flux<Void> projectDeleted(@PathVariable @Positive Long projectId) {
-        return channelService.deleteByProject(projectId).then().flux();
+    public Mono<Void> projectDeleted(@PathVariable @Positive Long projectId) {
+        return channelService.deleteByProject(projectId).then();
     }
 }

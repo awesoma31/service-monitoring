@@ -33,13 +33,14 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
 
         http.get().uri("/api/v1/incidents/{id}/notifications", incidentId).exchange()
                 .expectStatus().isOk()
+                .expectHeader().valueEquals("X-Total-Count", "2")
                 .expectBody()
-                .jsonPath("$.content.length()").isEqualTo(2)
-                .jsonPath("$.content[0].channel_type").isEqualTo("EMAIL")
-                .jsonPath("$.content[0].target").isEqualTo("ops@example.com")
-                .jsonPath("$.content[0].incident_kind").isEqualTo("OPENED")
-                .jsonPath("$.content[0].subject").isEqualTo("Incident #" + incidentId + " opened")
-                .jsonPath("$.content[0].status").isEqualTo("PENDING");
+                .jsonPath("$.length()").isEqualTo(2)
+                .jsonPath("$[0].channel_type").isEqualTo("EMAIL")
+                .jsonPath("$[0].target").isEqualTo("ops@example.com")
+                .jsonPath("$[0].incident_kind").isEqualTo("OPENED")
+                .jsonPath("$[0].subject").isEqualTo("Incident #" + incidentId + " opened")
+                .jsonPath("$[0].status").isEqualTo("PENDING");
     }
 
     @Test
@@ -62,7 +63,7 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
 
         http.get().uri("/api/v1/channels/{id}", channelId).exchange().expectStatus().isNotFound();
         http.get().uri("/api/v1/incidents/{id}/notifications", incidentId).exchange()
-                .expectBody().jsonPath("$.content.length()").isEqualTo(0);
+                .expectBody().jsonPath("$.length()").isEqualTo(0);
     }
 
     @Test

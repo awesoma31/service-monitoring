@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Called by monitor-service when a monitor is deleted. Not routed by the gateway and hidden
@@ -26,7 +26,7 @@ public class InternalResultController {
 
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Flux<Void> deleteHistory(@RequestParam("monitor_id") @Positive Long monitorId) {
-        return results.deleteByMonitorId(monitorId).then().flux();
+    public Mono<Void> deleteHistory(@RequestParam("monitor_id") @Positive Long monitorId) {
+        return results.deleteByMonitorId(monitorId).then();
     }
 }

@@ -77,6 +77,51 @@ gateway серией неудачных вызовов, проверяет со�
 ./scripts/circuit-breaker-demo.sh
 ```
 
+Для проверки исходящих вызовов из `monitor-service` есть две ручки (доступны также в Swagger):
+
+```bash
+curl -i http://localhost:8080/api/v1/services/check-service/health
+curl -i http://localhost:8080/api/v1/services/notification-service/health
+```
+
+Каждая вызывает `/actuator/health` соответствующего сервиса через Feign и его Circuit Breaker.
+При доступном сервисе возвращается HTTP 200, например:
+
+```json
+{"service":"check-service","status":"UP","fallback":false,"circuit_breaker_state":"CLOSED"}
+```
+
+При ошибке или открытом автомате возвращается HTTP 503 с `status: "UNAVAILABLE"` и
+`fallback: true`. Для ручной проверки остановите нужный сервис и сделайте шесть запросов:
+
+```bash
+docker compose stop check-service
+for i in {1..6}; do
+  curl -s http://localhost:8080/api/v1/services/check-service/health
+  echo
+done
+docker compose start check-service
+```
+
+После пяти ошибок `circuit_breaker_state` станет `OPEN`; дальнейшие запросы не дойдут до
+соседнего сервиса. Через 10 секунд автомат перейдёт в `HALF_OPEN`; после восстановления
+сервиса и его регистрации в Eureka два успешных пробных вызова вернут его в `CLOSED`.
+Для `notification-service` проверка аналогична. Это автоматы отдельных Feign-методов
+`CheckHistoryClienthealth` и `NotificationClienthealth` в `monitor-service`; у маршрутов
+gateway и у бизнес-вызовов свои автоматы.
+
+### Формат ответов WebFlux
+
+В `check-service` и `notification-service` списковые ручки возвращают `Flux<DTO>`:
+по умолчанию JSON-массив, при `Accept: application/x-ndjson` — отдельный JSON-объект
+на каждой строке. Параметры `page` и `size` сохранены. Метаданные пагинации передаются
+в заголовках: `X-Has-Next`, а для каналов и уведомлений также `X-Total-Count`.
+История проверок по-прежнему не выполняет запрос общего количества строк.
+Обёрток `Page`/`Slice` и поля `content` в теле этих ответов больше нет.
+Создание, чтение и обновление одного канала возвращают `Mono<DTO>` как JSON-объект;
+операции без тела — `Mono<Void>`. При создании канала сохранены HTTP 201 и `Location`,
+при удалении — HTTP 204.
+
 Тесты и контроль покрытия всех модулей (сборка падает при покрытии строк ниже 70%):
 
 ```bash

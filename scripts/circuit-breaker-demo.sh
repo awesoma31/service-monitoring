@@ -70,7 +70,7 @@ wait_for_gateway_recovery() {
     echo "пробный запрос: HTTP ${code:-000}, Circuit Breaker: ${breaker:-UNKNOWN}"
 
     if [ "$code" = 200 ] && [ "$breaker" = CLOSED ]; then
-      jq -e 'if type == "array" then .[0].content else .content end | type == "array"' \
+      jq -e 'type == "array"' \
         "$CB_RESPONSE" >/dev/null
       echo "gateway снова отдаёт ответ notification-service"
       return
@@ -127,7 +127,7 @@ wait_for_stack
 say "8. Проверяем HALF_OPEN → CLOSED и запрос через gateway"
 wait_for_gateway_recovery
 echo "ответ GET $API/projects/$PROJECT_ID/channels:"
-jq -c 'if type == "array" then .[0] else . end | {content, total_elements}' "$CB_RESPONSE"
+jq -c . "$CB_RESPONSE"
 
 say "9. Восстановление подтверждено"
 echo "notification-service: healthy"
