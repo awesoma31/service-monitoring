@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.notification.service.NotificationService;
 import org.awesoma.notification.web.dto.NotificationResponse;
 import org.awesoma.notification.web.dto.PageParams;
-import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,15 +26,21 @@ public class NotificationController {
 
     @GetMapping(
             value = "/incidents/{incidentId}/notifications",
-            produces = MediaType.APPLICATION_NDJSON_VALUE)
+            produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_NDJSON_VALUE})
     @Operation(summary = "List the notifications of an incident")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Notification page returned"),
         @ApiResponse(responseCode = "400", description = "Invalid paging parameters"),
         @ApiResponse(responseCode = "404", description = "Incident not found")
     })
-    public Flux<Page<NotificationResponse>> listByIncident(
-            @PathVariable @Positive Long incidentId, @Valid PageParams page) {
-        return notificationService.listByIncident(incidentId, page.toPageable()).flux();
+    public Flux<NotificationResponse> listByIncident(
+            @PathVariable @Positive Long incidentId, @Valid PageParams page,
+            ServerHttpResponse response) {
+        return notificationService.listByIncident(incidentId, page.toPageable())
+                .doOnNext(result -> {
+                    response.getHeaders().set("X-Total-Count", Long.toString(result.getTotalElements()));
+                    response.getHeaders().set("X-Has-Next", Boolean.toString(result.hasNext()));
+                })
+                .flatMapIterable(result -> result.getContent());
     }
 }

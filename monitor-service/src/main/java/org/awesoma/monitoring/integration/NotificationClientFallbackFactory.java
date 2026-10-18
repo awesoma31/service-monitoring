@@ -17,6 +17,12 @@ public class NotificationClientFallbackFactory implements FallbackFactory<Notifi
     public NotificationClient create(Throwable cause) {
         return new NotificationClient() {
             @Override
+            public HealthStatus health() {
+                log.warn("notification-service health unavailable: {}", cause.toString());
+                return HealthStatus.unavailable();
+            }
+
+            @Override
             public void incidentChanged(IncidentChanged event) {
                 log.warn("notification-service unavailable, incident {} {} not announced: {}",
                         event.incidentId(), event.kind(), cause.toString());

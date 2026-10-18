@@ -4,6 +4,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.concurrent.atomic.AtomicLong;
 import org.awesoma.notification.support.AbstractIntegrationTest;
+import org.awesoma.notification.web.dto.ChannelResponse;
 import org.awesoma.notification.web.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,7 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
                 .exchange()
                 .expectStatus().isCreated()
                 .expectHeader().valueMatches("Location", "/api/v1/channels/\\d+")
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .jsonPath("$.project_id").isEqualTo(projectId)
                 .jsonPath("$.enabled").isEqualTo(true);
@@ -73,9 +75,22 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
 
         http.get().uri("/api/v1/projects/{id}/channels", projectId).exchange()
                 .expectStatus().isOk()
+                .expectHeader().valueEquals("X-Total-Count", "2")
+                .expectHeader().valueEquals("X-Has-Next", "false")
                 .expectBody()
-                .jsonPath("$.content.length()").isEqualTo(2)
-                .jsonPath("$.total_elements").isEqualTo(2);
+                .jsonPath("$.length()").isEqualTo(2);
+
+        http.get().uri("/api/v1/projects/{id}/channels?size=1", projectId).exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals("X-Total-Count", "2")
+                .expectHeader().valueEquals("X-Has-Next", "true")
+                .expectBody().jsonPath("$.length()").isEqualTo(1);
+
+        http.get().uri("/api/v1/projects/{id}/channels", projectId)
+                .accept(MediaType.APPLICATION_NDJSON).exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_NDJSON)
+                .expectBodyList(ChannelResponse.class).hasSize(2);
     }
 
     @Test

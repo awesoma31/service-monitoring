@@ -14,7 +14,18 @@ public class CheckHistoryClientFallbackFactory implements FallbackFactory<CheckH
 
     @Override
     public CheckHistoryClient create(Throwable cause) {
-        return monitorId -> log.warn(
-                "check-service unavailable, history of monitor {} left behind: {}", monitorId, cause.toString());
+        return new CheckHistoryClient() {
+            @Override
+            public void deleteHistory(Long monitorId) {
+                log.warn("check-service unavailable, history of monitor {} left behind: {}",
+                        monitorId, cause.toString());
+            }
+
+            @Override
+            public HealthStatus health() {
+                log.warn("check-service health unavailable: {}", cause.toString());
+                return HealthStatus.unavailable();
+            }
+        };
     }
 }

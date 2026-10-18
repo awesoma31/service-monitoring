@@ -95,7 +95,10 @@ public class OpenApiConfig {
                                 .description("Reusable monitor labels"),
                         new io.swagger.v3.oas.models.tags.Tag()
                                 .name("Incidents")
-                                .description("Incidents opened when monitors fail")));
+                                .description("Incidents opened when monitors fail"),
+                        new io.swagger.v3.oas.models.tags.Tag()
+                                .name("Service health")
+                                .description("Downstream availability and Feign circuit breaker state")));
     }
 
     private ApiResponse problemResponse(String description, Map<String, Object> exampleValue) {
