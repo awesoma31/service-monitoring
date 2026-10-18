@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
-import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
@@ -29,16 +28,18 @@ import org.springframework.context.ApplicationEventPublisher;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProjectService {
+    private final org.awesoma.monitoring.security.AccessPolicy access;
 
     private final ProjectRepository projects;
     private final ProjectMemberRepository members;
-    private final UserService users;
+    private final UserDirectory users;
     private final ProjectMapper mapper;
     private final MonitorRepository monitors;
     private final ApplicationEventPublisher events;
 
     public Page<ProjectResponse> list(Pageable pageable) {
-        return projects.findAll(pageable).map(mapper::toResponse);
+        return (access.supervisor() ? projects.findAll(pageable)
+                : projects.findAccessible(access.userId(), pageable)).map(mapper::toResponse);
     }
 
     public ProjectResponse get(Long id) {
@@ -57,14 +58,14 @@ public class ProjectService {
         if (projects.existsBySlug(request.slug())) {
             throw new ConflictStateException("Slug %s is already taken".formatted(request.slug()));
         }
-        User owner = users.require(request.ownerId());
+        users.requireActive(request.ownerId());
 
         Project project = new Project();
-        project.setOwner(owner);
+        project.setOwnerId(request.ownerId());
         project.setName(request.name());
         project.setSlug(request.slug());
         project.setOwnerNotificationsEnabled(request.ownerNotificationsEnabled());
-        project.addMember(owner);
+        project.addMember(request.ownerId());
 
         return mapper.toResponse(projects.save(project));
     }
@@ -78,7 +79,7 @@ public class ProjectService {
 
     /**
      * Changes the owner's incident-notification preference without deleting project channels.
-     * Ownership is enforced by authentication starting with lab 3; lab 2 has no current user.
+     * The controller restricts this preference to the project owner or a supervisor.
      */
     @Transactional
     public ProjectResponse updateOwnerNotifications(
@@ -97,7 +98,9 @@ public class ProjectService {
 
     public Page<ProjectMemberResponse> listMembers(Long projectId, Pageable pageable) {
         requireExists(projectId);
-        return members.findByProjectId(projectId, pageable).map(mapper::toResponse);
+        var page = members.findByProjectId(projectId, pageable);
+        var profiles = users.profiles(page.getContent().stream().map(ProjectMember::getUserId).distinct().toList());
+        return page.map(member -> mapper.toResponse(member, profiles.get(member.getUserId())));
     }
 
     @Transactional
@@ -107,15 +110,15 @@ public class ProjectService {
             throw new ConflictStateException(
                     "User %d is already a member of project %d".formatted(request.userId(), projectId));
         }
-        User user = users.require(request.userId());
+        users.requireActive(request.userId());
         // Flushed right away so that joined_at, set by the insert, is part of the response.
-        return mapper.toResponse(members.saveAndFlush(new ProjectMember(project, user)));
+        return mapper.toResponse(members.saveAndFlush(new ProjectMember(project, request.userId())), users.profile(request.userId()));
     }
 
     @Transactional
     public void removeMember(Long projectId, Long userId) {
         Project project = require(projectId);
-        if (project.getOwner().getId().equals(userId)) {
+        if (project.getOwnerId().equals(userId)) {
             throw new ConflictStateException(
                     "The owner of project %d cannot be removed from its members".formatted(projectId));
         }

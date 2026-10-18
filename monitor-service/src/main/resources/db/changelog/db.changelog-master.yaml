@@ -59,3 +59,9 @@ databaseChangeLog:
   - include:
       file: changes/020-add-monitor-check-leases.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/021-security.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/022-extract-users.yaml
+      relativeToChangelogFile: true

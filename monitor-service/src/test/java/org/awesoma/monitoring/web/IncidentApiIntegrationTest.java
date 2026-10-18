@@ -12,7 +12,6 @@ import java.util.UUID;
 import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
-import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
@@ -83,14 +82,10 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     private Monitor seed(String slug) {
-        User owner = new User();
-        owner.setEmail(slug + "@example.com");
-        owner.setPassword("secret123");
-        owner.setFullName("Owner");
-        entityManager.persist(owner);
+        Long owner = remoteUser(slug + "@example.com");
 
         Project project = new Project();
-        project.setOwner(owner);
+        project.setOwnerId(owner);
         project.setName("Project");
         project.setSlug(slug);
         project.addMember(owner);

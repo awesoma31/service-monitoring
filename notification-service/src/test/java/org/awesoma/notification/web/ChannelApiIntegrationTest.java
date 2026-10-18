@@ -15,7 +15,19 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final AtomicLong PROJECTS = new AtomicLong(10_000);
 
-    @Autowired private WebTestClient http;
+
+    @Test
+    void rejectsUnauthenticatedRequestsReadOnlyWritesAndForeignProjects() {
+        http.mutate().defaultHeaders(headers -> headers.remove("Authorization")).build()
+                .get().uri("/api/v1/projects/1/channels").exchange().expectStatus().isUnauthorized();
+        http.post().uri("/api/v1/projects/1/channels")
+                .headers(headers -> headers.setBearerAuth(tokens.issue("1", "VIEWER").getTokenValue()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"type\":\"EMAIL\",\"target\":\"ops@example.com\"}")
+                .exchange().expectStatus().isForbidden();
+        org.mockito.Mockito.when(accessClient.allowed("project", 123L, 1L, false)).thenReturn(false);
+        http.get().uri("/api/v1/projects/123/channels").exchange().expectStatus().isForbidden();
+    }
 
     @Test
     void createsAChannelUnderItsProject() {

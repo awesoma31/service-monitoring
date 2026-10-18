@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -30,6 +31,7 @@ public class IncidentController {
     private final IncidentService incidentService;
 
     @GetMapping("/monitors/{monitorId}/incidents")
+    @PreAuthorize("@access.monitor(#monitorId, false)")
     @Operation(
             summary = "List monitor incidents",
             description = "Returns one page, optionally filtered by incident status.")
@@ -48,6 +50,7 @@ public class IncidentController {
     }
 
     @GetMapping("/incidents/{id}")
+    @PreAuthorize("@access.incident(#id, false)")
     @Operation(summary = "Get an incident")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Incident returned"),
@@ -59,6 +62,7 @@ public class IncidentController {
     }
 
     @PostMapping("/incidents/{id}/resolve")
+    @PreAuthorize("@access.incident(#id, true)")
     @Operation(
             summary = "Resolve an incident manually",
             description = "Marks the incident resolved and returns a DOWN monitor to UNKNOWN until its next check.")

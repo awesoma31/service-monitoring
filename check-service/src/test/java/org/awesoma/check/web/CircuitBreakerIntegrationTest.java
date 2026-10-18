@@ -48,7 +48,6 @@ class CircuitBreakerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private MonitorClient monitorService;
     @Autowired private CircuitBreakerRegistry circuitBreakers;
-    @Autowired private WebTestClient http;
 
     @DynamicPropertySource
     static void monitorServiceProperties(DynamicPropertyRegistry registry) {

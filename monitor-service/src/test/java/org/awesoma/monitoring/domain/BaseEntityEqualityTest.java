@@ -5,14 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashSet;
 import java.util.Set;
 import org.awesoma.monitoring.domain.entity.Tag;
-import org.awesoma.monitoring.domain.entity.User;
+import org.awesoma.monitoring.domain.entity.Project;
 import org.junit.jupiter.api.Test;
 
 class BaseEntityEqualityTest {
 
     @Test
     void entitiesOfDifferentTypesWithTheSameIdAreNotEqual() {
-        User user = new User();
+        Project user = new Project();
         user.setId(1L);
         Tag tag = new Tag();
         tag.setId(1L);
@@ -22,9 +22,9 @@ class BaseEntityEqualityTest {
 
     @Test
     void separateInstancesOfTheSameRowAreEqual() {
-        User one = new User();
+        Project one = new Project();
         one.setId(42L);
-        User another = new User();
+        Project another = new Project();
         another.setId(42L);
 
         assertThat(one).isEqualTo(another).hasSameHashCodeAs(another);
@@ -32,16 +32,16 @@ class BaseEntityEqualityTest {
 
     @Test
     void unsavedEntitiesAreEqualOnlyToThemselves() {
-        User one = new User();
-        User another = new User();
+        Project one = new Project();
+        Project another = new Project();
 
         assertThat(one).isEqualTo(one).isNotEqualTo(another);
     }
 
     @Test
     void staysFindableInASetAfterTheIdIsAssigned() {
-        User user = new User();
-        Set<User> set = new HashSet<>();
+        Project user = new Project();
+        Set<Project> set = new HashSet<>();
         set.add(user);
 
         user.setId(7L);

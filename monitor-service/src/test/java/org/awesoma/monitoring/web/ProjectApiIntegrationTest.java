@@ -25,16 +25,6 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
     @Autowired private ObjectMapper json;
 
     @Test
-    void creatingAUserAnswersWithLocationOfTheNewResource() throws Exception {
-        mockMvc.perform(postJson("/api/v1/users", user("created@example.com")))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/v1/users/")))
-                .andExpect(jsonPath("$.email").value("created@example.com"))
-                .andExpect(jsonPath("$.password").doesNotExist())
-                .andExpect(jsonPath("$.password").doesNotExist());
-    }
-
-    @Test
     void creatingAProjectEnrolsItsOwnerAsMember() throws Exception {
         long ownerId = createUser("owner-enrolled@example.com");
 
@@ -107,8 +97,8 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void invalidBodyIsRejectedBeforeReachingTheService() throws Exception {
-        mockMvc.perform(postJson("/api/v1/users", """
-                        {"email":"not-an-email","password":"short","full_name":""}"""))
+        mockMvc.perform(postJson("/api/v1/projects", """
+                        {"owner_id":-1,"name":"","slug":"INVALID"}"""))
                 .andExpect(status().isBadRequest());
     }
 
@@ -206,13 +196,7 @@ class ProjectApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.content[0].user_id").value(ownerId));
     }
 
-    private long createUser(String email) throws Exception {
-        String body = mockMvc.perform(postJson("/api/v1/users", user(email)))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return json.readTree(body).get("id").asLong();
-    }
+    private long createUser(String email) { return remoteUser(email); }
 
     private long createProject(long ownerId, String slug) throws Exception {
         String body = mockMvc.perform(postJson("/api/v1/projects", project(ownerId, slug)))

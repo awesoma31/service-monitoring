@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
+import org.awesoma.security.RemoteAccess;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -23,6 +26,7 @@ import reactor.core.publisher.Flux;
 public class CheckHistoryController {
 
     private final CheckHistoryService history;
+    private final RemoteAccess access;
 
     @GetMapping(value = "/monitors/{monitorId}/results",
             produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_NDJSON_VALUE})
@@ -37,8 +41,9 @@ public class CheckHistoryController {
     })
     public Flux<CheckResultResponse> listResults(
             @PathVariable @Positive Long monitorId, @Valid PageParams page,
-            ServerHttpResponse response) {
-        return history.list(monitorId, page.toPageable())
+            ServerHttpResponse response, @AuthenticationPrincipal Jwt jwt) {
+        return access.require("monitor", monitorId, jwt, false)
+                .then(history.list(monitorId, page.toPageable()))
                 .doOnNext(slice -> response.getHeaders().set("X-Has-Next", Boolean.toString(slice.hasNext())))
                 .flatMapIterable(slice -> slice.getContent());
     }

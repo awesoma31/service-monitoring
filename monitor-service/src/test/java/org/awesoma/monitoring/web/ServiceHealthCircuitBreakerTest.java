@@ -45,6 +45,8 @@ import org.springframework.test.web.servlet.MockMvc;
     "resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=1h"
 })
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(org.awesoma.security.TestJwtConfiguration.class)
+@org.springframework.security.test.context.support.WithMockUser(username = "1", roles = "SUPERVISOR")
 class ServiceHealthCircuitBreakerTest {
 
     private static final Downstream CHECKS = new Downstream();
@@ -52,6 +54,8 @@ class ServiceHealthCircuitBreakerTest {
 
     @Autowired private MockMvc http;
     @Autowired private CircuitBreakerRegistry circuitBreakers;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.awesoma.monitoring.service.UserDirectory users;
 
     @DynamicPropertySource
     static void downstreamAddresses(DynamicPropertyRegistry registry) {
@@ -168,6 +172,7 @@ class ServiceHealthCircuitBreakerTest {
     })
     @EnableFeignClients(clients = {CheckHistoryClient.class, NotificationClient.class})
     @Import({ServiceHealthController.class, ServiceHealthService.class, OpenApiConfig.class,
+        org.awesoma.monitoring.security.SecurityConfig.class, org.awesoma.security.ServiceTokenConfiguration.class,
         CheckHistoryClientFallbackFactory.class, NotificationClientFallbackFactory.class})
     static class TestApplication {}
 

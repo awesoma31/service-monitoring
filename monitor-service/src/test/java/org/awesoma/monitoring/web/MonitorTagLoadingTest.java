@@ -7,7 +7,6 @@ import java.util.Set;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.Tag;
-import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.service.MonitorService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorResponse;
@@ -61,14 +60,10 @@ class MonitorTagLoadingTest extends AbstractIntegrationTest {
     }
 
     private Project seedProjectWithTaggedMonitors() {
-        User owner = new User();
-        owner.setEmail("tag-loading@example.com");
-        owner.setPassword("secret123");
-        owner.setFullName("Owner");
-        entityManager.persist(owner);
+        Long owner = remoteUser("tag-loading@example.com");
 
         Project project = new Project();
-        project.setOwner(owner);
+        project.setOwnerId(owner);
         project.setName("Tag loading");
         project.setSlug("tag-loading");
         project.addMember(owner);

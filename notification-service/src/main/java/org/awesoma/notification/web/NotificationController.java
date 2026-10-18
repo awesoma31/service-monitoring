@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
+import org.awesoma.security.RemoteAccess;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -23,6 +26,7 @@ import reactor.core.publisher.Flux;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final RemoteAccess access;
 
     @GetMapping(
             value = "/incidents/{incidentId}/notifications",
@@ -35,8 +39,9 @@ public class NotificationController {
     })
     public Flux<NotificationResponse> listByIncident(
             @PathVariable @Positive Long incidentId, @Valid PageParams page,
-            ServerHttpResponse response) {
-        return notificationService.listByIncident(incidentId, page.toPageable())
+            ServerHttpResponse response, @AuthenticationPrincipal Jwt jwt) {
+        return access.require("incident", incidentId, jwt, false)
+                .then(notificationService.listByIncident(incidentId, page.toPageable()))
                 .doOnNext(result -> {
                     response.getHeaders().set("X-Total-Count", Long.toString(result.getTotalElements()));
                     response.getHeaders().set("X-Has-Next", Boolean.toString(result.hasNext()));

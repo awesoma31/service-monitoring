@@ -14,7 +14,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
-import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
@@ -42,14 +41,10 @@ class MonitorClaimIntegrationTest extends AbstractIntegrationTest {
     void seed() {
         String slug = "claims-" + System.nanoTime();
         transactions.executeWithoutResult(status -> {
-            User owner = new User();
-            owner.setEmail(slug + "@example.com");
-            owner.setPassword("secret123");
-            owner.setFullName("Owner");
-            entityManager.persist(owner);
+            Long owner = remoteUser(slug + "@example.com");
 
             Project project = new Project();
-            project.setOwner(owner);
+            project.setOwnerId(owner);
             project.setName("Claims");
             project.setSlug(slug);
             project.addMember(owner);
@@ -64,7 +59,7 @@ class MonitorClaimIntegrationTest extends AbstractIntegrationTest {
                 monitor.setTimeoutMs(5000);
                 entityManager.persist(monitor);
             }
-            ownerId = owner.getId();
+            ownerId = owner;
         });
     }
 
@@ -73,12 +68,10 @@ class MonitorClaimIntegrationTest extends AbstractIntegrationTest {
         workers.shutdownNow();
         workers.awaitTermination(10, TimeUnit.SECONDS);
         transactions.executeWithoutResult(status -> {
-            entityManager.createQuery("delete from Project p where p.owner.id = :owner")
+            entityManager.createQuery("delete from Project p where p.ownerId = :owner")
                     .setParameter("owner", ownerId)
                     .executeUpdate();
-            entityManager.createQuery("delete from User u where u.id = :id")
-                    .setParameter("id", ownerId)
-                    .executeUpdate();
+
         });
     }
 

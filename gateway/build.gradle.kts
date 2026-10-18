@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":security-common"))
     implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j")
     implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
@@ -12,6 +13,8 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:2.9.1")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation(testFixtures(project(":security-common")))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

@@ -1,4 +1,15 @@
 # Shared by every service that imports its configuration from this server.
+security:
+  jwt:
+    issuer: service-monitoring
+    audience: service-monitoring-api
+    jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8084/.well-known/jwks.json}
+    ttl: ${JWT_TTL:PT15M}
+    service-ttl: ${SERVICE_JWT_TTL:PT5M}
+  service-auth:
+    token-uri: ${SERVICE_TOKEN_URI:http://localhost:8084/internal/auth/token}
+    client-secret: ${SERVICE_CLIENT_SECRET:}
+
 spring:
   jackson:
     property-naming-strategy: SNAKE_CASE

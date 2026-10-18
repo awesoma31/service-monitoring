@@ -29,7 +29,7 @@ class LiquibaseMigrationsTest {
     private static final String CHANGELOG = "db/changelog/db.changelog-master.yaml";
 
     private static final List<String> DOMAIN_TABLES = List.of(
-            "users", "projects", "project_members", "tags", "monitors",
+            "legacy_users", "projects", "project_members", "tags", "monitors",
             "monitor_tags", "incidents");
 
     /**
@@ -68,6 +68,29 @@ class LiquibaseMigrationsTest {
                         PostgresContainer.INSTANCE.getPassword());
                 Statement statement = connection.createStatement()) {
             statement.execute(sql);
+        }
+    }
+
+    @Test
+    void upgradesLegacyPlaintextPasswordsWithoutResettingThem() throws Exception {
+        try (Connection connection = DriverManager.getConnection(jdbcUrl,
+                PostgresContainer.INSTANCE.getUsername(), PostgresContainer.INSTANCE.getPassword())) {
+            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
+            try (Liquibase liquibase = new Liquibase(CHANGELOG, new ClassLoaderResourceAccessor(), database)) {
+                liquibase.update(20, new Contexts(), new LabelExpression());
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("INSERT INTO users(email, password, full_name) VALUES ('legacy@example.com', 'old-password', 'Legacy')");
+                }
+                liquibase.update(new Contexts(), new LabelExpression());
+                try (Statement statement = connection.createStatement();
+                     ResultSet row = statement.executeQuery("SELECT password_hash, role FROM legacy_users WHERE email = 'legacy@example.com'")) {
+                    assertThat(row.next()).isTrue();
+                    assertThat(row.getString("password_hash")).isNotEqualTo("old-password");
+                    assertThat(org.awesoma.security.PasswordHashing.encoder().matches("old-password", row.getString("password_hash"))).isTrue();
+                    assertThat(row.getString("role")).isEqualTo("VIEWER");
+                }
+                liquibase.rollback(countAppliedChangesets(connection), new Contexts(), new LabelExpression());
+            }
         }
     }
 

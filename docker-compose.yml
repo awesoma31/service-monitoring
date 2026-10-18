@@ -5,6 +5,12 @@ x-healthcheck: &actuator-health
   timeout: 5s
   retries: 30
 
+x-jwt-environment: &jwt-environment
+  JWT_JWK_SET_URI: http://user-service:8080/.well-known/jwks.json
+  SERVICE_TOKEN_URI: http://user-service:8080/internal/auth/token
+  JWT_TTL: ${JWT_TTL:-PT15M}
+  SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT5M}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -56,6 +62,40 @@ services:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q UP" ]
       <<: *actuator-health
 
+  user-service:
+    build:
+      context: .
+      args:
+        MODULE: user-service
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      <<: *jwt-environment
+      SUPERVISOR_EMAIL: ${SUPERVISOR_EMAIL:-supervisor@example.com}
+      SUPERVISOR_PASSWORD: ${SUPERVISOR_PASSWORD:-}
+      MONITOR_SERVICE_CLIENT_SECRET: ${MONITOR_SERVICE_CLIENT_SECRET:-local-dev-monitor-client-secret-replace-before-deployment}
+      CHECK_SERVICE_CLIENT_SECRET: ${CHECK_SERVICE_CLIENT_SECRET:-local-dev-check-client-secret-replace-before-deployment}
+      NOTIFICATION_SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-local-dev-notification-client-secret-replace-before-deployment}
+      USER_MIGRATION_SOURCE_URL: ${USER_MIGRATION_SOURCE_URL-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-monitoring}}
+      JWT_KEY_FILE: /app/keys/signing-key.json
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_FAIL_FAST: "true"
+      EUREKA_URL: http://eureka-server:8761/eureka
+      DB_URL: jdbc:postgresql://postgres:5432/user_db
+      DB_USER: ${POSTGRES_USER:-monitoring}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-monitoring}
+      APP_PORT: 8080
+    volumes:
+      - user-signing-keys:/app/keys
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q UP" ]
+      <<: *actuator-health
+
   monitor-service:
     build:
       context: .
@@ -68,7 +108,11 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
     environment:
+      <<: *jwt-environment
+      SERVICE_CLIENT_SECRET: ${MONITOR_SERVICE_CLIENT_SECRET:-local-dev-monitor-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
       EUREKA_URL: http://eureka-server:8761/eureka
@@ -92,7 +136,11 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
     environment:
+      <<: *jwt-environment
+      SERVICE_CLIENT_SECRET: ${CHECK_SERVICE_CLIENT_SECRET:-local-dev-check-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
       EUREKA_URL: http://eureka-server:8761/eureka
@@ -117,7 +165,11 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
     environment:
+      <<: *jwt-environment
+      SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-local-dev-notification-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
       EUREKA_URL: http://eureka-server:8761/eureka
@@ -172,7 +224,10 @@ services:
         condition: service_healthy
       notification-service:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
     environment:
+      <<: *jwt-environment
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
       EUREKA_URL: http://eureka-server:8761/eureka
@@ -185,3 +240,4 @@ services:
 
 volumes:
   postgres-data:
+  user-signing-keys:

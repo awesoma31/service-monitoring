@@ -82,9 +82,6 @@ public class OpenApiConfig {
                 .components(components)
                 .tags(List.of(
                         new io.swagger.v3.oas.models.tags.Tag()
-                                .name("Users")
-                                .description("User lifecycle management"),
-                        new io.swagger.v3.oas.models.tags.Tag()
                                 .name("Projects")
                                 .description("Projects and their members"),
                         new io.swagger.v3.oas.models.tags.Tag()

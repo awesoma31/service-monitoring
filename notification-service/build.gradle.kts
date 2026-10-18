@@ -6,6 +6,7 @@ plugins {
 val springdocVersion = "2.9.1"
 
 dependencies {
+    implementation(project(":security-common"))
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     // Blocking JPA inside a reactive service: every repository call runs on the bounded
     // elastic scheduler (see support/JpaExecutor), never on an event-loop thread.
@@ -25,6 +26,8 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation(testFixtures(project(":security-common")))
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")

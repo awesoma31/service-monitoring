@@ -37,18 +37,16 @@ public class ProjectMember {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @MapsId("userId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 
     @CreationTimestamp
     @Column(name = "joined_at", nullable = false, updatable = false)
     private OffsetDateTime joinedAt;
 
-    public ProjectMember(Project project, User user) {
+    public ProjectMember(Project project, Long userId) {
         this.project = project;
-        this.user = user;
+        this.id = new ProjectMemberId(project.getId(), userId);
     }
+
+    public Long getUserId() { return id.getUserId(); }
 
 }

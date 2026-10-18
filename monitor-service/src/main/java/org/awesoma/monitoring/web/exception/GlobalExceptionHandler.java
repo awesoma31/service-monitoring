@@ -30,6 +30,16 @@ public class GlobalExceptionHandler {
 
     private final ObjectMapper objectMapper;
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ProblemDetail handleAuthentication(Exception error, HttpServletRequest request) {
+        return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Invalid email or password", request);
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ProblemDetail handleForbidden(Exception error, HttpServletRequest request) {
+        return problem(HttpStatus.FORBIDDEN, "Forbidden", "Insufficient permissions", request);
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFound(
             NotFoundException exception, HttpServletRequest request) {

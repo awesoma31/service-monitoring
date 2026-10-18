@@ -14,6 +14,9 @@ COPY eureka-server/build.gradle.kts eureka-server/
 COPY gateway/build.gradle.kts gateway/
 COPY monitor-service/build.gradle.kts monitor-service/
 COPY notification-service/build.gradle.kts notification-service/
+COPY security-common/build.gradle.kts security-common/
+COPY user-service/build.gradle.kts user-service/
+COPY security-common/src security-common/src
 COPY ${MODULE}/src ${MODULE}/src
 
 # The Gradle distribution and every dependency live in a BuildKit cache shared by all the
@@ -31,6 +34,7 @@ WORKDIR /app
 
 # Running as root inside the container is an unnecessary privilege.
 RUN addgroup -S app && adduser -S -G app app
+RUN mkdir -p /app/keys && chown app:app /app/keys
 USER app
 
 COPY --from=build /app/${MODULE}/build/libs/*.jar app.jar

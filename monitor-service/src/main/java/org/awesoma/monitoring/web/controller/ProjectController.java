@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -48,6 +49,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@access.project(#id, false)")
     @Operation(summary = "Get a project")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Project returned"),
@@ -59,6 +61,7 @@ public class ProjectController {
     }
 
     @PostMapping
+    @PreAuthorize("@access.canCreateProject(#request.ownerId())")
     @Operation(
             summary = "Create a project",
             description = "Creates the project and adds its owner as an OWNER member atomically.")
@@ -80,6 +83,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@access.owner(#id)")
     @Operation(summary = "Update a project", description = "Changes the project name; its slug remains fixed.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Project updated"),
@@ -92,6 +96,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}/owner-notifications")
+    @PreAuthorize("@access.owner(#id)")
     @Operation(
             summary = "Enable or disable incident notifications for the project owner",
             description = "Keeps the notification channels and affects only future incident changes. "
@@ -108,6 +113,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@access.owner(#id)")
     @Operation(summary = "Delete a project")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Project deleted"),
@@ -121,6 +127,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}/members")
+    @PreAuthorize("@access.project(#id, false)")
     @Operation(summary = "List project members")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Members returned"),
@@ -133,6 +140,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{id}/members")
+    @PreAuthorize("@access.owner(#id)")
     @Operation(summary = "Add a project member")
     @ApiResponses({
         @ApiResponse(
@@ -156,6 +164,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}/members/{userId}")
+    @PreAuthorize("@access.owner(#id)")
     @Operation(
             summary = "Remove a project member")
     @ApiResponses({

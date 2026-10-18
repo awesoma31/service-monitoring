@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -41,6 +42,7 @@ public class MonitorController {
     private final MonitorService monitorService;
 
     @GetMapping("/projects/{projectId}/monitors")
+    @PreAuthorize("@access.project(#projectId, false)")
     @Operation(
             summary = "List project monitors",
             description = "Returns one page of monitors, optionally filtered by an exact tag name.")
@@ -68,6 +70,7 @@ public class MonitorController {
     }
 
     @PostMapping("/projects/{projectId}/monitors")
+    @PreAuthorize("@access.project(#projectId, true)")
     @Operation(summary = "Create a monitor", description = "Unknown tag names are created automatically.")
     @ApiResponses({
         @ApiResponse(
@@ -89,6 +92,7 @@ public class MonitorController {
     }
 
     @GetMapping("/monitors/{id}")
+    @PreAuthorize("@access.monitor(#id, false)")
     @Operation(summary = "Get a monitor")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Monitor returned"),
@@ -100,6 +104,7 @@ public class MonitorController {
     }
 
     @PutMapping("/monitors/{id}")
+    @PreAuthorize("@access.monitor(#id, true)")
     @Operation(
             summary = "Update a monitor",
             description = "Disabling a monitor pauses it; enabling a paused monitor returns it to UNKNOWN.")
@@ -115,6 +120,7 @@ public class MonitorController {
     }
 
     @PutMapping("/monitors/{id}/tags")
+    @PreAuthorize("@access.monitor(#id, true)")
     @Operation(
             summary = "Replace monitor tags",
             description = "Replaces the complete tag set; unknown tag names are created automatically.")
@@ -130,6 +136,7 @@ public class MonitorController {
     }
 
     @DeleteMapping("/monitors/{id}")
+    @PreAuthorize("@access.monitor(#id, true)")
     @Operation(summary = "Delete a monitor")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Monitor deleted"),

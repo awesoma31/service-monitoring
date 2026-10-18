@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+server:
+  port: ${APP_PORT:8084}
+
+security:
+  jwt:
+    key-file: ${JWT_KEY_FILE:./keys/signing-key.json}
+  bootstrap:
+    email: ${SUPERVISOR_EMAIL:supervisor@example.com}
+    password: ${SUPERVISOR_PASSWORD:}
+  clients:
+    secrets:
+      monitor-service: ${MONITOR_SERVICE_CLIENT_SECRET:}
+      check-service: ${CHECK_SERVICE_CLIENT_SECRET:}
+      notification-service: ${NOTIFICATION_SERVICE_CLIENT_SECRET:}
+  migration:
+    source-url: ${USER_MIGRATION_SOURCE_URL:}
+    source-user: ${DB_USER:}
+    source-password: ${DB_PASSWORD:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

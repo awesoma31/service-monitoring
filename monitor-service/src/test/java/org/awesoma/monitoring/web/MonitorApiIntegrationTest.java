@@ -176,11 +176,7 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     private long createProject(String slug) throws Exception {
-        String userBody = mockMvc.perform(postJson("/api/v1/users", """
-                        {"email":"%s@example.com","password":"password123","full_name":"Owner"}"""
-                        .formatted(slug)))
-                .andReturn().getResponse().getContentAsString();
-        long ownerId = json.readTree(userBody).get("id").asLong();
+        long ownerId = remoteUser(slug + "@example.com");
 
         String projectBody = mockMvc.perform(postJson("/api/v1/projects", """
                         {"owner_id":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug)))

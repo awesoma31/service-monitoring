@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-security
+      author: nifreebie
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: role
+                  type: varchar(20)
+                  defaultValue: VIEWER
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: ALTER TABLE users ADD CONSTRAINT ck_users_role CHECK (role IN ('SUPERVISOR', 'OPERATOR', 'VIEWER'))
+        - customChange:
+            class: org.awesoma.monitoring.migration.HashPasswordsMigration
+        - renameColumn:
+            tableName: users
+            oldColumnName: password
+            newColumnName: password_hash
+            columnDataType: varchar(255)
+      rollback:
+        # Hashes are deliberately retained: restoring plaintext passwords is impossible.
+        - renameColumn:
+            tableName: users
+            oldColumnName: password_hash
+            newColumnName: password
+            columnDataType: varchar(255)
+        - sql:
+            sql: ALTER TABLE users DROP CONSTRAINT ck_users_role
+        - dropColumn:
+            tableName: users
+            columnName: role

@@ -12,7 +12,6 @@ import java.util.Optional;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
-import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
@@ -40,10 +39,11 @@ class ProjectServiceTest {
 
     @Mock private ProjectRepository projects;
     @Mock private ProjectMemberRepository members;
-    @Mock private UserService users;
+    @Mock private UserDirectory users;
     @Mock private ProjectMapper mapper;
     @Mock private ApplicationEventPublisher events;
     @Mock private MonitorRepository monitorRepository;
+    @Mock private org.awesoma.monitoring.security.AccessPolicy access;
     @InjectMocks private ProjectService service;
 
     @Test
@@ -58,10 +58,8 @@ class ProjectServiceTest {
 
     @Test
     void createEnrolsTheOwnerAsAMemberInTheSameSave() {
-        User owner = new User();
-        owner.setId(7L);
+        Long owner = 7L;
         when(projects.existsBySlug("fresh")).thenReturn(false);
-        when(users.require(7L)).thenReturn(owner);
         when(projects.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.create(new ProjectCreateRequest(7L, "Name", "fresh", null));
@@ -70,15 +68,14 @@ class ProjectServiceTest {
         verify(projects).save(saved.capture());
         assertThat(saved.getValue().isOwnerNotificationsEnabled()).isTrue();
         assertThat(saved.getValue().getMembers()).singleElement().satisfies(member -> {
-            assertThat(member.getUser()).isEqualTo(owner);
+            assertThat(member.getUserId()).isEqualTo(owner);
         });
     }
 
     @Test
     void createCanDisableOwnerIncidentNotifications() {
-        User owner = new User();
+        Long owner = 7L;
         when(projects.existsBySlug("silent")).thenReturn(false);
-        when(users.require(7L)).thenReturn(owner);
         when(projects.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.create(new ProjectCreateRequest(7L, "Name", "silent", false));
@@ -129,6 +126,7 @@ class ProjectServiceTest {
 
     @Test
     void listMapsEveryProjectFromTheRequestedPage() {
+        when(access.supervisor()).thenReturn(true);
         Project first = new Project();
         Project second = new Project();
         ProjectResponse firstResponse = new ProjectResponse(1L, 10L, "First", "first", null, true);
@@ -170,10 +168,9 @@ class ProjectServiceTest {
     @Test
     void addMemberLinksTheUserToTheProject() {
         Project project = new Project();
-        User user = new User();
+        Long user = 2L;
         when(projects.findById(1L)).thenReturn(Optional.of(project));
         when(members.existsById(new ProjectMemberId(1L, 2L))).thenReturn(false);
-        when(users.require(2L)).thenReturn(user);
         when(members.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.addMember(1L, new ProjectMemberRequest(2L));
@@ -181,7 +178,7 @@ class ProjectServiceTest {
         ArgumentCaptor<ProjectMember> saved = ArgumentCaptor.forClass(ProjectMember.class);
         verify(members).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getProject()).isEqualTo(project);
-        assertThat(saved.getValue().getUser()).isEqualTo(user);
+        assertThat(saved.getValue().getUserId()).isEqualTo(user);
     }
 
     @Test
@@ -197,10 +194,9 @@ class ProjectServiceTest {
     }
 
     private Project projectWithOwner(long ownerId) {
-        User owner = new User();
-        owner.setId(ownerId);
+        Long owner = ownerId;
         Project project = new Project();
-        project.setOwner(owner);
+        project.setOwnerId(owner);
         return project;
     }
 }
