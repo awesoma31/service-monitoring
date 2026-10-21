@@ -1,5 +1,6 @@
 package org.awesoma.user.domain.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,9 +13,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.awesoma.user.domain.enums.UserStatus;
 import org.awesoma.user.domain.enums.UserRole;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.awesoma.user.domain.enums.UserStatus;
 
 @Entity
 @Table(name = "users")

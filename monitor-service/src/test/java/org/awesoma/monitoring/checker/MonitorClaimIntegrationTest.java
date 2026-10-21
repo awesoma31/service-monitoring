@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.enums.MonitorState;
@@ -130,7 +131,7 @@ class MonitorClaimIntegrationTest extends AbstractIntegrationTest {
     }
 
     private Set<Long> ids(List<MonitorTarget> targets) {
-        return targets.stream().map(MonitorTarget::monitorId).collect(java.util.stream.Collectors.toSet());
+        return targets.stream().map(MonitorTarget::monitorId).collect(Collectors.toSet());
     }
 
     private static void await(CountDownLatch latch) {

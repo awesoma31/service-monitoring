@@ -4,12 +4,16 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.user.service.AuthService;
 import org.awesoma.user.service.UserService;
 import org.awesoma.user.web.dto.user.LoginRequest;
 import org.awesoma.user.web.dto.user.TokenResponse;
+import org.awesoma.user.web.dto.user.UserCreateRequest;
 import org.awesoma.user.web.dto.user.UserResponse;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,11 +43,11 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('SUPERVISOR')")
     @Operation(summary = "Register a user", description = "Only supervisors may register new users.")
-    public org.springframework.http.ResponseEntity<UserResponse> register(
-            @Valid @RequestBody org.awesoma.user.web.dto.user.UserCreateRequest request) {
+    public ResponseEntity<UserResponse> register(
+            @Valid @RequestBody UserCreateRequest request) {
         var created = users.create(request);
-        return org.springframework.http.ResponseEntity.created(java.net.URI.create("/api/v1/users/" + created.id())).body(created);
+        return ResponseEntity.created(URI.create("/api/v1/users/" + created.id())).body(created);
     }
 }

@@ -1,5 +1,6 @@
 package org.awesoma.user.web.controller;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jose.jwk.RSAKey;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
@@ -9,11 +10,13 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.awesoma.security.UserSecurity;
 import org.awesoma.user.repository.UserRepository;
 import org.awesoma.user.service.ServiceAuthenticationService;
 import org.awesoma.user.service.UserService;
 import org.awesoma.user.web.dto.user.TokenResponse;
 import org.awesoma.user.web.dto.user.UserResponse;
+import org.awesoma.user.web.exception.NotFoundException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,10 +42,11 @@ public class InternalUserController {
     }
 
     @GetMapping("/internal/users/{id}/security")
-    public org.awesoma.security.UserSecurity security(@PathVariable @Positive Long id) {
+    public UserSecurity security(@PathVariable @Positive Long id) {
         // Deleted users must also be reported inactive, so stale JWTs can be rejected.
-        var user = repository.findById(id).orElseThrow(() -> new org.awesoma.user.web.exception.NotFoundException("User not found"));
-        return new org.awesoma.security.UserSecurity(user.getId(), user.getRole().name(), user.isDeleted() ? "INACTIVE" : user.getStatus().name());
+        var user = repository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
+        return new UserSecurity(user.getId(), user.getRole().name(),
+                user.isDeleted() ? "INACTIVE" : user.getStatus().name());
     }
 
     @PostMapping("/internal/users/batch")
@@ -53,6 +57,6 @@ public class InternalUserController {
     }
 
     public record ServiceCredentials(@NotBlank @Size(max = 100) String clientId,
-            @NotBlank @Size(max = 255) @com.fasterxml.jackson.annotation.JsonProperty(
-                    access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY) String clientSecret) {}
+            @NotBlank @Size(max = 255) @JsonProperty(
+                    access = JsonProperty.Access.WRITE_ONLY) String clientSecret) {}
 }

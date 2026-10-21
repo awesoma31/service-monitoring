@@ -12,6 +12,7 @@ import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.servers.Server;
+import io.swagger.v3.oas.models.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import org.awesoma.user.web.dto.common.ApiErrorResponse;
@@ -77,13 +78,14 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("User Service API")
                         .version("v1")
-                        .description("User accounts, supervisor-managed registration, authentication and JWT issuance."))
+                        .description("User accounts, supervisor-managed registration, authentication "
+                                + "and JWT issuance."))
                 .components(components)
                 .tags(List.of(
-                        new io.swagger.v3.oas.models.tags.Tag()
+                        new Tag()
                                 .name("Users")
                                 .description("User lifecycle management"),
-                        new io.swagger.v3.oas.models.tags.Tag()
+                        new Tag()
                                 .name("Authentication")
                                 .description("Login and supervisor-managed registration")));
     }

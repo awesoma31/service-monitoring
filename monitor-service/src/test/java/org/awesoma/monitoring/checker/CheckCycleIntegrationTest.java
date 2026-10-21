@@ -13,18 +13,18 @@ import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
+import org.awesoma.monitoring.integration.IncidentChanged;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.service.MonitorCheckService;
 import org.awesoma.monitoring.service.MonitorService;
-import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
+import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
-import org.springframework.transaction.annotation.Transactional;
-import org.awesoma.monitoring.integration.IncidentChanged;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
+import org.springframework.transaction.annotation.Transactional;
 
 /** The failure-to-recovery cycle against a real database, indexes and constraints included. */
 @Transactional
@@ -172,7 +172,7 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UNKNOWN);
     }
 
-    private java.util.List<IncidentChanged.Kind> announced() {
+    private List<IncidentChanged.Kind> announced() {
         return events.stream(IncidentChanged.class).map(IncidentChanged::kind).toList();
     }
 

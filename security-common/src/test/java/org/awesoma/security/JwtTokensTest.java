@@ -5,12 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwtException;
-import org.springframework.security.oauth2.jwt.JwsHeader;
 
 class JwtTokensTest {
     private final JwtProperties properties = new JwtProperties(null, null, null, null, null);
@@ -32,16 +33,19 @@ class JwtTokensTest {
     @Test
     void rejectsWrongKeysExpiredTokensWrongIssuersAndWrongAudiences() {
         var forged = new JwtTokens(TestKeys.encoder(TestKeys.generate()), properties).issue("42", "SUPERVISOR");
-        assertThatThrownBy(() -> TestKeys.decoder(properties).decode(forged.getTokenValue())).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> TestKeys.decoder(properties).decode(forged.getTokenValue()))
+                .isInstanceOf(JwtException.class);
         for (int invalid = 0; invalid < 3; invalid++) {
             var claims = JwtClaimsSet.builder().subject("42").issuer(invalid == 1 ? "untrusted" : properties.issuer())
-                    .audience(java.util.List.of(invalid == 2 ? "other-api" : properties.audience()))
-                    .issuedAt(Instant.now().minusSeconds(600)).expiresAt(Instant.now().plusSeconds(invalid == 0 ? -120 : 300)).build();
+                    .audience(List.of(invalid == 2 ? "other-api" : properties.audience()))
+                    .issuedAt(Instant.now().minusSeconds(600))
+                    .expiresAt(Instant.now().plusSeconds(invalid == 0 ? -120 : 300)).build();
             String token = TestKeys.encoder().encode(JwtEncoderParameters.from(
                     JwsHeader.with(SignatureAlgorithm.RS256).build(), claims)).getTokenValue();
             assertThatThrownBy(() -> TestKeys.decoder(properties).decode(token)).isInstanceOf(JwtException.class);
         }
-        assertThatThrownBy(() -> new JwtProperties(null, null, null, Duration.ZERO, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new JwtProperties(null, null, null, Duration.ZERO, null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

@@ -1,11 +1,11 @@
 package org.awesoma.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.RequestInterceptor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /** Service identity is independent of an incoming user and works from schedulers as well. */
 @Configuration(proxyBeanMethods = false)

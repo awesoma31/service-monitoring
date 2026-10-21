@@ -37,11 +37,14 @@ class LegacyUserImporterIntegrationTest {
             sql.execute("CREATE DATABASE " + TARGET);
         }
         try (var connection = connect(SOURCE); var sql = connection.createStatement()) {
-            sql.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(255), password_hash VARCHAR(255), full_name VARCHAR(255), status VARCHAR(20), role VARCHAR(20))");
+            sql.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(255), password_hash VARCHAR(255), "
+                    + "full_name VARCHAR(255), status VARCHAR(20), role VARCHAR(20))");
         }
         try (var connection = connect(TARGET)) {
-            var database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            try (var liquibase = new Liquibase("db/changelog/db.changelog-master.yaml", new ClassLoaderResourceAccessor(), database)) {
+            var database = DatabaseFactory.getInstance()
+                    .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+            try (var liquibase = new Liquibase("db/changelog/db.changelog-master.yaml",
+                    new ClassLoaderResourceAccessor(), database)) {
                 liquibase.update(new Contexts(), new LabelExpression());
             }
         }
@@ -61,7 +64,9 @@ class LegacyUserImporterIntegrationTest {
     void preservesIdsHashesRolesAndSequenceAndDoesNotImportTwice(boolean archived) throws Exception {
         sourceUser(42, "OPERATOR", HASH);
         if (archived) {
-            try (var connection = connect(SOURCE); var sql = connection.createStatement()) { sql.execute("ALTER TABLE users RENAME TO legacy_users"); }
+            try (var connection = connect(SOURCE); var sql = connection.createStatement()) {
+                sql.execute("ALTER TABLE users RENAME TO legacy_users");
+            }
         }
         migrate();
         migrate();
@@ -75,7 +80,8 @@ class LegacyUserImporterIntegrationTest {
             assertThat(rows.next()).isFalse();
         }
         try (var connection = connect(TARGET); var sql = connection.createStatement();
-             var next = sql.executeQuery("INSERT INTO users(email,password_hash,full_name) VALUES ('next@example.com','hash','Next') RETURNING id")) {
+             var next = sql.executeQuery("INSERT INTO users(email,password_hash,full_name) VALUES "
+                     + "('next@example.com','hash','Next') RETURNING id")) {
             assertThat(next.next()).isTrue();
             assertThat(next.getLong(1)).isEqualTo(43);
         }
@@ -86,7 +92,8 @@ class LegacyUserImporterIntegrationTest {
         sourceUser(1, "VIEWER", HASH);
         sourceUser(42, "SUPERVISOR", HASH);
         try (var connection = connect(TARGET); var sql = connection.createStatement()) {
-            sql.execute("INSERT INTO users(id,email,password_hash,full_name) VALUES (42,'existing@example.com','existing-hash','Existing')");
+            sql.execute("INSERT INTO users(id,email,password_hash,full_name) VALUES "
+                    + "(42,'existing@example.com','existing-hash','Existing')");
         }
         assertThatThrownBy(this::migrate).isInstanceOf(IllegalStateException.class);
         try (var connection = connect(TARGET); var sql = connection.createStatement();
@@ -105,7 +112,9 @@ class LegacyUserImporterIntegrationTest {
     void refusesUnhashedLegacyPasswordsAndAllowsAnEmptySourceOnFreshInstallation() throws Exception {
         sourceUser(1, "VIEWER", "plaintext-password");
         assertThatThrownBy(this::migrate).isInstanceOf(IllegalStateException.class);
-        try (var connection = connect(SOURCE); var sql = connection.createStatement()) { sql.execute("DROP TABLE users"); }
+        try (var connection = connect(SOURCE); var sql = connection.createStatement()) {
+            sql.execute("DROP TABLE users");
+        }
         migrate();
         importer.importFrom("", "", "");
     }
@@ -154,7 +163,8 @@ class LegacyUserImporterIntegrationTest {
     private void lab2Source() throws Exception {
         try (var connection = connect(SOURCE); var sql = connection.createStatement()) {
             sql.execute("DROP TABLE users");
-            sql.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(255), password VARCHAR(255), full_name VARCHAR(255), status VARCHAR(20))");
+            sql.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(255), password VARCHAR(255), "
+                    + "full_name VARCHAR(255), status VARCHAR(20))");
             sql.execute("INSERT INTO users VALUES (7, 'legacy-7@example.com', 'legacy-password', 'Legacy', 'ACTIVE')");
         }
     }
@@ -166,7 +176,8 @@ class LegacyUserImporterIntegrationTest {
     }
 
     private void sourceUser(long id, String role, String hash) throws Exception {
-        try (var connection = connect(SOURCE); var sql = connection.prepareStatement("INSERT INTO users VALUES (?, ?, ?, 'Legacy', 'ACTIVE', ?)")) {
+        try (var connection = connect(SOURCE);
+             var sql = connection.prepareStatement("INSERT INTO users VALUES (?, ?, ?, 'Legacy', 'ACTIVE', ?)")) {
             sql.setLong(1, id);
             sql.setString(2, "legacy-" + id + "@example.com");
             sql.setString(3, hash);
@@ -175,7 +186,8 @@ class LegacyUserImporterIntegrationTest {
         }
     }
     private void migrate() {
-        importer.importFrom(url(SOURCE), PostgresContainer.INSTANCE.getUsername(), PostgresContainer.INSTANCE.getPassword());
+        importer.importFrom(url(SOURCE), PostgresContainer.INSTANCE.getUsername(),
+                PostgresContainer.INSTANCE.getPassword());
     }
     private String url(String database) {
         var pg = PostgresContainer.INSTANCE;
@@ -183,6 +195,7 @@ class LegacyUserImporterIntegrationTest {
     }
     private Connection connect(String database) throws Exception {
         var pg = PostgresContainer.INSTANCE;
-        return DriverManager.getConnection(database == null ? pg.getJdbcUrl() : url(database), pg.getUsername(), pg.getPassword());
+        return DriverManager.getConnection(database == null ? pg.getJdbcUrl() : url(database), pg.getUsername(),
+                pg.getPassword());
     }
 }

@@ -1,11 +1,11 @@
 package org.awesoma.user.web.dto.common;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import io.swagger.v3.oas.annotations.media.Schema;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springdoc.core.annotations.ParameterObject;
 
 /**
  * Pagination parameters shared by every listing endpoint, so the page-size ceiling is

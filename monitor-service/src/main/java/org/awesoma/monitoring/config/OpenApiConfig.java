@@ -12,6 +12,7 @@ import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.servers.Server;
+import io.swagger.v3.oas.models.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import org.awesoma.monitoring.web.dto.common.ApiErrorResponse;
@@ -81,19 +82,19 @@ public class OpenApiConfig {
                                 + "track their state and open incidents when they fail."))
                 .components(components)
                 .tags(List.of(
-                        new io.swagger.v3.oas.models.tags.Tag()
+                        new Tag()
                                 .name("Projects")
                                 .description("Projects and their members"),
-                        new io.swagger.v3.oas.models.tags.Tag()
+                        new Tag()
                                 .name("Monitors")
                                 .description("HTTP monitoring targets and their tags"),
-                        new io.swagger.v3.oas.models.tags.Tag()
+                        new Tag()
                                 .name("Tags")
                                 .description("Reusable monitor labels"),
-                        new io.swagger.v3.oas.models.tags.Tag()
+                        new Tag()
                                 .name("Incidents")
                                 .description("Incidents opened when monitors fail"),
-                        new io.swagger.v3.oas.models.tags.Tag()
+                        new Tag()
                                 .name("Service health")
                                 .description("Downstream availability and Feign circuit breaker state")));
     }

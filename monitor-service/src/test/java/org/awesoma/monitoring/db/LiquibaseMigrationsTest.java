@@ -16,6 +16,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.awesoma.monitoring.support.PostgresContainer;
+import org.awesoma.security.PasswordHashing;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -75,18 +76,22 @@ class LiquibaseMigrationsTest {
     void upgradesLegacyPlaintextPasswordsWithoutResettingThem() throws Exception {
         try (Connection connection = DriverManager.getConnection(jdbcUrl,
                 PostgresContainer.INSTANCE.getUsername(), PostgresContainer.INSTANCE.getPassword())) {
-            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
+            Database database = DatabaseFactory.getInstance()
+                    .findCorrectDatabaseImplementation(new JdbcConnection(connection));
             try (Liquibase liquibase = new Liquibase(CHANGELOG, new ClassLoaderResourceAccessor(), database)) {
                 liquibase.update(20, new Contexts(), new LabelExpression());
                 try (Statement statement = connection.createStatement()) {
-                    statement.execute("INSERT INTO users(email, password, full_name) VALUES ('legacy@example.com', 'old-password', 'Legacy')");
+                    statement.execute("INSERT INTO users(email, password, full_name) VALUES ('legacy@example.com', "
+                            + "'old-password', 'Legacy')");
                 }
                 liquibase.update(new Contexts(), new LabelExpression());
                 try (Statement statement = connection.createStatement();
-                     ResultSet row = statement.executeQuery("SELECT password_hash, role FROM legacy_users WHERE email = 'legacy@example.com'")) {
+                     ResultSet row = statement.executeQuery("SELECT password_hash, role FROM legacy_users WHERE "
+                             + "email = 'legacy@example.com'")) {
                     assertThat(row.next()).isTrue();
                     assertThat(row.getString("password_hash")).isNotEqualTo("old-password");
-                    assertThat(org.awesoma.security.PasswordHashing.encoder().matches("old-password", row.getString("password_hash"))).isTrue();
+                    assertThat(PasswordHashing.encoder().matches("old-password", row.getString("password_hash")))
+                            .isTrue();
                     assertThat(row.getString("role")).isEqualTo("VIEWER");
                 }
                 liquibase.rollback(countAppliedChangesets(connection), new Contexts(), new LabelExpression());

@@ -24,6 +24,7 @@ public class UserClientFallbackFactory implements FallbackFactory<UserClient> {
         };
     }
     private ResponseStatusException unavailable() {
-        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "User information cannot currently be verified");
+        return new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE, "User information cannot currently be verified");
     }
 }

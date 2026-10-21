@@ -1,6 +1,9 @@
 package org.awesoma.monitoring.checker;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
@@ -18,6 +21,7 @@ import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
+import org.awesoma.monitoring.integration.IncidentChanged;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.service.MonitorCheckService;
@@ -28,10 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.awesoma.monitoring.integration.IncidentChanged;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 /**
  * The row lock taken by {@link MonitorCheckService#record} against a real database.

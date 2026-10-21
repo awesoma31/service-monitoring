@@ -6,10 +6,11 @@ import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface IncidentRepository extends JpaRepository<Incident, Long> {
-    @org.springframework.data.jpa.repository.Query("select i.monitor.project.id from Incident i where i.id = :id")
-    java.util.Optional<Long> findProjectId(Long id);
+    @Query("select i.monitor.project.id from Incident i where i.id = :id")
+    Optional<Long> findProjectId(Long id);
 
     /** At most one row can match: the database enforces one open incident per monitor. */
     Optional<Incident> findByMonitorIdAndStatus(Long monitorId, IncidentStatus status);

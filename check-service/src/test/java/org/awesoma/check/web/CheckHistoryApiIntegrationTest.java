@@ -102,7 +102,8 @@ class CheckHistoryApiIntegrationTest extends AbstractIntegrationTest {
         store(monitorId, ProbeOutcome.success(10, 200), OffsetDateTime.now());
 
         http.delete().uri("/internal/results?monitor_id={id}", monitorId)
-                .headers(headers -> headers.setBearerAuth(tokens.issue("test-check", "SERVICE").getTokenValue())).exchange()
+                .headers(headers -> headers.setBearerAuth(tokens.issue("test-check", "SERVICE").getTokenValue()))
+                .exchange()
                 .expectStatus().isNoContent();
 
         http.get().uri("/api/v1/monitors/{id}/results", monitorId).exchange()

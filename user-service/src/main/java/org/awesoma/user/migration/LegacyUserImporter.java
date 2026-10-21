@@ -16,6 +16,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class LegacyUserImporter {
     private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
+    private static final String IMPORTED = "SELECT 1 FROM user_imports WHERE source = 'monitor-service'";
+    private static final String SELECT_USERS =
+            "SELECT id, email, password_hash, full_name, status, role FROM %s ORDER BY id";
+    private static final String INSERT_USER =
+            "INSERT INTO users(id,email,password_hash,full_name,status,role) VALUES (?,?,?,?,?,?)";
+    private static final String MOVE_ID_SEQUENCE = "SELECT setval(pg_get_serial_sequence('users','id'), "
+            + "COALESCE((SELECT MAX(id) FROM users),1), EXISTS(SELECT 1 FROM users))";
+    private static final String MARK_IMPORTED =
+            "INSERT INTO user_imports(source,imported_count) VALUES ('monitor-service',?)";
 
     private final DataSource destination;
     private final Duration waitTimeout;
@@ -48,7 +57,7 @@ public class LegacyUserImporter {
             try {
                 try (var statement = target.createStatement()) {
                     statement.execute("SELECT pg_advisory_xact_lock(24103)");
-                    try (var marker = statement.executeQuery("SELECT 1 FROM user_imports WHERE source = 'monitor-service'")) {
+                    try (var marker = statement.executeQuery(IMPORTED)) {
                         if (marker.next()) { target.rollback(); return; }
                     }
                 }
@@ -56,19 +65,21 @@ public class LegacyUserImporter {
                     source.setReadOnly(true);
                     source.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
                     source.setAutoCommit(false);
-                    String table = exists(source, "legacy_users") ? "legacy_users" : exists(source, "users") ? "users" : null;
+                    String table = exists(source, "legacy_users") ? "legacy_users"
+                            : exists(source, "users") ? "users" : null;
                     if (table == null) { target.rollback(); return; }
                     int count = 0;
                     // Table names above are constants; values are always bound parameters.
                     try (var select = source.createStatement();
-                         var rows = select.executeQuery("SELECT id, email, password_hash, full_name, status, role FROM " + table + " ORDER BY id");
-                         var insert = target.prepareStatement("INSERT INTO users(id,email,password_hash,full_name,status,role) VALUES (?,?,?,?,?,?)")) {
+                         var rows = select.executeQuery(SELECT_USERS.formatted(table));
+                         var insert = target.prepareStatement(INSERT_USER)) {
                         while (rows.next()) {
                             insert.setLong(1, rows.getLong("id"));
                             insert.setString(2, rows.getString("email"));
                             String hash = rows.getString("password_hash");
                             if (!hash.startsWith("{pbkdf2@SpringSecurity_v5_8}")) {
-                                throw new IllegalStateException("Apply monitor-service password migration before importing users");
+                                throw new IllegalStateException(
+                                        "Apply monitor-service password migration before importing users");
                             }
                             insert.setString(3, hash);
                             insert.setString(4, rows.getString("full_name"));
@@ -79,9 +90,9 @@ public class LegacyUserImporter {
                         }
                     }
                     try (var statement = target.createStatement()) {
-                        statement.execute("SELECT setval(pg_get_serial_sequence('users','id'), COALESCE((SELECT MAX(id) FROM users),1), EXISTS(SELECT 1 FROM users))");
+                        statement.execute(MOVE_ID_SEQUENCE);
                     }
-                    try (var marker = target.prepareStatement("INSERT INTO user_imports(source,imported_count) VALUES ('monitor-service',?)")) {
+                    try (var marker = target.prepareStatement(MARK_IMPORTED)) {
                         marker.setInt(1, count);
                         marker.executeUpdate();
                     }

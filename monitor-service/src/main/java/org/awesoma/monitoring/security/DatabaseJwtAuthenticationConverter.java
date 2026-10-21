@@ -3,6 +3,7 @@ package org.awesoma.monitoring.security;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.UserDirectory;
+import org.awesoma.security.IdentityServiceUnavailableException;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -11,6 +12,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 @RequiredArgsConstructor
@@ -33,8 +35,8 @@ public class DatabaseJwtAuthenticationConverter implements Converter<Jwt, Abstra
                     List.of(new SimpleGrantedAuthority("ROLE_" + user.role())));
         } catch (NumberFormatException error) {
             throw new BadCredentialsException("Invalid user identity");
-        } catch (org.springframework.web.server.ResponseStatusException error) {
-            throw new org.awesoma.security.IdentityServiceUnavailableException(error);
+        } catch (ResponseStatusException error) {
+            throw new IdentityServiceUnavailableException(error);
         }
     }
 }

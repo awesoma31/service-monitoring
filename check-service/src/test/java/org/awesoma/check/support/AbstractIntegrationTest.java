@@ -1,30 +1,42 @@
 package org.awesoma.check.support;
 
+import org.awesoma.security.JwtTokens;
+import org.awesoma.security.ResourceAccessClient;
+import org.awesoma.security.TestJwtConfiguration;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
  * Boots the service against the shared Postgres: Liquibase migrates it over JDBC, and the
  * service then reads and writes it over R2DBC, exactly as in the container.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
-@org.springframework.context.annotation.Import(org.awesoma.security.TestJwtConfiguration.class)
+@AutoConfigureWebTestClient
+@Import(TestJwtConfiguration.class)
 public abstract class AbstractIntegrationTest {
-    @org.springframework.beans.factory.annotation.Autowired
-    protected org.springframework.test.web.reactive.server.WebTestClient http;
-    @org.springframework.beans.factory.annotation.Autowired
-    protected org.awesoma.security.JwtTokens tokens;
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
-    protected org.awesoma.security.ResourceAccessClient accessClient;
+    @Autowired
+    protected WebTestClient http;
+    @Autowired
+    protected JwtTokens tokens;
+    @MockitoBean
+    protected ResourceAccessClient accessClient;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void authenticateRequests() {
-        http = http.mutate().defaultHeader("Authorization", "Bearer " + tokens.issue("1", "SUPERVISOR").getTokenValue()).build();
-        org.mockito.Mockito.when(accessClient.allowed(org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(),
-                org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(true);
+        http = http.mutate().defaultHeader("Authorization", "Bearer " + tokens.issue("1", "SUPERVISOR").getTokenValue())
+                .build();
+        Mockito.when(accessClient.allowed(ArgumentMatchers.anyString(),
+                ArgumentMatchers.anyLong(), ArgumentMatchers.anyLong(),
+                ArgumentMatchers.anyBoolean())).thenReturn(true);
     }
 
     @DynamicPropertySource

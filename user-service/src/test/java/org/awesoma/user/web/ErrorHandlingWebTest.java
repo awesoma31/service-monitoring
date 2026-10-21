@@ -12,32 +12,40 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.awesoma.user.repository.UserRepository;
+import org.awesoma.user.security.AccessPolicy;
+import org.awesoma.user.security.SecurityConfig;
 import org.awesoma.user.service.UserService;
 import org.awesoma.user.web.controller.UserController;
 import org.awesoma.user.web.dto.user.UserCreateRequest;
 import org.awesoma.user.web.exception.ConflictStateException;
 import org.awesoma.user.web.exception.NotFoundException;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(UserController.class)
-@org.springframework.security.test.context.support.WithMockUser(username = "1", roles = "SUPERVISOR")
-@org.springframework.context.annotation.Import(org.awesoma.user.security.SecurityConfig.class)
+@WithMockUser(username = "1", roles = "SUPERVISOR")
+@Import(SecurityConfig.class)
 class ErrorHandlingWebTest {
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private UserService users;
-    @MockitoBean private org.awesoma.user.repository.UserRepository userRepository;
-    @MockitoBean(name = "access") private org.awesoma.user.security.AccessPolicy access;
+    @MockitoBean private UserRepository userRepository;
+    @MockitoBean(name = "access") private AccessPolicy access;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void permitSupervisorUserLookups() {
-        when(access.self(org.mockito.ArgumentMatchers.anyLong())).thenReturn(true);
+        when(access.self(ArgumentMatchers.anyLong())).thenReturn(true);
     }
 
     @Test
@@ -138,8 +146,8 @@ class ErrorHandlingWebTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Conflicting data"))
                 .andExpect(jsonPath("$.detail").value("The request conflicts with existing data"))
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("users_email_key"))));
+                .andExpect(content().string(Matchers.not(
+                        Matchers.containsString("users_email_key"))));
     }
 
     @Test

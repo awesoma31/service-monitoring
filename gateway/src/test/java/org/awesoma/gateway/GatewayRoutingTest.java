@@ -5,10 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import org.awesoma.security.JwtTokens;
+import org.awesoma.security.TestJwtConfiguration;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
@@ -18,15 +22,16 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
-@org.springframework.context.annotation.Import(org.awesoma.security.TestJwtConfiguration.class)
+@Import(TestJwtConfiguration.class)
 class GatewayRoutingTest {
 
     @Autowired private WebTestClient http;
-    @Autowired private org.awesoma.security.JwtTokens tokens;
+    @Autowired private JwtTokens tokens;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void authenticateRequests() {
-        http = http.mutate().defaultHeader("Authorization", "Bearer " + tokens.issue("1", "SUPERVISOR").getTokenValue()).build();
+        http = http.mutate().defaultHeader("Authorization", "Bearer " + tokens.issue("1", "SUPERVISOR").getTokenValue())
+                .build();
     }
 
     @Test
@@ -43,10 +48,12 @@ class GatewayRoutingTest {
     void eachRouteFallsBackForItsOwnService() {
         http.get().uri("/api/v1/monitors/1/results").exchange()
                 .expectStatus().isEqualTo(503)
-                .expectBody().jsonPath("$.detail").isEqualTo("check-service is temporarily unavailable, try again later");
+                .expectBody().jsonPath("$.detail")
+                .isEqualTo("check-service is temporarily unavailable, try again later");
         http.post().uri("/api/v1/projects/1/channels").exchange()
                 .expectStatus().isEqualTo(503)
-                .expectBody().jsonPath("$.detail").isEqualTo("notification-service is temporarily unavailable, try again later");
+                .expectBody().jsonPath("$.detail")
+                .isEqualTo("notification-service is temporarily unavailable, try again later");
     }
 
     @Test
@@ -60,7 +67,8 @@ class GatewayRoutingTest {
         assertThat(ids).last().isEqualTo("monitor-service");
         assertThat(ids).contains(
                 "check-service", "notification-service",
-                "monitor-service-api-docs", "check-service-api-docs", "notification-service-api-docs", "user-service-api-docs", "user-service");
+                "monitor-service-api-docs", "check-service-api-docs", "notification-service-api-docs",
+                        "user-service-api-docs", "user-service");
     }
 
     @Test

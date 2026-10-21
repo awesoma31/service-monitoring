@@ -55,7 +55,8 @@ class UserSecurityApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void loginIssuesAnRsaTokenVerifiableUsingOnlyPublicJwks() throws Exception {
         String login = http.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(Map.of("email", operator.getEmail(), "password", "password123"))))
+                        .content(json.writeValueAsString(Map.of("email", operator.getEmail(), "password",
+                        "password123"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.token_type").value("Bearer"))
                 .andExpect(jsonPath("$.expires_in").value(900)).andReturn().getResponse().getContentAsString();
         String token = json.readTree(login).get("access_token").asText();
@@ -76,10 +77,13 @@ class UserSecurityApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void registrationAndUserCreationRequireSupervisorAndStoreOnlyHashes() throws Exception {
         String email = UUID.randomUUID() + "@example.com";
-        String request = json.writeValueAsString(Map.of("email", email, "password", "new-password123", "full_name", "New user"));
-        http.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isUnauthorized());
+        String request = json.writeValueAsString(Map.of("email", email, "password", "new-password123", "full_name",
+                "New user"));
+        http.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isUnauthorized());
         for (String path : new String[] {"/api/v1/auth/register", "/api/v1/users"}) {
-            http.perform(post(path).header("Authorization", bearer(operator)).contentType(MediaType.APPLICATION_JSON).content(request))
+            http.perform(post(path).header("Authorization", bearer(operator)).contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
                     .andExpect(status().isForbidden());
         }
         http.perform(post("/api/v1/auth/register").header("Authorization", bearer(supervisor))
@@ -106,7 +110,8 @@ class UserSecurityApiIntegrationTest extends AbstractIntegrationTest {
         http.perform(get("/internal/users/{id}/security", operator.getId()).header("Authorization", service))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("OPERATOR"))
                 .andExpect(jsonPath("$.password_hash").doesNotExist());
-        http.perform(post("/internal/users/batch").header("Authorization", service).contentType(MediaType.APPLICATION_JSON)
+        http.perform(post("/internal/users/batch").header("Authorization", service)
+                .contentType(MediaType.APPLICATION_JSON)
                         .content("[" + operator.getId() + "]"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].email").value(operator.getEmail()))
                 .andExpect(jsonPath("$[0].password_hash").doesNotExist());
@@ -133,7 +138,8 @@ class UserSecurityApiIntegrationTest extends AbstractIntegrationTest {
         users.saveAndFlush(operator);
         http.perform(get("/api/v1/auth/me").header("Authorization", token)).andExpect(status().isUnauthorized());
         http.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(Map.of("email", operator.getEmail(), "password", "password123"))))
+                        .content(json.writeValueAsString(Map.of("email", operator.getEmail(), "password",
+                        "password123"))))
                 .andExpect(status().isUnauthorized());
         http.perform(delete("/api/v1/users/{id}", operator.getId()).header("Authorization", bearer(supervisor)))
                 .andExpect(status().isNoContent());
@@ -159,5 +165,7 @@ class UserSecurityApiIntegrationTest extends AbstractIntegrationTest {
         user.setRole(role);
         return users.saveAndFlush(user);
     }
-    private String bearer(User user) { return "Bearer " + tokens.issue(user.getId().toString(), user.getRole().name()).getTokenValue(); }
+    private String bearer(User user) {
+        return "Bearer " + tokens.issue(user.getId().toString(), user.getRole().name()).getTokenValue();
+    }
 }

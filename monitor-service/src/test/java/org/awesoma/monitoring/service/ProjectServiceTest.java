@@ -12,8 +12,11 @@ import java.util.Optional;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
+import org.awesoma.monitoring.integration.ProjectDeleted;
+import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
+import org.awesoma.monitoring.security.AccessPolicy;
 import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
@@ -28,11 +31,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.context.ApplicationEventPublisher;
-import org.awesoma.monitoring.repository.MonitorRepository;
-import org.awesoma.monitoring.integration.ProjectDeleted;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectServiceTest {
@@ -43,7 +45,7 @@ class ProjectServiceTest {
     @Mock private ProjectMapper mapper;
     @Mock private ApplicationEventPublisher events;
     @Mock private MonitorRepository monitorRepository;
-    @Mock private org.awesoma.monitoring.security.AccessPolicy access;
+    @Mock private AccessPolicy access;
     @InjectMocks private ProjectService service;
 
     @Test
@@ -120,7 +122,7 @@ class ProjectServiceTest {
     void listingMembersOfAMissingProjectFails() {
         when(projects.existsById(9L)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.listMembers(9L, org.springframework.data.domain.Pageable.unpaged()))
+        assertThatThrownBy(() -> service.listMembers(9L, Pageable.unpaged()))
                 .isInstanceOf(NotFoundException.class);
     }
 

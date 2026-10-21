@@ -8,6 +8,7 @@ import org.awesoma.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@org.springframework.core.annotation.Order(20)
+@Order(20)
 public class SupervisorBootstrap implements ApplicationRunner {
     private final UserRepository users;
     private final PasswordEncoder passwords;
@@ -30,7 +31,8 @@ public class SupervisorBootstrap implements ApplicationRunner {
             throw new IllegalArgumentException("SUPERVISOR_PASSWORD must contain 8 to 255 characters");
         }
         if (users.existsByEmail(email)) {
-            throw new IllegalStateException("Bootstrap email already belongs to a non-supervisor; choose another email");
+            throw new IllegalStateException(
+                    "Bootstrap email already belongs to a non-supervisor; choose another email");
         }
         User user = new User();
         user.setEmail(email);

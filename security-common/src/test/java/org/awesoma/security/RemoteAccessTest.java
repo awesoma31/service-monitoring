@@ -23,10 +23,12 @@ class RemoteAccessTest {
     @Test
     void rejectsForeignResourcesAndFailsClosedDuringAnOutage() {
         when(client.allowed("project", 7L, 42L, false)).thenReturn(false);
-        StepVerifier.create(access.require("project", 7L, user, false)).expectError(AccessDeniedException.class).verify();
+        StepVerifier.create(access.require("project", 7L, user, false)).expectError(AccessDeniedException.class)
+                .verify();
         when(client.allowed("project", 7L, 42L, false)).thenThrow(new IllegalStateException("down"));
         StepVerifier.create(access.require("project", 7L, user, false))
-                .expectErrorMatches(error -> error instanceof ResponseStatusException status && status.getStatusCode().value() == 503)
+                .expectErrorMatches(error -> error instanceof ResponseStatusException status && status.getStatusCode()
+                .value() == 503)
                 .verify();
     }
 }

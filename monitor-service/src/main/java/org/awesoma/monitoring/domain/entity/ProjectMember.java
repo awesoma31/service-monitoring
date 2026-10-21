@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
-
 /**
  * Membership of a user in a project — a many-to-many association that carries its own
  * data ({@code joinedAt}), which is why it is an entity rather than a join table.

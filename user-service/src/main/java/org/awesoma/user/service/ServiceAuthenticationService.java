@@ -1,5 +1,7 @@
 package org.awesoma.user.service;
 
+import java.time.Duration;
+import java.util.UUID;
 import org.awesoma.security.JwtTokens;
 import org.awesoma.user.repository.ServiceClientRepository;
 import org.awesoma.user.web.dto.user.TokenResponse;
@@ -20,7 +22,7 @@ public class ServiceAuthenticationService {
         this.clients = clients;
         this.passwords = passwords;
         this.tokens = tokens;
-        this.dummyHash = passwords.encode(java.util.UUID.randomUUID().toString());
+        this.dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
     public TokenResponse authenticate(String id, String secret) {
@@ -31,6 +33,6 @@ public class ServiceAuthenticationService {
         }
         var token = tokens.issue(id, "SERVICE");
         return new TokenResponse(token.getTokenValue(), "Bearer",
-                java.time.Duration.between(token.getIssuedAt(), token.getExpiresAt()).toSeconds());
+                Duration.between(token.getIssuedAt(), token.getExpiresAt()).toSeconds());
     }
 }

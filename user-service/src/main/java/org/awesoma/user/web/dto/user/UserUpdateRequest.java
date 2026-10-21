@@ -1,9 +1,9 @@
 package org.awesoma.user.web.dto.user;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import io.swagger.v3.oas.annotations.media.Schema;
 import org.awesoma.user.domain.enums.UserStatus;
 
 public record UserUpdateRequest(

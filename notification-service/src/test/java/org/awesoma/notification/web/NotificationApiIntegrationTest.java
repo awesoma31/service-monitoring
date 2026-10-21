@@ -58,7 +58,8 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
         incidentChanged(incidentId, projectId, "OPENED");
 
         http.delete().uri("/internal/projects/{id}/channels", projectId)
-                .headers(headers -> headers.setBearerAuth(tokens.issue("test-monitor", "SERVICE").getTokenValue())).exchange()
+                .headers(headers -> headers.setBearerAuth(tokens.issue("test-monitor", "SERVICE").getTokenValue()))
+                .exchange()
                 .expectStatus().isNoContent();
 
         http.get().uri("/api/v1/channels/{id}", channelId).exchange().expectStatus().isNotFound();

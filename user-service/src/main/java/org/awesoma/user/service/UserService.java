@@ -2,18 +2,20 @@ package org.awesoma.user.service;
 
 import lombok.RequiredArgsConstructor;
 import org.awesoma.user.domain.entity.User;
+import org.awesoma.user.domain.enums.UserStatus;
 import org.awesoma.user.repository.UserRepository;
 import org.awesoma.user.web.dto.user.UserCreateRequest;
 import org.awesoma.user.web.dto.user.UserResponse;
+import org.awesoma.user.web.dto.user.UserRoleUpdateRequest;
 import org.awesoma.user.web.dto.user.UserUpdateRequest;
 import org.awesoma.user.web.exception.ConflictStateException;
 import org.awesoma.user.web.exception.NotFoundException;
 import org.awesoma.user.web.mapper.UserMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -54,11 +56,11 @@ public class UserService {
     public void delete(Long id) {
         User user = require(id);
         user.setDeleted(true);
-        user.setStatus(org.awesoma.user.domain.enums.UserStatus.INACTIVE);
+        user.setStatus(UserStatus.INACTIVE);
     }
 
     @Transactional
-    public UserResponse updateRole(Long id, org.awesoma.user.web.dto.user.UserRoleUpdateRequest request) {
+    public UserResponse updateRole(Long id, UserRoleUpdateRequest request) {
         User user = require(id);
         user.setRole(request.role());
         return mapper.toResponse(user);

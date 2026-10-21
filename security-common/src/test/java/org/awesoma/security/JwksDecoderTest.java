@@ -8,6 +8,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 
 class JwksDecoderTest {
     @Test
@@ -22,7 +23,8 @@ class JwksDecoderTest {
         });
         server.start();
         try {
-            var properties = new JwtProperties(null, "http://127.0.0.1:" + server.getAddress().getPort() + "/keys", null, null, null);
+            var properties = new JwtProperties(null, "http://127.0.0.1:" + server.getAddress().getPort() + "/keys",
+                    null, null, null);
             var token = new JwtTokens(TestKeys.encoder(key), properties).issue("12", "OPERATOR");
             var decoder = new JwtConfiguration().jwtDecoder(properties);
             assertThat(decoder.decode(token.getTokenValue()).getSubject()).isEqualTo("12");
@@ -36,8 +38,9 @@ class JwksDecoderTest {
         var properties = new JwtProperties(null, "http://127.0.0.1:9/keys", null, null, null);
         var decoder = new JwtConfiguration().jwtDecoder(properties);
         var token = new JwtTokens(TestKeys.encoder(), properties).issue("12", "OPERATOR");
-        assertThatThrownBy(() -> decoder.decode(token.getTokenValue())).isInstanceOf(IdentityServiceUnavailableException.class);
+        assertThatThrownBy(() -> decoder.decode(token.getTokenValue()))
+                .isInstanceOf(IdentityServiceUnavailableException.class);
         assertThatThrownBy(() -> decoder.decode("invalid"))
-                .isInstanceOf(org.springframework.security.oauth2.jwt.BadJwtException.class);
+                .isInstanceOf(BadJwtException.class);
     }
 }

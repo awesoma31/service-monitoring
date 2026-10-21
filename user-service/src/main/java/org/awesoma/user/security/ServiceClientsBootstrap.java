@@ -25,7 +25,9 @@ public class ServiceClientsBootstrap implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         properties.secrets().forEach((id, secret) -> {
             if (secret.isBlank()) return;
-            if (secret.length() < 32) throw new IllegalArgumentException("Service client secrets must contain at least 32 characters");
+            if (secret.length() < 32) {
+                throw new IllegalArgumentException("Service client secrets must contain at least 32 characters");
+            }
             var client = clients.findById(id).orElseGet(() -> {
                 var created = new ServiceClient();
                 created.setId(id);

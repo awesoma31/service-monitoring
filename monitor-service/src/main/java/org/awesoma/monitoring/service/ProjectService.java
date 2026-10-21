@@ -1,34 +1,35 @@
 package org.awesoma.monitoring.service;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
+import org.awesoma.monitoring.integration.ProjectDeleted;
+import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
+import org.awesoma.monitoring.security.AccessPolicy;
+import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberResponse;
-import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectResponse;
 import org.awesoma.monitoring.web.dto.project.ProjectUpdateRequest;
 import org.awesoma.monitoring.web.exception.ConflictStateException;
 import org.awesoma.monitoring.web.exception.NotFoundException;
 import org.awesoma.monitoring.web.mapper.ProjectMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
-import org.awesoma.monitoring.integration.ProjectDeleted;
-import org.awesoma.monitoring.repository.MonitorRepository;
-import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProjectService {
-    private final org.awesoma.monitoring.security.AccessPolicy access;
+    private final AccessPolicy access;
 
     private final ProjectRepository projects;
     private final ProjectMemberRepository members;
@@ -112,7 +113,8 @@ public class ProjectService {
         }
         users.requireActive(request.userId());
         // Flushed right away so that joined_at, set by the insert, is part of the response.
-        return mapper.toResponse(members.saveAndFlush(new ProjectMember(project, request.userId())), users.profile(request.userId()));
+        ProjectMember member = members.saveAndFlush(new ProjectMember(project, request.userId()));
+        return mapper.toResponse(member, users.profile(request.userId()));
     }
 
     @Transactional

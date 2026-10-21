@@ -2,11 +2,13 @@ package org.awesoma.notification.web;
 
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.concurrent.atomic.AtomicLong;
 import org.awesoma.notification.support.AbstractIntegrationTest;
 import org.awesoma.notification.web.dto.ChannelResponse;
 import org.awesoma.notification.web.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -25,7 +27,7 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"type\":\"EMAIL\",\"target\":\"ops@example.com\"}")
                 .exchange().expectStatus().isForbidden();
-        org.mockito.Mockito.when(accessClient.allowed("project", 123L, 1L, false)).thenReturn(false);
+        Mockito.when(accessClient.allowed("project", 123L, 1L, false)).thenReturn(false);
         http.get().uri("/api/v1/projects/123/channels").exchange().expectStatus().isForbidden();
     }
 
@@ -149,7 +151,7 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
                 .bodyValue("{\"type\":\"%s\",\"target\":\"%s\"}".formatted(type, target))
                 .exchange()
                 .expectStatus().isCreated()
-                .expectBody(com.fasterxml.jackson.databind.JsonNode.class)
+                .expectBody(JsonNode.class)
                 .returnResult().getResponseBody().get("id").asLong();
     }
 }

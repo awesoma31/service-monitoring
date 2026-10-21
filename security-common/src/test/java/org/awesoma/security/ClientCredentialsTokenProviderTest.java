@@ -22,13 +22,15 @@ class ClientCredentialsTokenProviderTest {
             var body = json.readTree(exchange.getRequestBody());
             assertThat(body.get("client_id").asText()).isEqualTo("check-service");
             assertThat(body.get("client_secret").asText()).isEqualTo("private-client-secret");
-            byte[] response = "{\"access_token\":\"signed-token\",\"token_type\":\"Bearer\",\"expires_in\":300}".getBytes(StandardCharsets.UTF_8);
+            byte[] response = "{\"access_token\":\"signed-token\",\"token_type\":\"Bearer\",\"expires_in\":300}"
+                    .getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, response.length);
             try (var output = exchange.getResponseBody()) { output.write(response); }
         });
         server.start();
         try {
-            var provider = new ClientCredentialsTokenProvider(json, "http://127.0.0.1:" + server.getAddress().getPort() + "/token",
+            var provider = new ClientCredentialsTokenProvider(json,
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/token",
                     "check-service", "private-client-secret");
             assertThat(provider.token()).isEqualTo("signed-token");
             assertThat(provider.token()).isEqualTo("signed-token");

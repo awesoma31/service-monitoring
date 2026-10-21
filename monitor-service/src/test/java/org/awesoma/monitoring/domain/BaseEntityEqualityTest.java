@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashSet;
 import java.util.Set;
-import org.awesoma.monitoring.domain.entity.Tag;
 import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.domain.entity.Tag;
 import org.junit.jupiter.api.Test;
 
 class BaseEntityEqualityTest {

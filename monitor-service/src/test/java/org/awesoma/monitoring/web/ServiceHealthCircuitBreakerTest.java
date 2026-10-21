@@ -19,8 +19,12 @@ import org.awesoma.monitoring.integration.CheckHistoryClient;
 import org.awesoma.monitoring.integration.CheckHistoryClientFallbackFactory;
 import org.awesoma.monitoring.integration.NotificationClient;
 import org.awesoma.monitoring.integration.NotificationClientFallbackFactory;
+import org.awesoma.monitoring.security.SecurityConfig;
 import org.awesoma.monitoring.service.ServiceHealthService;
+import org.awesoma.monitoring.service.UserDirectory;
 import org.awesoma.monitoring.web.controller.ServiceHealthController;
+import org.awesoma.security.ServiceTokenConfiguration;
+import org.awesoma.security.TestJwtConfiguration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,8 +40,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Real Feign, discovery, fallback and circuit breakers; only downstream HTTP is substituted. */
@@ -45,8 +51,8 @@ import org.springframework.test.web.servlet.MockMvc;
     "resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=1h"
 })
 @AutoConfigureMockMvc
-@org.springframework.context.annotation.Import(org.awesoma.security.TestJwtConfiguration.class)
-@org.springframework.security.test.context.support.WithMockUser(username = "1", roles = "SUPERVISOR")
+@Import(TestJwtConfiguration.class)
+@WithMockUser(username = "1", roles = "SUPERVISOR")
 class ServiceHealthCircuitBreakerTest {
 
     private static final Downstream CHECKS = new Downstream();
@@ -54,8 +60,8 @@ class ServiceHealthCircuitBreakerTest {
 
     @Autowired private MockMvc http;
     @Autowired private CircuitBreakerRegistry circuitBreakers;
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
-    private org.awesoma.monitoring.service.UserDirectory users;
+    @MockitoBean
+    private UserDirectory users;
 
     @DynamicPropertySource
     static void downstreamAddresses(DynamicPropertyRegistry registry) {
@@ -172,7 +178,7 @@ class ServiceHealthCircuitBreakerTest {
     })
     @EnableFeignClients(clients = {CheckHistoryClient.class, NotificationClient.class})
     @Import({ServiceHealthController.class, ServiceHealthService.class, OpenApiConfig.class,
-        org.awesoma.monitoring.security.SecurityConfig.class, org.awesoma.security.ServiceTokenConfiguration.class,
+        SecurityConfig.class, ServiceTokenConfiguration.class,
         CheckHistoryClientFallbackFactory.class, NotificationClientFallbackFactory.class})
     static class TestApplication {}
 

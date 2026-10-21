@@ -1,14 +1,13 @@
 package org.awesoma.notification;
 
-import org.springframework.context.annotation.Import;
 import org.awesoma.security.ReactiveSecurityConfiguration;
-import org.awesoma.security.ServiceTokenConfiguration;
 import org.awesoma.security.RemoteAccessConfiguration;
-
+import org.awesoma.security.ServiceTokenConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.context.annotation.Import;
 
 @EnableFeignClients
 @SpringBootApplication

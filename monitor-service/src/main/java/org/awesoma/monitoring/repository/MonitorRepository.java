@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface MonitorRepository extends JpaRepository<Monitor, Long> {
     @Query("select m.project.id from Monitor m where m.id = :id")
-    java.util.Optional<Long> findProjectId(Long id);
+    Optional<Long> findProjectId(Long id);
 
     Page<Monitor> findByProjectId(Long projectId, Pageable pageable);
 
