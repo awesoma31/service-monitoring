@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** The contract check-service relies on: due targets in, probe outcomes back. */
 @AutoConfigureMockMvc
 @Transactional
+@WithMockUser(username = "1", roles = {"SUPERVISOR", "SERVICE"})
 class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
@@ -102,13 +104,10 @@ class InternalMonitorApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     private long createMonitor(String slug) throws Exception {
-        String user = mockMvc.perform(postJson("/api/v1/users", """
-                        {"email":"%s@example.com","password":"password123","full_name":"Owner"}"""
-                        .formatted(slug)))
-                .andReturn().getResponse().getContentAsString();
+        long ownerId = remoteUser(slug + "@example.com");
         String project = mockMvc.perform(postJson("/api/v1/projects", """
                         {"owner_id":%d,"name":"Project","slug":"%s"}"""
-                        .formatted(json.readTree(user).get("id").asLong(), slug)))
+                        .formatted(ownerId, slug)))
                 .andReturn().getResponse().getContentAsString();
         String monitor = mockMvc.perform(postJson(
                         "/api/v1/projects/" + json.readTree(project).get("id").asLong() + "/monitors",

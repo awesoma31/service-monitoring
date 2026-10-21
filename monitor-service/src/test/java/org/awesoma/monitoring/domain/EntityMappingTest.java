@@ -8,7 +8,6 @@ import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.Tag;
-import org.awesoma.monitoring.domain.entity.User;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -28,7 +27,7 @@ class EntityMappingTest extends AbstractIntegrationTest {
 
     @Test
     void persistsAndReloadsTheWholeGraph() {
-        User owner = owner("graph@example.com");
+        Long owner = owner("graph@example.com");
         Project project = project(owner, "graph");
         Tag tag = tag("production");
         Monitor monitor = monitor(project, tag);
@@ -51,20 +50,18 @@ class EntityMappingTest extends AbstractIntegrationTest {
         assertThat(reloadedProject.getCreatedAt()).isNotNull();
         assertThat(reloadedProject.getMembers()).singleElement().satisfies(member -> {
             assertThat(member.getJoinedAt()).isNotNull();
-            assertThat(member.getUser().getId()).isEqualTo(owner.getId());
+            assertThat(member.getUserId()).isEqualTo(owner);
         });
 
     }
 
     @Test
     void storesEnumsAsStrings() {
-        User user = owner("enums@example.com");
+        Long user = owner("enums@example.com");
         Project project = project(user, "enums");
         Monitor monitor = monitor(project, tag("enum-tag"));
         entityManager.flush();
 
-        assertThat(column("SELECT status FROM users WHERE id = ?", user.getId()))
-                .isEqualTo("ACTIVE");
         assertThat(column("SELECT current_state FROM monitors WHERE id = ?", monitor.getId()))
                 .isEqualTo("UNKNOWN");
         assertThat(column("SELECT http_method FROM monitors WHERE id = ?", monitor.getId()))
@@ -93,18 +90,14 @@ class EntityMappingTest extends AbstractIntegrationTest {
                 .getSingleResult();
     }
 
-    private User owner(String email) {
-        User user = new User();
-        user.setEmail(email);
-        user.setPassword("secret123");
-        user.setFullName("Owner");
-        entityManager.persist(user);
+    private Long owner(String email) {
+        Long user = remoteUser(email);
         return user;
     }
 
-    private Project project(User owner, String slug) {
+    private Project project(Long owner, String slug) {
         Project project = new Project();
-        project.setOwner(owner);
+        project.setOwnerId(owner);
         project.setName("Graph");
         project.setSlug(slug);
         project.addMember(owner);

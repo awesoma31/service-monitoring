@@ -5,10 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import org.awesoma.security.JwtTokens;
+import org.awesoma.security.TestJwtConfiguration;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
@@ -18,9 +22,17 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
+@Import(TestJwtConfiguration.class)
 class GatewayRoutingTest {
 
     @Autowired private WebTestClient http;
+    @Autowired private JwtTokens tokens;
+
+    @BeforeEach
+    void authenticateRequests() {
+        http = http.mutate().defaultHeader("Authorization", "Bearer " + tokens.issue("1", "SUPERVISOR").getTokenValue())
+                .build();
+    }
 
     @Test
     void anUnavailableServiceAnswersThroughTheCircuitBreakerFallback() {
@@ -28,7 +40,7 @@ class GatewayRoutingTest {
                 .expectStatus().isEqualTo(503)
                 .expectBody()
                 .jsonPath("$.title").isEqualTo("Service unavailable")
-                .jsonPath("$.detail").isEqualTo("monitor-service is temporarily unavailable, try again later")
+                .jsonPath("$.detail").isEqualTo("user-service is temporarily unavailable, try again later")
                 .jsonPath("$.instance").isEqualTo("/api/v1/users");
     }
 
@@ -36,10 +48,12 @@ class GatewayRoutingTest {
     void eachRouteFallsBackForItsOwnService() {
         http.get().uri("/api/v1/monitors/1/results").exchange()
                 .expectStatus().isEqualTo(503)
-                .expectBody().jsonPath("$.detail").isEqualTo("check-service is temporarily unavailable, try again later");
+                .expectBody().jsonPath("$.detail")
+                .isEqualTo("check-service is temporarily unavailable, try again later");
         http.post().uri("/api/v1/projects/1/channels").exchange()
                 .expectStatus().isEqualTo(503)
-                .expectBody().jsonPath("$.detail").isEqualTo("notification-service is temporarily unavailable, try again later");
+                .expectBody().jsonPath("$.detail")
+                .isEqualTo("notification-service is temporarily unavailable, try again later");
     }
 
     @Test
@@ -53,7 +67,8 @@ class GatewayRoutingTest {
         assertThat(ids).last().isEqualTo("monitor-service");
         assertThat(ids).contains(
                 "check-service", "notification-service",
-                "monitor-service-api-docs", "check-service-api-docs", "notification-service-api-docs");
+                "monitor-service-api-docs", "check-service-api-docs", "notification-service-api-docs",
+                        "user-service-api-docs", "user-service");
     }
 
     @Test
@@ -63,7 +78,7 @@ class GatewayRoutingTest {
                 .expectBody()
                 .jsonPath("$.urls[*].name")
                 .value(names -> assertThat(names.toString())
-                        .contains("monitor-service", "check-service", "notification-service"))
+                        .contains("monitor-service", "check-service", "notification-service", "user-service"))
                 .jsonPath("$.urls[?(@.name == 'monitor-service')].url")
                 .isEqualTo(List.of("/v3/api-docs/monitor-service"));
 
@@ -71,7 +86,28 @@ class GatewayRoutingTest {
     }
 
     @Test
+    void gatewayRejectsMissingOrInvalidTokensBeforeRouting() {
+        http.mutate().defaultHeaders(headers -> headers.remove("Authorization")).build()
+                .get().uri("/api/v1/projects").exchange().expectStatus().isUnauthorized();
+        http.get().uri("/api/v1/projects").headers(headers -> headers.setBearerAuth("invalid"))
+                .exchange().expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void viewerAndOperatorPermissionsAreEnforcedBeforeRouting() {
+        http.post().uri("/api/v1/projects/1/channels")
+                .headers(headers -> headers.setBearerAuth(tokens.issue("1", "VIEWER").getTokenValue()))
+                .exchange().expectStatus().isForbidden();
+        http.post().uri("/api/v1/users")
+                .headers(headers -> headers.setBearerAuth(tokens.issue("1", "OPERATOR").getTokenValue()))
+                .exchange().expectStatus().isForbidden();
+        http.get().uri("/api/v1/users")
+                .headers(headers -> headers.setBearerAuth(tokens.issue("check-service", "SERVICE").getTokenValue()))
+                .exchange().expectStatus().isForbidden();
+    }
+
+    @Test
     void otherPathsAreNotRouted() {
-        http.get().uri("/unknown").exchange().expectStatus().isNotFound();
+        http.get().uri("/unknown").exchange().expectStatus().isForbidden();
     }
 }

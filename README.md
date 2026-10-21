@@ -11,7 +11,7 @@
 |---|---|---|---|
 | 1 | Монолит на Spring Boot: REST API, PostgreSQL, Liquibase, транзакции, пагинация, тесты | готово | [описание](lab1.md), [отчёт](docs/report-lab1.md), релиз `v1.1.0-lab1` |
 | 2 | Декомпозиция на микросервисы: Eureka, Config Server, Gateway, Feign, Circuit Breaker, Reactor | готово | [описание](lab2.md), [отчёт](docs/report-lab2.md), релиз `v2.1.0-lab2` |
-| 3 | Аутентификация: Spring Security, JWT, ролевая модель | не начато | |
+| 3 | Аутентификация: Spring Security, JWT, ролевая модель | готово | [описание и запуск](lab3.md) |
 | 4 | Обмен сообщениями через Kafka/RabbitMQ, файловый сервис, Clean Architecture | не начато | |
 
 Полный текст задания — [TASK.md](TASK.md).
@@ -29,7 +29,8 @@
 | Модуль | Назначение |
 |---|---|
 | `gateway` | единственная точка входа в API и общий Swagger UI |
-| `monitor-service` | пользователи, проекты, мониторы, теги, инциденты (Spring MVC + JPA) |
+| `user-service` | пользователи, пароли, роли, вход и выпуск JWT (Spring MVC + JPA) |
+| `monitor-service` | проекты, участники, мониторы, теги, инциденты (Spring MVC + JPA) |
 | `check-service` | планировщик, HTTP-проверки и их история (WebFlux + R2DBC) |
 | `notification-service` | каналы и уведомления (WebFlux + JPA) |
 | `config-server` | конфигурация сервисов из `config-server/src/main/resources/config-repo/` |
@@ -49,10 +50,11 @@
 
 ```bash
 cp .env.example .env
+# Задайте SUPERVISOR_PASSWORD и отдельные *_CLIENT_SECRET в .env перед запуском.
 docker compose up --build
 ```
 
-Поднимаются PostgreSQL, config-server, eureka-server, три сервиса и gateway — в этом
+Поднимаются PostgreSQL, config-server, eureka-server, user-service, остальные сервисы и gateway — в этом
 порядке, каждый после готовности предыдущих. Наружу опубликованы gateway, Eureka и, для
 отладки, PostgreSQL; сервисы общаются между собой внутри docker-сети.
 
@@ -63,9 +65,25 @@ docker compose up --build
 | Eureka | http://localhost:8761 |
 | Health gateway | http://localhost:8080/actuator/health |
 
+Начиная с лабораторной 3, API требует `Authorization: Bearer <JWT>`. Первый супервайзер
+создаётся из `SUPERVISOR_EMAIL` и `SUPERVISOR_PASSWORD` в `.env`; существующие пользователи
+сохраняют свои ID, пароли и роли при переносе в `user_db`. Старые открытые пароли из
+первой лабораторной предварительно переводятся в хэши миграцией.
+Новых пользователей создаёт супервайзер через `POST /api/v1/users` или защищённый
+`POST /api/v1/auth/register`.
+
+В Swagger выберите `user-service` → `Authentication`, вызовите `POST /api/v1/auth/login`
+и вставьте полученный `access_token` в **Authorize**. Роли и полный пример запросов — в
+[lab3.md](lab3.md).
+
+JWT подписывает только user-service (RS256); остальные сервисы проверяют открытый ключ
+через JWKS. При обновлении существующего стека соблюдайте порядок переноса из
+[lab3.md](lab3.md#перенос-существующих-пользователей). После перехода с HS256 нужно войти заново.
+
 Сквозная проверка основного сценария по API (нужны `curl` и `jq`, около минуты):
 
 ```bash
+export SUPERVISOR_PASSWORD='значение-из-.env'
 ./scripts/demo.sh
 ```
 
@@ -80,8 +98,8 @@ gateway серией неудачных вызовов, проверяет со�
 Для проверки исходящих вызовов из `monitor-service` есть две ручки (доступны также в Swagger):
 
 ```bash
-curl -i http://localhost:8080/api/v1/services/check-service/health
-curl -i http://localhost:8080/api/v1/services/notification-service/health
+curl -i -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/services/check-service/health
+curl -i -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/services/notification-service/health
 ```
 
 Каждая вызывает `/actuator/health` соответствующего сервиса через Feign и его Circuit Breaker.
@@ -97,7 +115,7 @@ curl -i http://localhost:8080/api/v1/services/notification-service/health
 ```bash
 docker compose stop check-service
 for i in {1..6}; do
-  curl -s http://localhost:8080/api/v1/services/check-service/health
+  curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/services/check-service/health
   echo
 done
 docker compose start check-service

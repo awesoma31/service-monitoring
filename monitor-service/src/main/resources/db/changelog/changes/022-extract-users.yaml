@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-extract-users
+      author: nifreebie
+      comment: User IDs remain stable; retain the old hashed rows as a migration archive until the copy is verified.
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: projects
+            constraintName: fk_projects_owner
+        - dropForeignKeyConstraint:
+            baseTableName: project_members
+            constraintName: fk_project_members_user
+        - renameTable:
+            oldTableName: users
+            newTableName: legacy_users
+      rollback:
+        - renameTable:
+            oldTableName: legacy_users
+            newTableName: users
+        - addForeignKeyConstraint:
+            baseTableName: projects
+            baseColumnNames: owner_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_projects_owner
+        - addForeignKeyConstraint:
+            baseTableName: project_members
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_project_members_user

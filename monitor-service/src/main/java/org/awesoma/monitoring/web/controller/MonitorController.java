@@ -1,7 +1,5 @@
 package org.awesoma.monitoring.web.controller;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -9,6 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.service.MonitorService;
@@ -19,6 +19,7 @@ import org.awesoma.monitoring.web.dto.monitor.MonitorTagsRequest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +42,7 @@ public class MonitorController {
     private final MonitorService monitorService;
 
     @GetMapping("/projects/{projectId}/monitors")
+    @PreAuthorize("@access.project(#projectId, false)")
     @Operation(
             summary = "List project monitors",
             description = "Returns one page of monitors, optionally filtered by an exact tag name.")
@@ -68,6 +70,7 @@ public class MonitorController {
     }
 
     @PostMapping("/projects/{projectId}/monitors")
+    @PreAuthorize("@access.project(#projectId, true)")
     @Operation(summary = "Create a monitor", description = "Unknown tag names are created automatically.")
     @ApiResponses({
         @ApiResponse(
@@ -89,6 +92,7 @@ public class MonitorController {
     }
 
     @GetMapping("/monitors/{id}")
+    @PreAuthorize("@access.monitor(#id, false)")
     @Operation(summary = "Get a monitor")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Monitor returned"),
@@ -100,6 +104,7 @@ public class MonitorController {
     }
 
     @PutMapping("/monitors/{id}")
+    @PreAuthorize("@access.monitor(#id, true)")
     @Operation(
             summary = "Update a monitor",
             description = "Disabling a monitor pauses it; enabling a paused monitor returns it to UNKNOWN.")
@@ -115,6 +120,7 @@ public class MonitorController {
     }
 
     @PutMapping("/monitors/{id}/tags")
+    @PreAuthorize("@access.monitor(#id, true)")
     @Operation(
             summary = "Replace monitor tags",
             description = "Replaces the complete tag set; unknown tag names are created automatically.")
@@ -130,6 +136,7 @@ public class MonitorController {
     }
 
     @DeleteMapping("/monitors/{id}")
+    @PreAuthorize("@access.monitor(#id, true)")
     @Operation(summary = "Delete a monitor")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Monitor deleted"),

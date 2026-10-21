@@ -2,11 +2,13 @@ package org.awesoma.notification.web;
 
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.concurrent.atomic.AtomicLong;
 import org.awesoma.notification.support.AbstractIntegrationTest;
 import org.awesoma.notification.web.dto.ChannelResponse;
 import org.awesoma.notification.web.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -15,7 +17,19 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final AtomicLong PROJECTS = new AtomicLong(10_000);
 
-    @Autowired private WebTestClient http;
+
+    @Test
+    void rejectsUnauthenticatedRequestsReadOnlyWritesAndForeignProjects() {
+        http.mutate().defaultHeaders(headers -> headers.remove("Authorization")).build()
+                .get().uri("/api/v1/projects/1/channels").exchange().expectStatus().isUnauthorized();
+        http.post().uri("/api/v1/projects/1/channels")
+                .headers(headers -> headers.setBearerAuth(tokens.issue("1", "VIEWER").getTokenValue()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"type\":\"EMAIL\",\"target\":\"ops@example.com\"}")
+                .exchange().expectStatus().isForbidden();
+        Mockito.when(accessClient.allowed("project", 123L, 1L, false)).thenReturn(false);
+        http.get().uri("/api/v1/projects/123/channels").exchange().expectStatus().isForbidden();
+    }
 
     @Test
     void createsAChannelUnderItsProject() {
@@ -137,7 +151,7 @@ class ChannelApiIntegrationTest extends AbstractIntegrationTest {
                 .bodyValue("{\"type\":\"%s\",\"target\":\"%s\"}".formatted(type, target))
                 .exchange()
                 .expectStatus().isCreated()
-                .expectBody(com.fasterxml.jackson.databind.JsonNode.class)
+                .expectBody(JsonNode.class)
                 .returnResult().getResponseBody().get("id").asLong();
     }
 }

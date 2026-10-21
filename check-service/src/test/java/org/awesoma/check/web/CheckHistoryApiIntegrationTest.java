@@ -21,13 +21,20 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @AutoConfigureWebTestClient
 class CheckHistoryApiIntegrationTest extends AbstractIntegrationTest {
 
-    @Autowired private WebTestClient http;
     @Autowired private CheckResultRepository results;
     @MockitoBean private MonitorClient monitorService;
 
     @BeforeEach
     void everyMonitorExistsUnlessStatedOtherwise() {
         when(monitorService.exists(anyLong())).thenReturn(true);
+    }
+
+    @Test
+    void historyRequiresAuthenticationAndAccessToTheMonitor() {
+        http.mutate().defaultHeaders(headers -> headers.remove("Authorization")).build()
+                .get().uri("/api/v1/monitors/1/results").exchange().expectStatus().isUnauthorized();
+        when(accessClient.allowed("monitor", 123L, 1L, false)).thenReturn(false);
+        http.get().uri("/api/v1/monitors/123/results").exchange().expectStatus().isForbidden();
     }
 
     @Test
@@ -94,7 +101,9 @@ class CheckHistoryApiIntegrationTest extends AbstractIntegrationTest {
         long monitorId = 1_002;
         store(monitorId, ProbeOutcome.success(10, 200), OffsetDateTime.now());
 
-        http.delete().uri("/internal/results?monitor_id={id}", monitorId).exchange()
+        http.delete().uri("/internal/results?monitor_id={id}", monitorId)
+                .headers(headers -> headers.setBearerAuth(tokens.issue("test-check", "SERVICE").getTokenValue()))
+                .exchange()
                 .expectStatus().isNoContent();
 
         http.get().uri("/api/v1/monitors/{id}/results", monitorId).exchange()

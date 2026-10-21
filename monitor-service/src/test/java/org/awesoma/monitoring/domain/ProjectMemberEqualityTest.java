@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
-import org.awesoma.monitoring.domain.entity.User;
 import org.junit.jupiter.api.Test;
 
 class ProjectMemberEqualityTest {
@@ -44,8 +43,7 @@ class ProjectMemberEqualityTest {
     private ProjectMember member(Long projectId, Long userId) {
         Project project = new Project();
         project.setId(projectId);
-        User user = new User();
-        user.setId(userId);
+        Long user = userId;
 
         ProjectMember member = new ProjectMember(project, user);
         member.setId(new ProjectMemberId(projectId, userId));

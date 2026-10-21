@@ -14,7 +14,6 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final AtomicLong IDS = new AtomicLong(20_000);
 
-    @Autowired private WebTestClient http;
 
     @Test
     void anIncidentEventAlertsEveryEnabledChannelOfTheProject() {
@@ -58,7 +57,9 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
         long channelId = channel(projectId, "EMAIL", "gone@example.com");
         incidentChanged(incidentId, projectId, "OPENED");
 
-        http.delete().uri("/internal/projects/{id}/channels", projectId).exchange()
+        http.delete().uri("/internal/projects/{id}/channels", projectId)
+                .headers(headers -> headers.setBearerAuth(tokens.issue("test-monitor", "SERVICE").getTokenValue()))
+                .exchange()
                 .expectStatus().isNoContent();
 
         http.get().uri("/api/v1/channels/{id}", channelId).exchange().expectStatus().isNotFound();
@@ -69,6 +70,7 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void anIncompleteEventIsRejected() {
         http.post().uri("/internal/notifications")
+                .headers(headers -> headers.setBearerAuth(tokens.issue("test-monitor", "SERVICE").getTokenValue()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
                         {"incident_id":1,"kind":"OPENED"}""")
@@ -78,6 +80,7 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
 
     private void incidentChanged(long incidentId, long projectId, String kind) {
         http.post().uri("/internal/notifications")
+                .headers(headers -> headers.setBearerAuth(tokens.issue("test-monitor", "SERVICE").getTokenValue()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"incident_id\":%d,\"project_id\":%d,\"kind\":\"%s\"}"
                         .formatted(incidentId, projectId, kind))

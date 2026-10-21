@@ -1,12 +1,12 @@
 package org.awesoma.monitoring.web.controller;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.service.IncidentService;
@@ -14,6 +14,7 @@ import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +31,7 @@ public class IncidentController {
     private final IncidentService incidentService;
 
     @GetMapping("/monitors/{monitorId}/incidents")
+    @PreAuthorize("@access.monitor(#monitorId, false)")
     @Operation(
             summary = "List monitor incidents",
             description = "Returns one page, optionally filtered by incident status.")
@@ -48,6 +50,7 @@ public class IncidentController {
     }
 
     @GetMapping("/incidents/{id}")
+    @PreAuthorize("@access.incident(#id, false)")
     @Operation(summary = "Get an incident")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Incident returned"),
@@ -59,6 +62,7 @@ public class IncidentController {
     }
 
     @PostMapping("/incidents/{id}/resolve")
+    @PreAuthorize("@access.incident(#id, true)")
     @Operation(
             summary = "Resolve an incident manually",
             description = "Marks the incident resolved and returns a DOWN monitor to UNKNOWN until its next check.")

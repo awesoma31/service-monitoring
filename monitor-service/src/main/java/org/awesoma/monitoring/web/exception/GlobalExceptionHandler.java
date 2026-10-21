@@ -11,6 +11,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterValidationResult;
@@ -29,6 +31,16 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class GlobalExceptionHandler {
 
     private final ObjectMapper objectMapper;
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(Exception error, HttpServletRequest request) {
+        return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Invalid email or password", request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleForbidden(Exception error, HttpServletRequest request) {
+        return problem(HttpStatus.FORBIDDEN, "Forbidden", "Insufficient permissions", request);
+    }
 
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFound(

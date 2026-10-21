@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
-
 /**
  * Membership of a user in a project — a many-to-many association that carries its own
  * data ({@code joinedAt}), which is why it is an entity rather than a join table.
@@ -37,18 +36,16 @@ public class ProjectMember {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @MapsId("userId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 
     @CreationTimestamp
     @Column(name = "joined_at", nullable = false, updatable = false)
     private OffsetDateTime joinedAt;
 
-    public ProjectMember(Project project, User user) {
+    public ProjectMember(Project project, Long userId) {
         this.project = project;
-        this.user = user;
+        this.id = new ProjectMemberId(project.getId(), userId);
     }
+
+    public Long getUserId() { return id.getUserId(); }
 
 }

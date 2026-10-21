@@ -37,6 +37,8 @@ subprojects {
 
     tasks.named<Test>("test") {
         useJUnitPlatform()
+        systemProperty("security.jwt.jwk-set-uri", "http://127.0.0.1:9/.well-known/jwks.json")
+        systemProperty("security.bootstrap.password", "")
         // Testcontainers' resource reaper mounts the Docker socket by its path inside the
         // daemon's host. Docker Desktop already uses this path; colima keeps the socket in
         // $HOME, and without this the reaper fails to start and every test errors out.

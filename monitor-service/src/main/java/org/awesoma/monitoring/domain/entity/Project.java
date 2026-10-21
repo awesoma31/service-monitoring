@@ -28,9 +28,8 @@ import org.hibernate.annotations.CreationTimestamp;
 public class Project extends BaseEntity {
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "owner_id", nullable = false)
-    private User owner;
+    @Column(name = "owner_id", nullable = false)
+    private Long ownerId;
 
     @NotBlank
     @Size(max = 255)
@@ -59,8 +58,8 @@ public class Project extends BaseEntity {
      * Adds a member and keeps both sides of the association consistent, so a project
      * created and populated in one transaction is persisted with its members intact.
      */
-    public ProjectMember addMember(User user) {
-        ProjectMember member = new ProjectMember(this, user);
+    public ProjectMember addMember(Long userId) {
+        ProjectMember member = new ProjectMember(this, userId);
         members.add(member);
         return member;
     }

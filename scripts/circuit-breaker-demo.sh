@@ -4,12 +4,15 @@ set -euo pipefail
 API=${API:-http://localhost:8080/api/v1}
 GATEWAY=${API%/api/v1}
 RECOVERY_TIMEOUT=${RECOVERY_TIMEOUT:-90}
+source "$(dirname "${BASH_SOURCE[0]}")/lib/auth.sh"
+authenticate
 RUN=$(date +%s)
 CB_RESPONSE=$(mktemp)
 STACK_SERVICES=(
   postgres
   config-server
   eureka-server
+  user-service
   monitor-service
   check-service
   notification-service
@@ -17,11 +20,11 @@ STACK_SERVICES=(
 )
 
 say()  { printf '\n\033[1m== %s\033[0m\n' "$*"; }
-post() { curl -s -H 'Content-Type: application/json' -d "$2" "$API$1"; }
-state() { curl -s "$API/monitors/$1" | jq -r .current_state; }
+post() { api_curl -s -H 'Content-Type: application/json' -d "$2" "$API$1"; }
+state() { api_curl -s "$API/monitors/$1" | jq -r .current_state; }
 restore_notification_service() { docker compose start notification-service >/dev/null 2>&1 || true; }
 circuit_state() {
-  curl -fsS "$GATEWAY/actuator/circuitbreakers" | jq -r \
+  api_curl -fsS "$GATEWAY/actuator/circuitbreakers" | jq -r \
     '(.circuitBreakers // .circuit_breakers)["notification-service"].state // empty'
 }
 container_health() {
@@ -64,7 +67,7 @@ wait_for_gateway_recovery() {
   local code breaker
 
   while ((SECONDS < deadline)); do
-    code=$(curl -sS --connect-timeout 2 --max-time 5 -o "$CB_RESPONSE" -w '%{http_code}' \
+    code=$(api_curl -sS --connect-timeout 2 --max-time 5 -o "$CB_RESPONSE" -w '%{http_code}' \
       "$API/projects/$PROJECT_ID/channels" || true)
     breaker=$(circuit_state 2>/dev/null || true)
     echo "пробный запрос: HTTP ${code:-000}, Circuit Breaker: ${breaker:-UNKNOWN}"
@@ -93,13 +96,13 @@ docker compose stop notification-service >/dev/null 2>&1 && echo "останов
 
 say "2. Шесть ошибок открывают Circuit Breaker маршрута notification-service"
 for call in $(seq 1 6); do
-  code=$(curl -s -o "$CB_RESPONSE" -w '%{http_code}' "$API/projects/1/channels")
+  code=$(api_curl -s -o "$CB_RESPONSE" -w '%{http_code}' "$API/projects/1/channels")
   echo "вызов $call: HTTP $code"
 done
 jq -c '{status, title, detail}' "$CB_RESPONSE"
 
 say "3. Gateway сообщает состояние OPEN"
-CIRCUITS=$(curl -s "$GATEWAY/actuator/circuitbreakers")
+CIRCUITS=$(api_curl -s "$GATEWAY/actuator/circuitbreakers")
 echo "$CIRCUITS" | jq -c '(.circuitBreakers // .circuit_breakers)
   | to_entries | map({(.key): .value.state}) | add'
 CB_STATE=$(echo "$CIRCUITS" | jq -r \
@@ -113,7 +116,7 @@ MONITOR_ID=$(post "/projects/$PROJECT_ID/monitors" \
   '{"name":"Self","url":"http://monitor-service:8080/actuator/health","interval_sec":10,"expected_status":500}' | jq .id)
 for _ in $(seq 1 30); do [ "$(state "$MONITOR_ID")" = DOWN ] && break; sleep 2; done
 echo "монитор $MONITOR_ID: $(state "$MONITOR_ID")"
-curl -s "$API/monitors/$MONITOR_ID/incidents" | jq -c '[.content[] | {id, status}]'
+api_curl -s "$API/monitors/$MONITOR_ID/incidents" | jq -c '[.content[] | {id, status}]'
 
 say "5. monitor-service записал, что уведомить не удалось (fallback)"
 docker compose logs monitor-service --since 2m 2>&1 | grep 'notification-service unavailable' | tail -2 | cut -c1-200

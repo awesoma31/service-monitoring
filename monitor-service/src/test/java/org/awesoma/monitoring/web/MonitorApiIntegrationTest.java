@@ -10,11 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +49,7 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
                         {"name":"Tagged","url":"https://tagged.example","interval_sec":60,
                          "timeout_ms":5000,"tags":["prod","api"]}"""))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/v1/monitors/")))
+                .andExpect(header().string("Location", Matchers.startsWith("/api/v1/monitors/")))
                 .andExpect(jsonPath("$.tags.length()").value(2))
                 .andExpect(jsonPath("$.http_method").value("GET"))
                 .andExpect(jsonPath("$.expected_status").value(200))
@@ -176,11 +178,7 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     private long createProject(String slug) throws Exception {
-        String userBody = mockMvc.perform(postJson("/api/v1/users", """
-                        {"email":"%s@example.com","password":"password123","full_name":"Owner"}"""
-                        .formatted(slug)))
-                .andReturn().getResponse().getContentAsString();
-        long ownerId = json.readTree(userBody).get("id").asLong();
+        long ownerId = remoteUser(slug + "@example.com");
 
         String projectBody = mockMvc.perform(postJson("/api/v1/projects", """
                         {"owner_id":%d,"name":"Project","slug":"%s"}""".formatted(ownerId, slug)))
@@ -207,7 +205,7 @@ class MonitorApiIntegrationTest extends AbstractIntegrationTest {
         return post(path).contentType(MediaType.APPLICATION_JSON).content(body);
     }
 
-    private org.springframework.test.web.servlet.ResultActions updateMonitor(
+    private ResultActions updateMonitor(
             long monitorId, String name, boolean active) throws Exception {
         return mockMvc.perform(put("/api/v1/monitors/{id}", monitorId)
                 .contentType(MediaType.APPLICATION_JSON)
