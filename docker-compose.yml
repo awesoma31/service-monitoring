@@ -82,6 +82,7 @@ services:
       CHECK_SERVICE_CLIENT_SECRET: ${CHECK_SERVICE_CLIENT_SECRET:-local-dev-check-client-secret-replace-before-deployment}
       NOTIFICATION_SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-local-dev-notification-client-secret-replace-before-deployment}
       USER_MIGRATION_SOURCE_URL: ${USER_MIGRATION_SOURCE_URL-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-monitoring}}
+      USER_MIGRATION_WAIT_TIMEOUT: ${USER_MIGRATION_WAIT_TIMEOUT:-PT5M}
       JWT_KEY_FILE: /app/keys/signing-key.json
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
@@ -108,8 +109,10 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      # Started, not healthy: on an upgrade user-service becomes ready only after it has
+      # imported the users that this service's migrations hash first.
       user-service:
-        condition: service_healthy
+        condition: service_started
     environment:
       <<: *jwt-environment
       SERVICE_CLIENT_SECRET: ${MONITOR_SERVICE_CLIENT_SECRET:-local-dev-monitor-client-secret-replace-before-deployment}

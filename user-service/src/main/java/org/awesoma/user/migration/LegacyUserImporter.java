@@ -2,20 +2,47 @@ package org.awesoma.user.migration;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import javax.sql.DataSource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /** One-time, transactional copy. Stable IDs and existing password hashes are preserved. */
+@Slf4j
 @Component
 public class LegacyUserImporter {
-    private final DataSource destination;
+    private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
-    public LegacyUserImporter(DataSource destination) {
+    private final DataSource destination;
+    private final Duration waitTimeout;
+    private final Duration pollInterval;
+
+    @Autowired
+    public LegacyUserImporter(DataSource destination,
+            @Value("${security.migration.wait-timeout:PT5M}") Duration waitTimeout) {
+        this(destination, waitTimeout, POLL_INTERVAL);
+    }
+
+    LegacyUserImporter(DataSource destination, Duration waitTimeout, Duration pollInterval) {
         this.destination = destination;
+        this.waitTimeout = waitTimeout;
+        this.pollInterval = pollInterval;
     }
 
     public void importFrom(String url, String username, String password) {
         if (url.isBlank()) return;
+        try {
+            awaitHashedSource(url, username, password);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for monitor-service migrations", interrupted);
+        } catch (SQLException error) {
+            throw new IllegalStateException("Cannot read the legacy users of monitor-service", error);
+        }
         try (Connection target = destination.getConnection()) {
             target.setAutoCommit(false);
             try {
@@ -69,7 +96,34 @@ public class LegacyUserImporter {
         }
     }
 
-    private boolean exists(Connection connection, String table) throws Exception {
+    /**
+     * When a stack from lab 2 is upgraded, monitor-service starts alongside this service and
+     * its users still hold plaintext passwords until its migration 021 hashes them. Waiting
+     * for that migration, instead of failing, lets both services come up in any order.
+     */
+    private void awaitHashedSource(String url, String username, String password)
+            throws SQLException, InterruptedException {
+        Instant deadline = Instant.now().plus(waitTimeout);
+        while (true) {
+            try (Connection source = DriverManager.getConnection(url, username, password)) {
+                if (!exists(source, "users") || hasColumn(source, "users", "password_hash")) return;
+            }
+            if (Instant.now().isAfter(deadline)) {
+                throw new IllegalStateException(
+                        "monitor-service did not hash its user passwords within " + waitTimeout);
+            }
+            log.info("Waiting for monitor-service to hash user passwords before importing them");
+            Thread.sleep(pollInterval.toMillis());
+        }
+    }
+
+    private boolean hasColumn(Connection connection, String table, String column) throws SQLException {
+        try (var result = connection.getMetaData().getColumns(null, "public", table, column)) {
+            return result.next();
+        }
+    }
+
+    private boolean exists(Connection connection, String table) throws SQLException {
         try (var result = connection.getMetaData().getTables(null, "public", table, new String[] {"TABLE"})) {
             return result.next();
         }

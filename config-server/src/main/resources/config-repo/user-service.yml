@@ -26,6 +26,7 @@ security:
       notification-service: ${NOTIFICATION_SERVICE_CLIENT_SECRET:}
   migration:
     source-url: ${USER_MIGRATION_SOURCE_URL:}
+    wait-timeout: ${USER_MIGRATION_WAIT_TIMEOUT:PT5M}
     source-user: ${DB_USER:}
     source-password: ${DB_PASSWORD:}
 
