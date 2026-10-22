@@ -3,6 +3,7 @@ package org.awesoma.user.service;
 import java.time.Duration;
 import java.util.UUID;
 import org.awesoma.security.JwtTokens;
+import org.awesoma.user.domain.entity.ServiceClient;
 import org.awesoma.user.repository.ServiceClientRepository;
 import org.awesoma.user.web.dto.user.TokenResponse;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -27,7 +28,7 @@ public class ServiceAuthenticationService {
 
     public TokenResponse authenticate(String id, String secret) {
         var client = clients.findById(id);
-        boolean matches = passwords.matches(secret, client.map(value -> value.getSecretHash()).orElse(dummyHash));
+        boolean matches = passwords.matches(secret, client.map(ServiceClient::getSecretHash).orElse(dummyHash));
         if (client.isEmpty() || !matches || !client.get().isEnabled()) {
             throw new BadCredentialsException("Invalid service credentials");
         }

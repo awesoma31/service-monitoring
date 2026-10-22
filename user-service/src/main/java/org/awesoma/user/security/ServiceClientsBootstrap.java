@@ -21,7 +21,8 @@ public class ServiceClientsBootstrap implements ApplicationRunner {
     private final ServiceClientRepository clients;
     private final PasswordEncoder passwords;
 
-    @Override @Transactional
+    @Override
+    @Transactional
     public void run(ApplicationArguments args) {
         properties.secrets().forEach((id, secret) -> {
             if (secret.isBlank()) return;

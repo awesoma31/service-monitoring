@@ -43,7 +43,6 @@ public class InternalUserController {
 
     @GetMapping("/internal/users/{id}/security")
     public UserSecurity security(@PathVariable @Positive Long id) {
-        // Deleted users must also be reported inactive, so stale JWTs can be rejected.
         var user = repository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
         return new UserSecurity(user.getId(), user.getRole().name(),
                 user.isDeleted() ? "INACTIVE" : user.getStatus().name());
@@ -51,7 +50,6 @@ public class InternalUserController {
 
     @PostMapping("/internal/users/batch")
     public List<UserResponse> batch(@RequestBody @Size(max = 50) List<@Positive Long> ids) {
-        // This read-only projection retains names for existing memberships after soft deletion.
         return repository.findAllById(ids).stream().map(user -> new UserResponse(user.getId(), user.getEmail(),
                 user.getFullName(), user.getStatus(), user.getRole())).toList();
     }

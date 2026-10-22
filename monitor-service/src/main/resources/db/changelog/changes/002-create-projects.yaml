@@ -3,6 +3,8 @@ databaseChangeLog:
       id: 002-create-projects
       author: awesoma31
       comment: Projects group monitors and notification channels
+      # Accept the previously applied version with a local users foreign key.
+      validCheckSum: "9:4a2ce21c036c1082338cf8510e99c5ea"
       changes:
         - createTable:
             tableName: projects
@@ -19,9 +21,6 @@ databaseChangeLog:
                   type: BIGINT
                   constraints:
                     nullable: false
-                    foreignKeyName: fk_projects_owner
-                    references: users(id)
-                    deleteCascade: false
               - column:
                   name: name
                   type: VARCHAR(255)

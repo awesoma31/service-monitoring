@@ -25,3 +25,5 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: DROP TABLE user_imports; DROP TABLE service_clients; DROP TABLE users;
+  - include:
+      file: db/changelog/changes/002-remove-user-imports.yaml

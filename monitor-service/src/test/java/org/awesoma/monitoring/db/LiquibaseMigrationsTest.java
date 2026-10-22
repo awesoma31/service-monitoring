@@ -16,7 +16,6 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.awesoma.monitoring.support.PostgresContainer;
-import org.awesoma.security.PasswordHashing;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,7 @@ class LiquibaseMigrationsTest {
     private static final String CHANGELOG = "db/changelog/db.changelog-master.yaml";
 
     private static final List<String> DOMAIN_TABLES = List.of(
-            "legacy_users", "projects", "project_members", "tags", "monitors",
+            "projects", "project_members", "tags", "monitors",
             "monitor_tags", "incidents");
 
     /**
@@ -73,33 +72,6 @@ class LiquibaseMigrationsTest {
     }
 
     @Test
-    void upgradesLegacyPlaintextPasswordsWithoutResettingThem() throws Exception {
-        try (Connection connection = DriverManager.getConnection(jdbcUrl,
-                PostgresContainer.INSTANCE.getUsername(), PostgresContainer.INSTANCE.getPassword())) {
-            Database database = DatabaseFactory.getInstance()
-                    .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            try (Liquibase liquibase = new Liquibase(CHANGELOG, new ClassLoaderResourceAccessor(), database)) {
-                liquibase.update(20, new Contexts(), new LabelExpression());
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute("INSERT INTO users(email, password, full_name) VALUES ('legacy@example.com', "
-                            + "'old-password', 'Legacy')");
-                }
-                liquibase.update(new Contexts(), new LabelExpression());
-                try (Statement statement = connection.createStatement();
-                     ResultSet row = statement.executeQuery("SELECT password_hash, role FROM legacy_users WHERE "
-                             + "email = 'legacy@example.com'")) {
-                    assertThat(row.next()).isTrue();
-                    assertThat(row.getString("password_hash")).isNotEqualTo("old-password");
-                    assertThat(PasswordHashing.encoder().matches("old-password", row.getString("password_hash")))
-                            .isTrue();
-                    assertThat(row.getString("role")).isEqualTo("VIEWER");
-                }
-                liquibase.rollback(countAppliedChangesets(connection), new Contexts(), new LabelExpression());
-            }
-        }
-    }
-
-    @Test
     void appliesEveryChangesetAndRollsBackCleanly() throws Exception {
         try (Connection connection = DriverManager.getConnection(
                 jdbcUrl,
@@ -114,6 +86,21 @@ class LiquibaseMigrationsTest {
 
                 liquibase.update(new Contexts(), new LabelExpression());
                 assertThat(tableNames(connection)).containsAll(DOMAIN_TABLES);
+                assertThat(tableNames(connection)).doesNotContain("users", "legacy_users");
+
+                // Owners and members are remote user IDs, without local account rows.
+                try (Statement statement = connection.createStatement();
+                        ResultSet project = statement.executeQuery(
+                                "INSERT INTO projects(owner_id, name, slug) "
+                                        + "VALUES (101, 'Remote owner', 'remote-owner') RETURNING id")) {
+                    assertThat(project.next()).isTrue();
+                    long projectId = project.getLong("id");
+                    try (Statement insertMember = connection.createStatement()) {
+                        assertThat(insertMember.executeUpdate(
+                                "INSERT INTO project_members(project_id, user_id) VALUES ("
+                                        + projectId + ", 202)")).isEqualTo(1);
+                    }
+                }
 
                 int applied = countAppliedChangesets(connection);
                 assertThat(applied).isEqualTo(liquibase.getDatabaseChangeLog().getChangeSets().size());

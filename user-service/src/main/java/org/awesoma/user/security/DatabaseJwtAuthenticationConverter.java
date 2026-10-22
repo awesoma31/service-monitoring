@@ -30,7 +30,6 @@ public class DatabaseJwtAuthenticationConverter implements Converter<Jwt, Abstra
             var user = users.findById(Long.parseLong(jwt.getSubject()))
                     .filter(value -> !value.isDeleted() && value.getStatus() == UserStatus.ACTIVE)
                     .orElseThrow(() -> new BadCredentialsException("User is unavailable"));
-            // Blocking or changing a role takes effect immediately in monitor-service.
             return new JwtAuthenticationToken(jwt,
                     List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
         } catch (NumberFormatException error) {

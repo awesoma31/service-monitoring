@@ -2,7 +2,9 @@ databaseChangeLog:
   - changeSet:
       id: 003-create-project-members
       author: awesoma31
-      comment: Many-to-many between projects and users carrying the member role
+      comment: Project memberships refer to user IDs owned by user-service
+      # Accept the previously applied version with a local users foreign key.
+      validCheckSum: "9:26c228e13d6285edbb47fafc2d9ff772"
       changes:
         - createTable:
             tableName: project_members
@@ -20,9 +22,6 @@ databaseChangeLog:
                   type: BIGINT
                   constraints:
                     nullable: false
-                    foreignKeyName: fk_project_members_user
-                    references: users(id)
-                    deleteCascade: true
               - column:
                   name: role
                   type: VARCHAR(20)

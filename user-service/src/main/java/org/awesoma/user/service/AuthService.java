@@ -3,6 +3,7 @@ package org.awesoma.user.service;
 import java.time.Duration;
 import java.util.UUID;
 import org.awesoma.security.JwtTokens;
+import org.awesoma.user.domain.entity.User;
 import org.awesoma.user.domain.enums.UserStatus;
 import org.awesoma.user.repository.UserRepository;
 import org.awesoma.user.web.dto.user.LoginRequest;
@@ -30,7 +31,7 @@ public class AuthService {
     public TokenResponse login(LoginRequest request) {
         var user = users.findByEmail(request.email());
         boolean matches = passwords.matches(
-                request.password(), user.map(value -> value.getPassword()).orElse(dummyHash));
+                request.password(), user.map(User::getPassword).orElse(dummyHash));
         if (user.isEmpty() || !matches || user.get().isDeleted() || user.get().getStatus() != UserStatus.ACTIVE) {
             throw new BadCredentialsException("Invalid email or password");
         }

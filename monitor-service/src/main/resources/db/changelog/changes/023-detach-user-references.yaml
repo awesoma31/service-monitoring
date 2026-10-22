@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-detach-user-references
+      author: nifreebie
+      comment: User IDs belong to user-service; detach local constraints retained by older databases.
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE projects DROP CONSTRAINT IF EXISTS fk_projects_owner;
+              ALTER TABLE project_members DROP CONSTRAINT IF EXISTS fk_project_members_user;
+      # User references remain external when rolling back the monitoring schema.
+      rollback:
+        - empty: {}

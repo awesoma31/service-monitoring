@@ -35,5 +35,4 @@ tasks.named<Test>("test") {
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
     systemProperty("security.jwt.key-file", layout.buildDirectory.file("test-keys/signing-key.json").get().asFile.absolutePath)
-    systemProperty("security.migration.source-url", "")
 }

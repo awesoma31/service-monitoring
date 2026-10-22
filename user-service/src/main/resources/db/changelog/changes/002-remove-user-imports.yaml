@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: user-002-remove-user-imports
+      author: nifreebie
+      changes:
+        - dropTable:
+            tableName: user_imports
+      rollback:
+        - createTable:
+            tableName: user_imports
+            columns:
+              - column:
+                  name: source
+                  type: varchar(100)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: imported_count
+                  type: bigint
+                  constraints:
+                    nullable: false
