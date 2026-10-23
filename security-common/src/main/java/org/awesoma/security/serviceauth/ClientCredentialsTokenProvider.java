@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.serviceauth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;

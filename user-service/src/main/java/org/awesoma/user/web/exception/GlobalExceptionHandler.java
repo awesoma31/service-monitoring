@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  */
 @RestControllerAdvice
 @RequiredArgsConstructor
+@Slf4j
 public class GlobalExceptionHandler {
 
     private final ObjectMapper objectMapper;
@@ -39,6 +41,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleForbidden(Exception error, HttpServletRequest request) {
+        log.warn("API access rejected: method={} path={} status={}",
+                request.getMethod(), request.getRequestURI(), HttpStatus.FORBIDDEN.value());
         return problem(HttpStatus.FORBIDDEN, "Forbidden", "Insufficient permissions", request);
     }
 
@@ -112,6 +116,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrityViolation(
             DataIntegrityViolationException exception, HttpServletRequest request) {
+        log.warn("Data integrity violation: method={} path={} error_type={}",
+                request.getMethod(), request.getRequestURI(),
+                exception.getMostSpecificCause().getClass().getSimpleName());
         return problem(
                 HttpStatus.CONFLICT,
                 "Conflicting data",
@@ -132,6 +139,8 @@ public class GlobalExceptionHandler {
 
     private ProblemDetail problem(
             HttpStatus status, String title, String detail, HttpServletRequest request) {
+        log.debug("API request rejected: method={} path={} status={} title={}",
+                request.getMethod(), request.getRequestURI(), status.value(), title);
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
         problemDetail.setTitle(title);
         problemDetail.setInstance(URI.create(request.getRequestURI()));

@@ -1,8 +1,9 @@
-package org.awesoma.security;
+package org.awesoma.security.config;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
+import org.awesoma.security.exception.IdentityServiceUnavailableException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;

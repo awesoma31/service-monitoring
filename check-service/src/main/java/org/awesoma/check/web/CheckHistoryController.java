@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.check.service.CheckHistoryService;
 import org.awesoma.check.web.dto.CheckResultResponse;
 import org.awesoma.check.web.dto.PageParams;
-import org.awesoma.security.RemoteAccess;
+import org.awesoma.security.access.RemoteAccess;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

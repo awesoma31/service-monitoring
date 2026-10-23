@@ -1,10 +1,13 @@
-package org.awesoma.security;
+package org.awesoma.security.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import java.time.Duration;
 import java.util.List;
+import org.awesoma.security.exception.IdentityServiceUnavailableException;
+import org.awesoma.security.jwt.JwtProperties;
+import org.awesoma.security.jwt.JwtValidation;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

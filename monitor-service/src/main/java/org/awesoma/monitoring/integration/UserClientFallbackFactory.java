@@ -2,14 +2,16 @@ package org.awesoma.monitoring.integration;
 
 import feign.FeignException;
 import java.util.List;
-import org.awesoma.security.UserProfile;
-import org.awesoma.security.UserSecurity;
+import lombok.extern.slf4j.Slf4j;
+import org.awesoma.security.model.UserProfile;
+import org.awesoma.security.model.UserSecurity;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
+@Slf4j
 public class UserClientFallbackFactory implements FallbackFactory<UserClient> {
     @Override
     public UserClient create(Throwable cause) {
@@ -18,9 +20,13 @@ public class UserClientFallbackFactory implements FallbackFactory<UserClient> {
                 for (Throwable error = cause; error != null; error = error.getCause()) {
                     if (error instanceof FeignException.NotFound) return new UserSecurity(id, "VIEWER", "INACTIVE");
                 }
+                log.warn("user-service unavailable, user security lookup failed: user_id={}", id, cause);
                 throw unavailable();
             }
-            @Override public List<UserProfile> profiles(List<Long> ids) { throw unavailable(); }
+            @Override public List<UserProfile> profiles(List<Long> ids) {
+                log.warn("user-service unavailable, user profiles lookup failed: user_ids={}", ids, cause);
+                throw unavailable();
+            }
         };
     }
     private ResponseStatusException unavailable() {

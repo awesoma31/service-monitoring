@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.password;
 
 import java.util.Map;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;

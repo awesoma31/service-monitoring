@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.serviceauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

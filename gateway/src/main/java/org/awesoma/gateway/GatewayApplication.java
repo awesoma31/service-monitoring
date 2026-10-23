@@ -1,6 +1,6 @@
 package org.awesoma.gateway;
 
-import org.awesoma.security.ReactiveSecurityConfiguration;
+import org.awesoma.security.config.ReactiveSecurityConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;

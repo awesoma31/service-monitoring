@@ -1,6 +1,7 @@
 package org.awesoma.user.security;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.awesoma.user.config.ServiceClientsProperties;
 import org.awesoma.user.domain.entity.ServiceClient;
 import org.awesoma.user.repository.ServiceClientRepository;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Order(10)
 @RequiredArgsConstructor
+@Slf4j
 @EnableConfigurationProperties(ServiceClientsProperties.class)
 public class ServiceClientsBootstrap implements ApplicationRunner {
     private final ServiceClientsProperties properties;
@@ -27,6 +29,7 @@ public class ServiceClientsBootstrap implements ApplicationRunner {
         properties.secrets().forEach((id, secret) -> {
             if (secret.isBlank()) return;
             if (secret.length() < 32) {
+                log.error("Service client configuration rejected, secret is too short: client_id={}", id);
                 throw new IllegalArgumentException("Service client secrets must contain at least 32 characters");
             }
             var client = clients.findById(id).orElseGet(() -> {
@@ -35,6 +38,7 @@ public class ServiceClientsBootstrap implements ApplicationRunner {
                 return created;
             });
             if (client.getSecretHash() == null || !passwords.matches(secret, client.getSecretHash())) {
+                log.info("Configuring service client credentials: client_id={}", id);
                 client.setSecretHash(passwords.encode(secret));
                 clients.save(client);
             }

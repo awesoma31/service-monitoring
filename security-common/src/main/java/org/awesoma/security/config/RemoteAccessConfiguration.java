@@ -1,5 +1,7 @@
-package org.awesoma.security;
+package org.awesoma.security.config;
 
+import org.awesoma.security.access.RemoteAccess;
+import org.awesoma.security.access.ResourceAccessClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

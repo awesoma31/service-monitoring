@@ -17,6 +17,8 @@ import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.awesoma.monitoring.integration.IncidentChanged;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -87,11 +89,12 @@ public class MonitorCheckService {
         Monitor monitor = monitorRepository.findWithLockById(monitorId).orElse(null);
         if (monitor == null) {
             // Deleted between being scheduled and being probed; nothing to record.
+            log.debug("Ignoring outcome for deleted monitor: monitor_id={}", monitorId);
             return;
         }
         OffsetDateTime now = OffsetDateTime.now();
         if (!monitor.ownsActiveCheckClaim(outcome.claimToken(), now)) {
-            log.info("Ignoring stale or unclaimed outcome for monitor {}", monitorId);
+            log.info("Ignoring stale or unclaimed outcome: monitor_id={}", monitorId);
             return;
         }
         monitor.clearCheckClaim();
@@ -138,6 +141,22 @@ public class MonitorCheckService {
 
     private void publishIncidentChanged(
             Monitor monitor, Incident incident, IncidentChanged.Kind kind) {
+        Long monitorId = monitor.getId();
+        Long projectId = monitor.getProject().getId();
+        Long incidentId = incident.getId();
+        Runnable logChange = () -> log.info(
+                "Incident changed: monitor_id={} project_id={} incident_id={} kind={}",
+                monitorId, projectId, incidentId, kind);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    logChange.run();
+                }
+            });
+        } else {
+            logChange.run();
+        }
         if (monitor.getProject().isOwnerNotificationsEnabled()) {
             events.publishEvent(
                     new IncidentChanged(incident.getId(), monitor.getProject().getId(), kind));

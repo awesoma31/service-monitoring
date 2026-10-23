@@ -1,5 +1,8 @@
-package org.awesoma.security;
+package org.awesoma.security.support;
 
+import org.awesoma.security.jwt.JwtProperties;
+import org.awesoma.security.jwt.JwtTokens;
+import org.awesoma.security.serviceauth.ServiceTokenProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;

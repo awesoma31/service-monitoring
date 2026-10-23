@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.security.UserSecurity;
+import org.awesoma.security.model.UserSecurity;
 import org.awesoma.user.repository.UserRepository;
 import org.awesoma.user.service.ServiceAuthenticationService;
 import org.awesoma.user.service.UserService;

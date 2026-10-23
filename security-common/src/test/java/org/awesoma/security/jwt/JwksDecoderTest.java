@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.jwt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,6 +7,9 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import org.awesoma.security.config.JwtConfiguration;
+import org.awesoma.security.exception.IdentityServiceUnavailableException;
+import org.awesoma.security.support.TestKeys;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 

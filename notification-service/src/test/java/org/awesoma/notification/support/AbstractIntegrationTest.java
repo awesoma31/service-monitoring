@@ -4,9 +4,9 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import org.awesoma.notification.client.MonitorClient;
-import org.awesoma.security.JwtTokens;
-import org.awesoma.security.ResourceAccessClient;
-import org.awesoma.security.TestJwtConfiguration;
+import org.awesoma.security.jwt.JwtTokens;
+import org.awesoma.security.access.ResourceAccessClient;
+import org.awesoma.security.support.TestJwtConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;

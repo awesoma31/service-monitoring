@@ -2,7 +2,8 @@ package org.awesoma.user.service;
 
 import java.time.Duration;
 import java.util.UUID;
-import org.awesoma.security.JwtTokens;
+import lombok.extern.slf4j.Slf4j;
+import org.awesoma.security.jwt.JwtTokens;
 import org.awesoma.user.domain.entity.User;
 import org.awesoma.user.domain.enums.UserStatus;
 import org.awesoma.user.repository.UserRepository;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 @Transactional(readOnly = true)
 public class AuthService {
     private final UserRepository users;
@@ -33,9 +35,11 @@ public class AuthService {
         boolean matches = passwords.matches(
                 request.password(), user.map(User::getPassword).orElse(dummyHash));
         if (user.isEmpty() || !matches || user.get().isDeleted() || user.get().getStatus() != UserStatus.ACTIVE) {
+            log.warn("User login rejected: user_id={}", user.map(User::getId).orElse(null));
             throw new BadCredentialsException("Invalid email or password");
         }
         var jwt = tokens.issue(user.get().getId().toString(), user.get().getRole().name());
+        log.info("User login succeeded: user_id={}", user.get().getId());
         return new TokenResponse(jwt.getTokenValue(), "Bearer",
                 Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()).toSeconds());
     }

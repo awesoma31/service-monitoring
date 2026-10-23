@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.access;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;

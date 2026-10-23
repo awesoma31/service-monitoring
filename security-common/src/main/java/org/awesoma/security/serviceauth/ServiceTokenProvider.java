@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.serviceauth;
 
 @FunctionalInterface
 public interface ServiceTokenProvider {

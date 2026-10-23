@@ -1,8 +1,8 @@
 package org.awesoma.check;
 
-import org.awesoma.security.ReactiveSecurityConfiguration;
-import org.awesoma.security.RemoteAccessConfiguration;
-import org.awesoma.security.ServiceTokenConfiguration;
+import org.awesoma.security.config.ReactiveSecurityConfiguration;
+import org.awesoma.security.config.RemoteAccessConfiguration;
+import org.awesoma.security.config.ServiceTokenConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;

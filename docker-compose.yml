@@ -6,6 +6,9 @@ x-healthcheck: &actuator-health
   retries: 30
 
 x-jwt-environment: &jwt-environment
+  APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-local}
   JWT_JWK_SET_URI: http://user-service:8080/.well-known/jwks.json
   SERVICE_TOKEN_URI: http://user-service:8080/internal/auth/token
   JWT_TTL: ${JWT_TTL:-PT15M}

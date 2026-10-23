@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.exception;
 
 import org.springframework.security.core.AuthenticationException;
 

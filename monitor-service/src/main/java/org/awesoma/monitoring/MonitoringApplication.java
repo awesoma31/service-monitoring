@@ -1,7 +1,7 @@
 package org.awesoma.monitoring;
 
-import org.awesoma.security.JwtConfiguration;
-import org.awesoma.security.ServiceTokenConfiguration;
+import org.awesoma.security.config.JwtConfiguration;
+import org.awesoma.security.config.ServiceTokenConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;

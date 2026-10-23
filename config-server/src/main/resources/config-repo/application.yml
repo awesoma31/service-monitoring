@@ -1,4 +1,21 @@
 # Shared by every service that imports its configuration from this server.
+logging:
+  level:
+    org.awesoma: ${APP_LOG_LEVEL:INFO}
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  send-default-pii: false
+  max-request-body-size: none
+  tags:
+    service: ${spring.application.name}
+  logging:
+    loggers:
+      - org.awesoma
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
+
 security:
   jwt:
     issuer: service-monitoring

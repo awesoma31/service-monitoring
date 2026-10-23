@@ -12,7 +12,7 @@ import org.awesoma.notification.web.dto.ChannelCreateRequest;
 import org.awesoma.notification.web.dto.ChannelResponse;
 import org.awesoma.notification.web.dto.ChannelUpdateRequest;
 import org.awesoma.notification.web.dto.PageParams;
-import org.awesoma.security.RemoteAccess;
+import org.awesoma.security.access.RemoteAccess;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;

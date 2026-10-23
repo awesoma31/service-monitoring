@@ -1,11 +1,13 @@
 package org.awesoma.user.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
-import org.awesoma.security.JwtConfiguration;
-import org.awesoma.security.PasswordHashing;
+import lombok.extern.slf4j.Slf4j;
+import org.awesoma.security.config.JwtConfiguration;
+import org.awesoma.security.password.PasswordHashing;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -21,6 +23,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.savedrequest.NullRequestCache;
 
 @Configuration(proxyBeanMethods = false)
+@Slf4j
 @EnableMethodSecurity
 @Import({JwtConfiguration.class, DatabaseJwtAuthenticationConverter.class})
 public class SecurityConfig {
@@ -51,19 +54,22 @@ public class SecurityConfig {
                         .anyRequest().denyAll())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, error) ->
-                                problem(response, json, HttpStatus.UNAUTHORIZED))
+                                problem(request, response, json, HttpStatus.UNAUTHORIZED))
                         .accessDeniedHandler((request, response, error) ->
-                                problem(response, json, HttpStatus.FORBIDDEN)))
+                                problem(request, response, json, HttpStatus.FORBIDDEN)))
                 .oauth2ResourceServer(resource -> resource
                         .authenticationEntryPoint((request, response, error) ->
-                                problem(response, json, HttpStatus.UNAUTHORIZED))
+                                problem(request, response, json, HttpStatus.UNAUTHORIZED))
                         .accessDeniedHandler((request, response, error) ->
-                                problem(response, json, HttpStatus.FORBIDDEN))
+                                problem(request, response, json, HttpStatus.FORBIDDEN))
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(converter)))
                 .build();
     }
 
-    private void problem(HttpServletResponse response, ObjectMapper json, HttpStatus status) throws IOException {
+    private void problem(HttpServletRequest request, HttpServletResponse response,
+            ObjectMapper json, HttpStatus status) throws IOException {
+        log.warn("API access rejected: method={} path={} status={}",
+                request.getMethod(), request.getRequestURI(), status.value());
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         if (status == HttpStatus.UNAUTHORIZED) response.setHeader("WWW-Authenticate", "Bearer");

@@ -27,18 +27,20 @@ public class MonitorClientFallbackFactory implements FallbackFactory<MonitorClie
         return new MonitorClient() {
             @Override
             public List<MonitorTarget> due(int limit, int concurrency) {
-                log.warn("monitor-service unavailable, skipping this check pass: {}", cause.toString());
+                log.warn("monitor-service unavailable, skipping check pass: batch_size={} concurrency={}",
+                        limit, concurrency, cause);
                 return List.of();
             }
 
             @Override
             public void report(Long monitorId, ProbeOutcome outcome) {
-                log.warn("monitor-service unavailable, outcome of monitor {} not applied: {}",
-                        monitorId, cause.toString());
+                log.error("monitor-service unavailable, outcome not applied: monitor_id={}",
+                        monitorId, cause);
             }
 
             @Override
             public boolean exists(Long monitorId) {
+                log.warn("monitor-service unavailable, monitor lookup failed: monitor_id={}", monitorId, cause);
                 throw new ServiceUnavailableException("monitor-service", cause);
             }
         };

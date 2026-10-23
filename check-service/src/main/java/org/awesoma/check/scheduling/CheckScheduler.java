@@ -26,7 +26,7 @@ public class CheckScheduler {
         try {
             runner.runOnce().block();
         } catch (RuntimeException failure) {
-            log.warn("Check pass failed, retrying on the next tick", failure);
+            log.error("Check pass failed, retrying on the next tick", failure);
         }
     }
 }

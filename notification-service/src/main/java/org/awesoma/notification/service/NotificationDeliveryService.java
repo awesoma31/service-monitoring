@@ -11,6 +11,7 @@ import org.awesoma.notification.delivery.DeliveryException;
 import org.awesoma.notification.delivery.DeliveryTask;
 import org.awesoma.notification.delivery.NotificationSender;
 import org.awesoma.notification.domain.Notification;
+import org.awesoma.notification.domain.NotificationStatus;
 import org.awesoma.notification.repository.NotificationRepository;
 import org.awesoma.notification.support.JpaExecutor;
 import org.springframework.stereotype.Service;
@@ -79,8 +80,10 @@ public class NotificationDeliveryService {
                 .retryWhen(Retry.backoff(SENT_WRITE_RETRIES, SENT_WRITE_BACKOFF))
                 .onErrorResume(error -> {
                     log.error(
-                            "Notification {} was sent but could not be marked as sent",
+                            "Notification was sent but could not be marked as sent: notification_id={} channel_type={} attempt={}",
                             task.notificationId(),
+                            task.channelType(),
+                            task.attempts() + 1,
                             error);
                     return Mono.empty();
                 });
@@ -96,12 +99,19 @@ public class NotificationDeliveryService {
 
     private Mono<Void> markSent(DeliveryTask task) {
         return jpa.write(() -> {
-                    notifications.findForUpdateById(task.notificationId()).ifPresent(notification -> {
+                    return notifications.findForUpdateById(task.notificationId()).map(notification -> {
                         if (notification.isClaimedBy(task.claimToken())) {
                             notification.markSent(task.claimToken(), OffsetDateTime.now());
+                            return true;
                         }
-                    });
-                    return true;
+                        return false;
+                    }).orElse(false);
+                })
+                .doOnNext(recorded -> {
+                    if (recorded) {
+                        log.debug("Notification sent: notification_id={} channel_type={} attempt={}",
+                                task.notificationId(), task.channelType(), task.attempts() + 1);
+                    }
                 })
                 .then();
     }
@@ -109,7 +119,7 @@ public class NotificationDeliveryService {
     private Mono<Void> markFailed(DeliveryTask task, Throwable error) {
         String errorMessage = safeErrorMessage(error);
         return jpa.write(() -> {
-                    notifications.findForUpdateById(task.notificationId()).ifPresent(notification -> {
+                    return notifications.findForUpdateById(task.notificationId()).map(notification -> {
                         if (notification.isClaimedBy(task.claimToken())) {
                             notification.markAttemptFailed(
                                     task.claimToken(),
@@ -117,15 +127,23 @@ public class NotificationDeliveryService {
                                     properties.maxAttempts(),
                                     properties.retryDelay(),
                                     errorMessage);
+                            return notification.getStatus();
                         }
-                    });
-                    return true;
+                        return null;
+                    }).orElse(null);
                 })
-                .doOnSuccess(ignored -> log.warn(
-                        "Notification {} delivery via {} failed: {}",
-                        task.notificationId(),
-                        task.channelType(),
-                        errorMessage))
+                .doOnNext(status -> {
+                    // Transport exceptions can contain credentials in URLs; log only the safe message.
+                    if (status == NotificationStatus.FAILED) {
+                        log.error("Notification delivery attempts exhausted: notification_id={} channel_type={} attempt={} max_attempts={} error_type={} error={}",
+                                task.notificationId(), task.channelType(), task.attempts() + 1,
+                                properties.maxAttempts(), error.getClass().getSimpleName(), errorMessage);
+                    } else {
+                        log.warn("Notification delivery failed, retry scheduled: notification_id={} channel_type={} attempt={} max_attempts={} error_type={} error={}",
+                                task.notificationId(), task.channelType(), task.attempts() + 1,
+                                properties.maxAttempts(), error.getClass().getSimpleName(), errorMessage);
+                    }
+                })
                 .then();
     }
 

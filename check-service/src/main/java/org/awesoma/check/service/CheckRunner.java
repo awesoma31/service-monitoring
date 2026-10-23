@@ -51,7 +51,7 @@ public class CheckRunner {
         return monitors.due(batchSize, concurrency)
                 .flatMap(target -> check(target).onErrorResume(failure -> {
                     // One failing monitor must not stop the rest of the batch.
-                    log.warn("Failed to check monitor {}", target.monitorId(), failure);
+                    log.error("Monitor check pipeline failed: monitor_id={}", target.monitorId(), failure);
                     return Mono.empty();
                 }), concurrency)
                 .then();

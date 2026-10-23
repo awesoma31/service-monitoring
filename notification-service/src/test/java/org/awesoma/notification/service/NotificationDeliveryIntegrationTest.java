@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.awesoma.notification.config.DeliveryProperties;
 import org.awesoma.notification.delivery.DeliveryException;
 import org.awesoma.notification.delivery.EmailNotificationSender;
 import org.awesoma.notification.delivery.TelegramNotificationSender;
@@ -25,19 +26,24 @@ import org.awesoma.notification.repository.NotificationRepository;
 import org.awesoma.notification.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+@ExtendWith(OutputCaptureExtension.class)
 class NotificationDeliveryIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private NotificationDeliveryService delivery;
     @MockitoSpyBean private NotificationRepository notifications;
     @Autowired private ChannelRepository channels;
+    @Autowired private DeliveryProperties properties;
 
     @MockitoBean private EmailNotificationSender emailSender;
     @MockitoBean private TelegramNotificationSender telegramSender;
@@ -121,6 +127,25 @@ class NotificationDeliveryIntegrationTest extends AbstractIntegrationTest {
         assertThat(delivered.getAttempts()).isEqualTo(1);
         assertThat(delivered.getLastError()).isNull();
         verify(emailSender, times(1)).send(any());
+    }
+
+    @Test
+    void exhaustedAttemptsAreLoggedAsAnErrorWithoutTransportCredentials(CapturedOutput output) {
+        Notification notification = pendingEmail();
+        notification.setAttempts(properties.maxAttempts() - 1);
+        notifications.saveAndFlush(notification);
+        when(emailSender.send(any())).thenReturn(Mono.error(new DeliveryException(
+                "Call failed: bot123456:private-bot-token/sendMessage",
+                new IllegalStateException("nested-private-credential"))));
+
+        assertThat(delivery.dispatchOnce().block()).isEqualTo(1);
+
+        assertThat(notifications.findById(notification.getId()).orElseThrow().getStatus())
+                .isEqualTo(NotificationStatus.FAILED);
+        assertThat(output.getOut())
+                .contains("ERROR", "Notification delivery attempts exhausted: notification_id=" + notification.getId(),
+                        "channel_type=EMAIL", "attempt=" + properties.maxAttempts(), "bot<redacted>")
+                .doesNotContain("private-bot-token", "nested-private-credential");
     }
 
     private Notification pendingEmail() {

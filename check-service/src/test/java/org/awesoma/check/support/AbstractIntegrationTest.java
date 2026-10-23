@@ -1,8 +1,8 @@
 package org.awesoma.check.support;
 
-import org.awesoma.security.JwtTokens;
-import org.awesoma.security.ResourceAccessClient;
-import org.awesoma.security.TestJwtConfiguration;
+import org.awesoma.security.jwt.JwtTokens;
+import org.awesoma.security.access.ResourceAccessClient;
+import org.awesoma.security.support.TestJwtConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;

@@ -22,6 +22,13 @@ subprojects {
         mavenCentral()
     }
 
+    plugins.withId("org.springframework.boot") {
+        // The Jakarta starter supports Spring Boot 3; Logback sends application ERROR logs
+        // as events and retains INFO/WARN entries as breadcrumbs when a DSN is configured.
+        dependencies.add("implementation", "io.sentry:sentry-spring-boot-starter-jakarta:8.60.0")
+        dependencies.add("implementation", "io.sentry:sentry-logback:8.60.0")
+    }
+
     // Spring Cloud release train matching Spring Boot 3.5 (2025.1 targets Boot 4).
     plugins.withId("io.spring.dependency-management") {
         extensions.configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension> {
@@ -39,6 +46,8 @@ subprojects {
         useJUnitPlatform()
         systemProperty("security.jwt.jwk-set-uri", "http://127.0.0.1:9/.well-known/jwks.json")
         systemProperty("security.bootstrap.password", "")
+        // Test failures and expected negative cases must never reach a real Sentry project.
+        systemProperty("sentry.dsn", "")
         // Testcontainers' resource reaper mounts the Docker socket by its path inside the
         // daemon's host. Docker Desktop already uses this path; colima keeps the socket in
         // $HOME, and without this the reaper fails to start and every test errors out.

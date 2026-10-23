@@ -28,9 +28,11 @@ public class SupervisorBootstrap implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if (users.existsByRole(UserRole.SUPERVISOR) || password.isBlank()) return;
         if (password.length() < 8 || password.length() > 255) {
+            log.error("Supervisor bootstrap rejected: reason=invalid_password_length");
             throw new IllegalArgumentException("SUPERVISOR_PASSWORD must contain 8 to 255 characters");
         }
         if (users.existsByEmail(email)) {
+            log.error("Supervisor bootstrap rejected: reason=email_already_taken");
             throw new IllegalStateException(
                     "Bootstrap email already belongs to a non-supervisor; choose another email");
         }
@@ -40,6 +42,6 @@ public class SupervisorBootstrap implements ApplicationRunner {
         user.setRole(UserRole.SUPERVISOR);
         user.setPassword(passwords.encode(password));
         users.save(user);
-        log.info("Initial supervisor created; subsequent users must be created by a supervisor");
+        log.info("Initial supervisor creation requested: user_id={}", user.getId());
     }
 }

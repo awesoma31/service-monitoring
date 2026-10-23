@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.access;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

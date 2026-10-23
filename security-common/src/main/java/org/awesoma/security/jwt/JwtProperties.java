@@ -1,4 +1,4 @@
-package org.awesoma.security;
+package org.awesoma.security.jwt;
 
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;

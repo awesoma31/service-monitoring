@@ -1,5 +1,6 @@
 package org.awesoma.notification.client;
 
+import lombok.extern.slf4j.Slf4j;
 import org.awesoma.notification.web.exception.ServiceUnavailableException;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
  * which would wrongly answer 404 or refuse a valid channel.
  */
 @Component
+@Slf4j
 public class MonitorClientFallbackFactory implements FallbackFactory<MonitorClient> {
 
     @Override
@@ -17,11 +19,13 @@ public class MonitorClientFallbackFactory implements FallbackFactory<MonitorClie
         return new MonitorClient() {
             @Override
             public boolean projectExists(Long projectId) {
+                log.warn("monitor-service unavailable, project lookup failed: project_id={}", projectId, cause);
                 throw new ServiceUnavailableException("monitor-service", cause);
             }
 
             @Override
             public boolean incidentExists(Long incidentId) {
+                log.warn("monitor-service unavailable, incident lookup failed: incident_id={}", incidentId, cause);
                 throw new ServiceUnavailableException("monitor-service", cause);
             }
         };
