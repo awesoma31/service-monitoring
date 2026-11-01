@@ -3,6 +3,7 @@ package org.awesoma.monitoring.integration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
+import org.awesoma.integration.IntegrationEvent;
 
 /**
  * While check-service is failing or its circuit is open, the history of a deleted monitor is
@@ -15,6 +16,10 @@ public class CheckHistoryClientFallbackFactory implements FallbackFactory<CheckH
     @Override
     public CheckHistoryClient create(Throwable cause) {
         return new CheckHistoryClient() {
+            @Override
+            public void integrationEvent(IntegrationEvent event) {
+                throw new IllegalStateException("check-service unavailable", cause);
+            }
             @Override
             public void deleteHistory(Long monitorId) {
                 log.error("check-service unavailable, history left behind: monitor_id={}", monitorId, cause);

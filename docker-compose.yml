@@ -14,6 +14,13 @@ x-jwt-environment: &jwt-environment
   JWT_TTL: ${JWT_TTL:-PT15M}
   SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT5M}
 
+# Each flow has one shared setting for its sender and receiver(s).
+x-integration-environment: &integration-environment
+  CHECK_RESULTS_TRANSPORT: ${CHECK_RESULTS_TRANSPORT:-http}
+  INCIDENT_EVENTS_TRANSPORT: ${INCIDENT_EVENTS_TRANSPORT:-http}
+  RESOURCE_EVENTS_TRANSPORT: ${RESOURCE_EVENTS_TRANSPORT:-http}
+  KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka-1:9092,kafka-2:9092,kafka-3:9092}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -113,7 +120,7 @@ services:
       user-service:
         condition: service_healthy
     environment:
-      <<: *jwt-environment
+      <<: [*jwt-environment, *integration-environment]
       SERVICE_CLIENT_SECRET: ${MONITOR_SERVICE_CLIENT_SECRET:-local-dev-monitor-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
@@ -141,7 +148,7 @@ services:
       user-service:
         condition: service_healthy
     environment:
-      <<: *jwt-environment
+      <<: [*jwt-environment, *integration-environment]
       SERVICE_CLIENT_SECRET: ${CHECK_SERVICE_CLIENT_SECRET:-local-dev-check-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
@@ -170,7 +177,7 @@ services:
       user-service:
         condition: service_healthy
     environment:
-      <<: *jwt-environment
+      <<: [*jwt-environment, *integration-environment]
       SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-local-dev-notification-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"

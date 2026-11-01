@@ -1,8 +1,8 @@
 package org.awesoma.monitoring.integration;
 
 import java.util.List;
-import org.awesoma.security.model.UserProfile;
-import org.awesoma.security.model.UserSecurity;
+import org.awesoma.security.dto.UserProfile;
+import org.awesoma.security.dto.UserSecurity;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

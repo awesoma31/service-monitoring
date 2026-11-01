@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import org.awesoma.integration.IntegrationEvent;
 
 /**
  * Feign blocks the calling thread, which must never be a Netty event-loop thread. Every call
@@ -26,6 +27,11 @@ public class ReactiveMonitorClient {
 
     public Mono<Void> report(Long monitorId, ProbeOutcome outcome) {
         return Mono.<Void>fromRunnable(() -> client.report(monitorId, outcome))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    public Mono<Void> reportEvent(IntegrationEvent event) {
+        return Mono.<Void>fromRunnable(() -> client.reportEvent(event))
                 .subscribeOn(Schedulers.boundedElastic());
     }
 

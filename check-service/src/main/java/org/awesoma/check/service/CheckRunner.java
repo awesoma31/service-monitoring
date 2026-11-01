@@ -3,20 +3,17 @@ package org.awesoma.check.service;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
 import org.awesoma.check.client.ReactiveMonitorClient;
-import org.awesoma.check.domain.CheckResult;
 import org.awesoma.check.domain.MonitorTarget;
 import org.awesoma.check.domain.ProbeOutcome;
 import org.awesoma.check.probe.MonitorProbe;
-import org.awesoma.check.repository.CheckResultRepository;
+import org.awesoma.check.integration.CheckResultRecorder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 /**
- * One pass over the monitors that are due: probe each, store the result, report it.
- *
- * <p>The result is stored before it is reported. If monitor-service cannot be reached, the
- * history is still complete, and the monitor's state catches up with the next probe.
+ * One pass over due monitors: probe each and atomically store its history and outbox event.
+ * The outbox dispatcher retries reporting independently of this scheduler.
  */
 @Slf4j
 @Service
@@ -24,14 +21,14 @@ public class CheckRunner {
 
     private final ReactiveMonitorClient monitors;
     private final MonitorProbe probe;
-    private final CheckResultRepository results;
+    private final CheckResultRecorder results;
     private final int batchSize;
     private final int concurrency;
 
     public CheckRunner(
             ReactiveMonitorClient monitors,
             MonitorProbe probe,
-            CheckResultRepository results,
+            CheckResultRecorder results,
             @Value("${checker.batch-size}") int batchSize,
             @Value("${checker.concurrency}") int concurrency) {
         this.monitors = monitors;
@@ -60,9 +57,7 @@ public class CheckRunner {
     private Mono<Void> check(MonitorTarget target) {
         return probe.probe(target).flatMap(outcome -> {
             ProbeOutcome claimedOutcome = outcome.forClaim(target.claimToken());
-            return results
-                    .save(CheckResult.of(target.monitorId(), outcome, OffsetDateTime.now()))
-                    .then(monitors.report(target.monitorId(), claimedOutcome));
+            return results.record(target.monitorId(), claimedOutcome, OffsetDateTime.now());
         });
     }
 }

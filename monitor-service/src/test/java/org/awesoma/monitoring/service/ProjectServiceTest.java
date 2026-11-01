@@ -186,7 +186,7 @@ class ProjectServiceTest {
     @Test
     void deletingAProjectAnnouncesItWithItsMonitors() {
         Project project = new Project();
-        when(projects.findById(4L)).thenReturn(Optional.of(project));
+        when(projects.findWithLockById(4L)).thenReturn(Optional.of(project));
         when(monitorRepository.findIdsByProjectId(4L)).thenReturn(List.of(10L, 11L));
 
         service.delete(4L);

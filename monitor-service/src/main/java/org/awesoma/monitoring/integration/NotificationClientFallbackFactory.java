@@ -3,6 +3,7 @@ package org.awesoma.monitoring.integration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
+import org.awesoma.integration.IntegrationEvent;
 
 /**
  * While notification-service is failing or its circuit is open, the announcement is logged
@@ -16,6 +17,10 @@ public class NotificationClientFallbackFactory implements FallbackFactory<Notifi
     @Override
     public NotificationClient create(Throwable cause) {
         return new NotificationClient() {
+            @Override
+            public void integrationEvent(IntegrationEvent event) {
+                throw new IllegalStateException("notification-service unavailable", cause);
+            }
             @Override
             public HealthStatus health() {
                 log.warn("notification-service health unavailable", cause);

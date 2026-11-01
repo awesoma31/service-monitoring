@@ -183,7 +183,7 @@ class MonitorCheckServiceTest {
     }
 
     @Test
-    void anOutcomeWhoseLeaseHasExpiredIsIgnored() {
+    void anOutcomeWithAnExpiredButStillCurrentClaimIsAccepted() {
         Monitor monitor = monitor(MonitorState.UP);
         UUID expiredToken = UUID.randomUUID();
         monitor.claimForCheck(expiredToken, OffsetDateTime.now().minusSeconds(1));
@@ -192,9 +192,9 @@ class MonitorCheckServiceTest {
         service.record(
                 1L, ProbeOutcome.connectionError(10, "late").forClaim(expiredToken));
 
-        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
-        assertThat(monitor.getLastCheckedAt()).isNull();
-        verify(incidents, never()).save(any());
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
+        assertThat(monitor.getLastCheckedAt()).isNotNull();
+        verify(incidents).save(any());
     }
 
     private Monitor monitor(MonitorState state) {

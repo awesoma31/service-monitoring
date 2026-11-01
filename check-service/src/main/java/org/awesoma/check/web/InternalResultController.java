@@ -3,7 +3,7 @@ package org.awesoma.check.web;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.check.repository.CheckResultRepository;
+import org.awesoma.check.integration.CheckEventHandler;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,11 +22,11 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class InternalResultController {
 
-    private final CheckResultRepository results;
+    private final CheckEventHandler events;
 
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public Mono<Void> deleteHistory(@RequestParam("monitor_id") @Positive Long monitorId) {
-        return results.deleteByMonitorId(monitorId).then();
+        return events.deleteMonitorLegacy(monitorId);
     }
 }

@@ -8,6 +8,8 @@ val lombokMapstructBindingVersion = "0.2.0"
 val springdocVersion = "2.9.1"
 
 dependencies {
+    implementation(project(":integration-contracts"))
+    implementation("org.springframework.kafka:spring-kafka")
     implementation(project(":security-common"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -29,6 +31,7 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation(testFixtures(project(":security-common")))
     testImplementation("org.springframework.boot:spring-boot-testcontainers")

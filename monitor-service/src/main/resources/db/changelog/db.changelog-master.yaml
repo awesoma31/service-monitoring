@@ -56,3 +56,6 @@ databaseChangeLog:
   - include:
       file: changes/023-detach-user-references.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/024-integration-outbox.yaml
+      relativeToChangelogFile: true

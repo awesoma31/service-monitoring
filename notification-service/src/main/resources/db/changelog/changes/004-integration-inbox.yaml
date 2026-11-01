@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-integration-inbox
+      author: codex
+      changes:
+        - sql:
+            sql: >-
+              CREATE TABLE integration_inbox (
+                event_id UUID PRIMARY KEY,
+                processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+              CREATE TABLE deleted_projects (
+                project_id BIGINT PRIMARY KEY
+              );
+      rollback:
+        - sql:
+            sql: DROP TABLE deleted_projects; DROP TABLE integration_inbox;

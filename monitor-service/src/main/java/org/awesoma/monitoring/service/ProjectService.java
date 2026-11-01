@@ -92,8 +92,10 @@ public class ProjectService {
 
     @Transactional
     public void delete(Long id) {
+        Project project = projects.findWithLockById(id)
+                .orElseThrow(() -> NotFoundException.of("Project", id));
         List<Long> monitorIds = monitors.findIdsByProjectId(id);
-        projects.delete(require(id));
+        projects.delete(project);
         events.publishEvent(new ProjectDeleted(id, monitorIds));
     }
 

@@ -13,6 +13,7 @@ import org.awesoma.notification.web.exception.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -22,6 +23,7 @@ public class ChannelService {
     private final ChannelRepository channels;
     private final ReactiveMonitorClient monitorService;
     private final JpaExecutor jpa;
+    private final JdbcTemplate db;
 
     public Mono<Page<ChannelResponse>> listByProject(Long projectId, Pageable pageable) {
         return requireProject(projectId).then(jpa.read(() ->
@@ -34,6 +36,11 @@ public class ChannelService {
 
     public Mono<ChannelResponse> create(Long projectId, ChannelCreateRequest request) {
         return requireProject(projectId).then(jpa.write(() -> {
+            db.queryForObject("SELECT 1 FROM (SELECT pg_advisory_xact_lock(?)) AS acquired", Integer.class, projectId);
+            Integer deleted = db.queryForObject("SELECT count(*) FROM deleted_projects WHERE project_id = ?", Integer.class, projectId);
+            if (deleted != null && deleted > 0) {
+                throw new NotFoundException("Project %d not found".formatted(projectId));
+            }
             if (channels.existsByProjectIdAndTypeAndTarget(projectId, request.type(), request.target())) {
                 throw new ConflictStateException("Project %d already notifies %s at %s"
                         .formatted(projectId, request.type(), request.target()));
@@ -64,7 +71,11 @@ public class ChannelService {
 
     /** Called by monitor-service when a project is deleted; notifications cascade. */
     public Mono<Integer> deleteByProject(Long projectId) {
-        return jpa.write(() -> channels.deleteByProjectId(projectId));
+        return jpa.write(() -> {
+            db.queryForObject("SELECT 1 FROM (SELECT pg_advisory_xact_lock(?)) AS acquired", Integer.class, projectId);
+            db.update("INSERT INTO deleted_projects (project_id) VALUES (?) ON CONFLICT DO NOTHING", projectId);
+            return channels.deleteByProjectId(projectId);
+        });
     }
 
     private Mono<Void> requireProject(Long projectId) {

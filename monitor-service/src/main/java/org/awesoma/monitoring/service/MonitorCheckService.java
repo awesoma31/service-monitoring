@@ -86,24 +86,29 @@ public class MonitorCheckService {
      */
     @Transactional
     public void record(Long monitorId, ProbeOutcome outcome) {
+        record(monitorId, outcome, OffsetDateTime.now());
+    }
+
+    @Transactional
+    public void record(Long monitorId, ProbeOutcome outcome, OffsetDateTime checkedAt) {
         Monitor monitor = monitorRepository.findWithLockById(monitorId).orElse(null);
         if (monitor == null) {
             // Deleted between being scheduled and being probed; nothing to record.
             log.debug("Ignoring outcome for deleted monitor: monitor_id={}", monitorId);
             return;
         }
-        OffsetDateTime now = OffsetDateTime.now();
-        if (!monitor.ownsActiveCheckClaim(outcome.claimToken(), now)) {
+        // A delayed broker message remains valid until a later claim or edit replaces its token.
+        if (outcome.claimToken() == null || !outcome.claimToken().equals(monitor.getCheckClaimToken())) {
             log.info("Ignoring stale or unclaimed outcome: monitor_id={}", monitorId);
             return;
         }
         monitor.clearCheckClaim();
-        monitor.setLastCheckedAt(now);
+        monitor.setLastCheckedAt(checkedAt);
 
         if (outcome.isFailure()) {
-            openIncidentIfAbsent(monitor, outcome, now);
+            openIncidentIfAbsent(monitor, outcome, checkedAt);
         } else {
-            resolveOpenIncident(monitor, now);
+            resolveOpenIncident(monitor, checkedAt);
         }
     }
 

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -23,13 +24,21 @@ public class NotificationService {
     private final ChannelRepository channels;
     private final ReactiveMonitorClient monitorService;
     private final JpaExecutor jpa;
+    private final JdbcTemplate db;
 
     /**
      * Queues one alert per enabled channel of the project, in one transaction: either every
      * channel gets its notification or none does.
      */
     public Mono<Integer> record(IncidentEvent event) {
-        return jpa.write(() -> {
+        return jpa.write(() -> recordInTransaction(event));
+    }
+
+    /** Shared application operation; caller owns the database transaction. */
+    public int recordInTransaction(IncidentEvent event) {
+            db.queryForObject("SELECT 1 FROM (SELECT pg_advisory_xact_lock(?)) AS acquired", Integer.class, event.projectId());
+            Integer deleted = db.queryForObject("SELECT count(*) FROM deleted_projects WHERE project_id = ?", Integer.class, event.projectId());
+            if (deleted != null && deleted > 0) return 0;
             String state = event.kind() == org.awesoma.notification.domain.IncidentKind.OPENED
                     ? "opened"
                     : "resolved";
@@ -42,7 +51,6 @@ public class NotificationService {
                             event.incidentId(), channel, event.kind(), subject, message))
                     .toList();
             return notifications.saveAll(created).size();
-        });
     }
 
     public Mono<Page<NotificationResponse>> listByIncident(Long incidentId, Pageable pageable) {

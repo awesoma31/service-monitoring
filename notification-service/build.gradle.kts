@@ -6,6 +6,8 @@ plugins {
 val springdocVersion = "2.9.1"
 
 dependencies {
+    implementation(project(":integration-contracts"))
+    implementation("org.springframework.kafka:spring-kafka")
     implementation(project(":security-common"))
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     // Blocking JPA inside a reactive service: every repository call runs on the bounded
@@ -26,6 +28,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation(testFixtures(project(":security-common")))
     testImplementation("io.projectreactor:reactor-test")

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.awesoma.integration.IntegrationEvent;
 
 /** Internal API of monitor-service, resolved through Eureka by its service name. */
 @FeignClient(
@@ -16,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
         path = "/internal/monitors",
         fallbackFactory = MonitorClientFallbackFactory.class)
 public interface MonitorClient {
+
+    @PostMapping("/integration/events")
+    void reportEvent(@RequestBody IntegrationEvent event);
 
     @GetMapping("/due")
     List<MonitorTarget> due(

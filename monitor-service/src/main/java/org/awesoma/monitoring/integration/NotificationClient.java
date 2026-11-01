@@ -6,12 +6,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.awesoma.integration.IntegrationEvent;
 
 /** Internal API of notification-service, resolved through Eureka by its service name. */
 @FeignClient(
         name = "notification-service",
         fallbackFactory = NotificationClientFallbackFactory.class)
 public interface NotificationClient {
+
+    @PostMapping("/internal/integration/events")
+    void integrationEvent(@RequestBody IntegrationEvent event);
 
     @PostMapping("/internal/notifications")
     void incidentChanged(@RequestBody IncidentChanged event);

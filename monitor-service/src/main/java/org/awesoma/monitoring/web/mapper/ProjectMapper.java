@@ -4,9 +4,8 @@ import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberResponse;
 import org.awesoma.monitoring.web.dto.project.ProjectResponse;
-import org.awesoma.security.model.UserProfile;
+import org.awesoma.security.dto.UserProfile;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)

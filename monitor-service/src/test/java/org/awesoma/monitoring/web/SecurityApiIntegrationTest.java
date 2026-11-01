@@ -13,7 +13,7 @@ import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.awesoma.security.jwt.JwtTokens;
-import org.awesoma.security.model.UserSecurity;
+import org.awesoma.security.dto.UserSecurity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

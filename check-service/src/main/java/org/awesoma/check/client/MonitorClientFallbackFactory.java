@@ -7,6 +7,7 @@ import org.awesoma.check.domain.ProbeOutcome;
 import org.awesoma.check.web.exception.ServiceUnavailableException;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
+import org.awesoma.integration.IntegrationEvent;
 
 /**
  * What check-service does while monitor-service is failing or its circuit is open:
@@ -25,6 +26,10 @@ public class MonitorClientFallbackFactory implements FallbackFactory<MonitorClie
     @Override
     public MonitorClient create(Throwable cause) {
         return new MonitorClient() {
+            @Override
+            public void reportEvent(IntegrationEvent event) {
+                throw new ServiceUnavailableException("monitor-service", cause);
+            }
             @Override
             public List<MonitorTarget> due(int limit, int concurrency) {
                 log.warn("monitor-service unavailable, skipping check pass: batch_size={} concurrency={}",

@@ -48,6 +48,8 @@ subprojects {
         systemProperty("security.bootstrap.password", "")
         // Test failures and expected negative cases must never reach a real Sentry project.
         systemProperty("sentry.dsn", "")
+        // Tests drive integration outboxes explicitly to avoid background races between contexts.
+        systemProperty("integration.outbox.enabled", "false")
         // Testcontainers' resource reaper mounts the Docker socket by its path inside the
         // daemon's host. Docker Desktop already uses this path; colima keeps the socket in
         // $HOME, and without this the reaper fails to start and every test errors out.

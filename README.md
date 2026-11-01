@@ -153,6 +153,96 @@ echo "docker.host=unix://$HOME/.colima/default/docker.sock" >> ~/.testcontainers
 
 Остановить стек — `docker compose down`, вместе с данными — `docker compose down -v`.
 
+### Kafka и выбор транспорта
+
+По умолчанию три межсервисных потока используют HTTP, и для обычного запуска Kafka не нужна.
+В `.env` можно независимо выбрать `http` или `kafka`:
+
+```dotenv
+CHECK_RESULTS_TRANSPORT=kafka
+INCIDENT_EVENTS_TRANSPORT=kafka
+RESOURCE_EVENTS_TRANSPORT=kafka
+```
+
+Эти значения Compose передаёт всем трём сервисам, поэтому отправитель и получатель видят
+одинаковую настройку. Получение заданий на проверку через `/internal/monitors/due` и чтение API
+остаются на HTTP. Допустимы смешанные настройки, например только инциденты через Kafka.
+
+Для запуска с Kafka используйте дополнительный Compose-файл:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml ps
+```
+
+Overlay поднимает три брокера Apache Kafka в KRaft-режиме и создаёт топики после их
+готовности. У каждого брокера свой именованный том. Кластер доступен только внутри
+сети Compose; приведённые ниже команды Kafka запускаются внутри контейнера. Если все
+транспорты установлены в `http`, основной стек можно запустить без overlay обычной
+командой `docker compose up -d --build`.
+
+| Топик | Сообщения | Потребители |
+|---|---|---|
+| `checks.completed.v1` | Результаты проверок | monitor-service |
+| `incidents.events.v1` | Открытие и закрытие инцидентов | notification-service |
+| `resources.events.v1` | Удаление монитора или проекта | check-service и notification-service |
+
+У каждого топика три партиции, фактор репликации 3 и `min.insync.replicas=2`.
+Начальная настройка также создаёт соответствующие топики с суффиксом `.dlt`.
+Репликация позволяет продолжать работу после отказа одного брокера: с `acks=all` запись
+подтверждается всеми синхронными репликами, которых должно оставаться не меньше двух.
+Три контейнера на одном компьютере не защищают от отказа этого компьютера.
+
+Посмотреть лидера, копии и набор синхронных реплик (ISR) каждой партиции:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml exec kafka-1 \
+  /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 \
+  --describe --topic incidents.events.v1
+```
+
+Для демонстрации отказа остановите один брокер, повторите команду и затем верните его:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml stop kafka-3
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml exec kafka-1 \
+  /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 \
+  --describe --topic incidents.events.v1
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml start kafka-3
+```
+
+После восстановления брокер догонит остальные реплики, и в поле ISR снова появятся три
+идентификатора. Для проверки накопления уведомлений остановите `notification-service`,
+создайте инцидент проверкой сайта, затем запустите сервис снова:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml stop notification-service
+# Вызовите проверку и дождитесь создания инцидента через API.
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml start notification-service
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml logs -f notification-service
+```
+
+При смене транспорта обработайте отложенные события и перезапустите все три бизнес-сервиса:
+условные компоненты выбираются при старте, накопившиеся сообщения автоматически в другой
+транспорт не переносятся. Запись в outbox запоминает выбранный при её создании транспорт:
+если переключиться с непустым outbox, соответствующий поток остановится на такой записи.
+Чтобы продолжить обработку, верните прежний транспорт, дождитесь опустошения outbox и
+только затем переключите конфигурацию. Автоматического fallback с Kafka на HTTP нет.
+
+Изменение данных и запись исходящего события в outbox выполняются в одной транзакции БД.
+Отправка повторяется при ошибке с тем же `eventId`; получатель фиксирует ID в inbox
+вместе с изменениями и пропускает повторную обработку. Доставка поэтому происходит как
+минимум один раз. Некорректный JSON или событие, не прошедшее проверку, отправляется в
+`.dlt`; при временной ошибке БД consumer повторяет обработку исходного сообщения.
+Гарантия относится к обработке событий: внешняя доставка Email, Telegram и webhook
+может повториться, если отправка прошла, а её результат не удалось записать в БД.
+
+Для остановки Kafka-стека используйте те же оба Compose-файла:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml down
+```
+
 ## Локальная отправка уведомлений
 
 Доставка намеренно выключена по умолчанию. Сначала скопируйте `.env.example` в `.env`,

@@ -1,0 +1,28 @@
+package org.awesoma.monitoring.integration.messaging;
+
+import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Hidden;
+import org.awesoma.integration.IntegrationEvent;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+@RestController
+@Hidden
+@RequestMapping("/internal/monitors/integration")
+@RequiredArgsConstructor
+class MonitorEventsController {
+    private final MonitorEventHandler events;
+
+    @PostMapping("/events")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void handle(@RequestBody IntegrationEvent event) { events.handle(event); }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    void invalidEvent() {}
+}
