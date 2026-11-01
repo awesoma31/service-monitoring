@@ -1,5 +1,7 @@
 # Лабораторная работа 3: авторизация
 
+Отчёт — в [docs/report-lab3.md](docs/report-lab3.md), полный текст задания — в [TASK.md](TASK.md).
+
 API защищён Spring Security Resource Server. Клиент входит по email и паролю и передаёт
 полученный JWT в заголовке `Authorization: Bearer <access_token>`. HTTP-сессии, Basic Auth
 и публичная регистрация не используются.
