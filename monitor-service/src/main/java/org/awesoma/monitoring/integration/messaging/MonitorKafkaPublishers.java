@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 import org.awesoma.integration.IntegrationEvent;
 import org.awesoma.monitoring.integration.CheckHistoryClient;
 import org.awesoma.monitoring.integration.NotificationClient;
+import org.awesoma.monitoring.integration.ReportClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,12 +35,17 @@ class MonitorKafkaPublishers {
 
     @Bean
     @ConditionalOnProperty(prefix = "integration.resource-events", name = "transport", havingValue = "http", matchIfMissing = true)
-    ResourceEventPublisher httpResourcePublisher(CheckHistoryClient check, NotificationClient notifications) {
+    ResourceEventPublisher httpResourcePublisher(CheckHistoryClient check, NotificationClient notifications,
+            ReportClient reports) {
         return new ResourceEventPublisher() {
             public String transport() { return "http"; }
+            // A failure is retried for every receiver; each skips an event ID it has already handled.
             public void publish(IntegrationEvent event) {
                 check.integrationEvent(event);
-                if (IntegrationEvent.PROJECT_DELETED.equals(event.type())) notifications.integrationEvent(event);
+                if (IntegrationEvent.PROJECT_DELETED.equals(event.type())) {
+                    notifications.integrationEvent(event);
+                    reports.integrationEvent(event);
+                }
             }
         };
     }
