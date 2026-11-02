@@ -3,6 +3,8 @@ package org.awesoma.report.support;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
+import java.time.Duration;
+import org.awesoma.report.config.MinioProperties;
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -40,5 +42,11 @@ public abstract class AbstractIntegrationTest {
                 .endpoint(Containers.MINIO.getS3URL())
                 .credentials(Containers.MINIO.getUserName(), Containers.MINIO.getPassword())
                 .build();
+    }
+
+    protected static MinioProperties storageProperties(String endpoint, String bucket, String accessKey,
+            String secretKey) {
+        return new MinioProperties(endpoint, bucket, accessKey, secretKey, Duration.ofSeconds(2),
+                Duration.ofSeconds(10));
     }
 }

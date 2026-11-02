@@ -9,9 +9,12 @@ public class MinioConfiguration {
 
     @Bean
     public MinioClient minioClient(MinioProperties properties) {
-        return MinioClient.builder()
+        MinioClient client = MinioClient.builder()
                 .endpoint(properties.endpoint())
                 .credentials(properties.accessKey(), properties.secretKey())
                 .build();
+        long io = properties.ioTimeout().toMillis();
+        client.setTimeout(properties.connectTimeout().toMillis(), io, io);
+        return client;
     }
 }

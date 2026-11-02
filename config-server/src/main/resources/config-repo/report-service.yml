@@ -3,6 +3,11 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema is owned by Liquibase; Hibernate only verifies it matches the entities.
+      ddl-auto: validate
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
@@ -15,3 +20,6 @@ storage:
     bucket: ${MINIO_BUCKET:reports}
     access-key: ${MINIO_ACCESS_KEY:}
     secret-key: ${MINIO_SECRET_KEY:}
+    connect-timeout: ${MINIO_CONNECT_TIMEOUT:PT5S}
+    # Per read or write of the stream, not for the whole transfer.
+    io-timeout: ${MINIO_IO_TIMEOUT:PT1M}
