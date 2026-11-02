@@ -8,7 +8,9 @@ build/
 *.ipr
 *.iws
 .vscode/
-out/
+# IntelliJ output of the project and of each module, not source packages named "out".
+/out/
+/*/out/
 
 # Claude Code
 .claude/
