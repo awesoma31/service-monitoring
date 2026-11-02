@@ -4,6 +4,7 @@ plugins {
 }
 
 val minioVersion = "8.6.0"
+val archunitVersion = "1.4.1"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -24,6 +25,7 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:minio")
+    testImplementation("com.tngtech.archunit:archunit-junit5:$archunitVersion")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
