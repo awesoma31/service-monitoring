@@ -5,14 +5,19 @@ plugins {
 
 val minioVersion = "8.6.0"
 val archunitVersion = "1.4.1"
+val springdocVersion = "2.9.1"
 
 dependencies {
+    implementation(project(":security-common"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.cloud:spring-cloud-starter-config")
     implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
+    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+    implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
     implementation("org.liquibase:liquibase-core")
     implementation("io.minio:minio:$minioVersion")
     runtimeOnly("org.postgresql:postgresql")
@@ -21,6 +26,8 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation(testFixtures(project(":security-common")))
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
@@ -34,6 +41,7 @@ dependencies {
 extra["coverageExclusions"] = listOf(
     "**/ReportServiceApplication.class",
     "**/config/**",
+    "**/web/dto/**",
 )
 
 // Tests read the same files the config server serves, without starting it or Eureka.

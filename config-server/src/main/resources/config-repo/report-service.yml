@@ -10,9 +10,28 @@ spring:
       ddl-auto: validate
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+  servlet:
+    multipart:
+      # MB is 2^20 bytes. The request limit leaves room for the part boundaries and headers.
+      max-file-size: ${REPORT_MAX_FILE_SIZE:10MB}
+      max-request-size: ${REPORT_MAX_REQUEST_SIZE:12MB}
+      # Larger parts go to a temporary file that is removed after the request.
+      file-size-threshold: 1MB
 
 server:
   port: ${APP_PORT:8085}
+  tomcat:
+    # Past this, an oversized upload is cut off instead of being read to answer 413.
+    max-swallow-size: ${REPORT_MAX_REQUEST_SIZE:12MB}
+
+report:
+  max-file-size: ${REPORT_MAX_FILE_SIZE:10MB}
+  upload-timeout: ${REPORT_UPLOAD_TIMEOUT:PT10M}
+  max-page-size: 50
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
 
 storage:
   minio:

@@ -10,7 +10,7 @@ import io.minio.errors.ErrorResponseException;
 import java.io.InputStream;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.report.application.content.ContentTooLargeException;
+import org.awesoma.report.application.content.ContentRejectedException;
 import org.awesoma.report.application.port.ObjectNotFoundException;
 import org.awesoma.report.application.port.ObjectStorage;
 import org.awesoma.report.application.port.ObjectStorageUnavailableException;
@@ -43,9 +43,9 @@ public class MinioObjectStorage implements ObjectStorage {
                     .contentType(contentType)
                     .build());
         } catch (Exception error) {
-            // The client may wrap what the caller's stream raised; a size limit is not an outage.
+            // The client may wrap what the caller's stream raised; rejected content is not an outage.
             for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-                if (cause instanceof ContentTooLargeException tooLarge) throw tooLarge;
+                if (cause instanceof ContentRejectedException rejected) throw rejected;
             }
             throw unavailable("store", key, error);
         }

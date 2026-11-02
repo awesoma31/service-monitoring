@@ -41,6 +41,12 @@ class JpaReportRepository implements ReportRepository {
     }
 
     @Override
+    @Transactional
+    public void delete(UUID id) {
+        rows.deleteById(id);
+    }
+
+    @Override
     public ReportPage findVisible(ReportQuery query) {
         var page = rows.findVisible(query.projectId(), ReportStatus.DELETING, query.status(), query.source(),
                 PageRequest.of(query.page(), query.size(), NEWEST_FIRST));

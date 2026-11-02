@@ -16,6 +16,9 @@ public interface ReportRepository {
 
     Report save(Report report);
 
+    /** Removes the row once nothing of the report is left in storage. */
+    void delete(UUID id);
+
     /** Visible reports of a project, newest first by creation time and then by ID. */
     ReportPage findVisible(ReportQuery query);
 }

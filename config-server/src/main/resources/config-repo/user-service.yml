@@ -24,6 +24,7 @@ security:
       monitor-service: ${MONITOR_SERVICE_CLIENT_SECRET:}
       check-service: ${CHECK_SERVICE_CLIENT_SECRET:}
       notification-service: ${NOTIFICATION_SERVICE_CLIENT_SECRET:}
+      report-service: ${REPORT_SERVICE_CLIENT_SECRET:}
 
 springdoc:
   swagger-ui:

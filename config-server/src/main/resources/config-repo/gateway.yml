@@ -59,6 +59,28 @@ spring:
                 - Path=/v3/api-docs/notification-service
               filters:
                 - RewritePath=/v3/api-docs/notification-service, /v3/api-docs
+            - id: report-service-api-docs
+              uri: lb://report-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/report-service
+              filters:
+                - RewritePath=/v3/api-docs/report-service, /v3/api-docs
+            # Report files pass through as streams. The size is checked here by Content-Length
+            # and again by report-service, which also counts the bytes of a chunked request.
+            - id: report-service
+              uri: lb://report-service
+              order: 0
+              predicates:
+                - Path=/api/v1/projects/*/reports,/api/v1/projects/*/reports/**,/api/v1/reports/**
+              filters:
+                - name: RequestSize
+                  args:
+                    maxSize: ${REPORT_MAX_REQUEST_SIZE:12MB}
+                - name: CircuitBreaker
+                  args:
+                    name: report-service
+                    fallbackUri: forward:/fallback/report-service
             - id: check-service
               uri: lb://check-service
               order: 0
@@ -109,3 +131,12 @@ springdoc:
         url: /v3/api-docs/check-service
       - name: notification-service
         url: /v3/api-docs/notification-service
+      - name: report-service
+        url: /v3/api-docs/report-service
+
+resilience4j:
+  timelimiter:
+    instances:
+      # Uploading or downloading a file of up to the size limit takes longer than an API call.
+      report-service:
+        timeout-duration: ${REPORT_TRANSFER_TIMEOUT:PT5M}

@@ -123,6 +123,7 @@ services:
       MONITOR_SERVICE_CLIENT_SECRET: ${MONITOR_SERVICE_CLIENT_SECRET:-local-dev-monitor-client-secret-replace-before-deployment}
       CHECK_SERVICE_CLIENT_SECRET: ${CHECK_SERVICE_CLIENT_SECRET:-local-dev-check-client-secret-replace-before-deployment}
       NOTIFICATION_SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-local-dev-notification-client-secret-replace-before-deployment}
+      REPORT_SERVICE_CLIENT_SECRET: ${REPORT_SERVICE_CLIENT_SECRET:-local-dev-report-client-secret-replace-before-deployment}
       JWT_KEY_FILE: /app/keys/signing-key.json
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
@@ -263,10 +264,11 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
     environment:
-      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
-      SENTRY_DSN: ${SENTRY_DSN:-}
-      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-local}
+      <<: *jwt-environment
+      SERVICE_CLIENT_SECRET: ${REPORT_SERVICE_CLIENT_SECRET:-local-dev-report-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
       EUREKA_URL: http://eureka-server:8761/eureka
@@ -278,6 +280,8 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-reports}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-report-service}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-local-dev-report-storage-secret-replace-before-deployment}
+      REPORT_MAX_FILE_SIZE: ${REPORT_MAX_FILE_SIZE:-10MB}
+      REPORT_MAX_REQUEST_SIZE: ${REPORT_MAX_REQUEST_SIZE:-12MB}
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP" ]
       <<: *actuator-health
@@ -300,12 +304,15 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
+      report-service:
+        condition: service_healthy
     environment:
       <<: *jwt-environment
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
       EUREKA_URL: http://eureka-server:8761/eureka
       GATEWAY_PORT: 8080
+      REPORT_MAX_REQUEST_SIZE: ${REPORT_MAX_REQUEST_SIZE:-12MB}
     ports:
       - "${APP_PORT:-8080}:8080"
     healthcheck:
