@@ -14,6 +14,7 @@ import org.awesoma.report.application.port.ObjectNotFoundException;
 import org.awesoma.report.application.port.ObjectStorage;
 import org.awesoma.report.application.port.ObjectStorageUnavailableException;
 import org.awesoma.report.application.port.ProjectAccessPort;
+import org.awesoma.report.application.port.ProjectGuard;
 import org.awesoma.report.application.port.ReportPage;
 import org.awesoma.report.application.port.ReportQuery;
 import org.awesoma.report.application.port.ReportRepository;
@@ -36,8 +37,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Stored reports: upload, read, download and delete. Database and storage share no
  * transaction, so a file is stored between two short transactions, and a report becomes
- * READY only after the storage confirmed the object. Every operation first checks the
- * caller's right to the project; nothing about a report is revealed before that.
+ * READY only after the storage confirmed the object. Both transactions hold the project's
+ * lock and check that the project was not deleted meanwhile. Every operation first checks
+ * the caller's right to the project; nothing about a report is revealed before that.
  */
 public class ReportService implements UploadReport, GetReportMetadata, DownloadReport, ListReports,
         DeleteReport {
@@ -46,15 +48,20 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
     private final ReportRepository reports;
     private final ObjectStorage storage;
     private final ProjectAccessPort access;
+    private final ProjectGuard projects;
+    private final ReportCleanup cleanup;
     private final TransactionRunner transactions;
     private final Clock clock;
     private final ReportLimits limits;
 
     public ReportService(ReportRepository reports, ObjectStorage storage, ProjectAccessPort access,
-            TransactionRunner transactions, Clock clock, ReportLimits limits) {
+            ProjectGuard projects, ReportCleanup cleanup, TransactionRunner transactions, Clock clock,
+            ReportLimits limits) {
         this.reports = reports;
         this.storage = storage;
         this.access = access;
+        this.projects = projects;
+        this.cleanup = cleanup;
         this.transactions = transactions;
         this.clock = clock;
         this.limits = limits;
@@ -72,18 +79,32 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
 
         var now = clock.instant();
         var lease = new Lease(UUID.randomUUID(), UUID.randomUUID(), now.plus(limits.uploadTimeout()));
-        var report = transactions.inTransaction(() -> reports.save(Report.startUpload(
-                UUID.randomUUID(), command.projectId(), command.userId(), name, lease, now)));
+        var report = transactions.inTransaction(() -> {
+            projects.lock(command.projectId());
+            if (projects.deleted(command.projectId())) throw projectGone(command.projectId());
+            return reports.save(Report.startUpload(UUID.randomUUID(), command.projectId(), command.userId(), name,
+                    lease, now));
+        });
         try {
             var inspected = ContentInspector.of(command.content(), format);
             var measured = new MeasuredInputStream(inspected, limits.maxFileSize());
             storage.put(report.objectKey(), measured, command.declaredSize(), format.contentType());
             inspected.verifyComplete();
-            return transactions.inTransaction(() -> {
+            var published = transactions.inTransaction(() -> {
+                projects.lock(report.projectId());
                 var current = reports.lockById(report.id()).orElseThrow(() -> stale(report));
-                current.completeUpload(lease.token(), measured.size(), measured.sha256(), clock.instant());
+                if (projects.deleted(report.projectId())) {
+                    current.markDeleting(clock.instant());
+                } else {
+                    current.completeUpload(lease.token(), measured.size(), measured.sha256(), clock.instant());
+                }
                 return reports.save(current);
             });
+            if (!published.contentAvailable()) {
+                cleanup.purge(published);
+                throw projectGone(report.projectId());
+            }
+            return published;
         } catch (ContentRejectedException rejected) {
             discard(report);
             throw rejected;
@@ -131,19 +152,18 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
     }
 
     /**
-     * Hides the report at once and revokes any running attempt; the object is removed after
+     * Hides the report at once and revokes any running attempt; the objects are removed after
      * the commit. If that fails, the report stays DELETING for the background cleanup.
      */
     @Override
     public void delete(UUID reportId, long userId) {
         var report = reports.findById(reportId).orElseThrow(() -> notFound(reportId));
         ProjectAccessCheck.require(access, report.projectId(), userId, AccessLevel.WRITE);
-        var deleting = transactions.inTransaction(() -> {
+        transactions.inTransaction(() -> {
             var current = reports.lockById(reportId).orElseThrow(() -> notFound(reportId));
             if (current.markDeleting(clock.instant())) reports.save(current);
-            return current;
         });
-        removeContent(deleting);
+        cleanup.purge(report);
     }
 
     private Report visible(UUID reportId, long userId, AccessLevel level) {
@@ -158,7 +178,7 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
         transactions.inTransaction(() -> reports.lockById(report.id()).ifPresent(current -> {
             if (current.markDeleting(clock.instant())) reports.save(current);
         }));
-        removeContent(report);
+        cleanup.purge(report);
     }
 
     /** A storage failure leaves a visible FAILED report; its object is removed if there is one. */
@@ -171,26 +191,15 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
         } catch (StaleAttemptException alreadyChanged) {
             log.info("Upload changed state before it could be marked failed: report_id={}", report.id());
         }
-        try {
-            storage.delete(report.objectKey());
-        } catch (ObjectStorageUnavailableException error) {
-            log.warn("Object of a failed upload is left for cleanup: report_id={}", report.id(), error);
-        }
-    }
-
-    private void removeContent(Report report) {
-        try {
-            if (report.objectKey() != null) storage.delete(report.objectKey());
-            transactions.inTransaction(() -> reports.lockById(report.id())
-                    .filter(current -> current.status() == ReportStatus.DELETING)
-                    .ifPresent(current -> reports.delete(current.id())));
-        } catch (ObjectStorageUnavailableException error) {
-            log.warn("Object of a deleted report is left for cleanup: report_id={}", report.id(), error);
-        }
+        cleanup.removeObject(report.objectKey());
     }
 
     private static ReportNotFoundException notFound(UUID reportId) {
         return new ReportNotFoundException("Report " + reportId + " not found");
+    }
+
+    private static ReportNotFoundException projectGone(long projectId) {
+        return new ReportNotFoundException("Project " + projectId + " not found");
     }
 
     private static StaleAttemptException stale(Report report) {

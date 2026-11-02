@@ -1,5 +1,6 @@
 package org.awesoma.report.adapters.out.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import org.awesoma.report.application.port.ReportQuery;
 import org.awesoma.report.application.port.ReportRepository;
 import org.awesoma.report.domain.Report;
 import org.awesoma.report.domain.ReportStatus;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
@@ -52,5 +54,16 @@ class JpaReportRepository implements ReportRepository {
                 PageRequest.of(query.page(), query.size(), NEWEST_FIRST));
         return new ReportPage(page.map(ReportEntityMapper::toDomain).getContent(), page.getTotalElements(),
                 page.hasNext());
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<Report> lockVisibleOfProject(long projectId) {
+        return rows.lockOfProject(projectId, ReportStatus.DELETING).stream().map(ReportEntityMapper::toDomain).toList();
+    }
+
+    @Override
+    public List<UUID> findDeleting(int limit) {
+        return rows.findIdsByStatus(ReportStatus.DELETING, Limit.of(limit));
     }
 }

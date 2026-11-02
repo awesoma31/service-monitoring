@@ -48,12 +48,14 @@ class LiquibaseMigrationsTest {
                     .findCorrectDatabaseImplementation(new JdbcConnection(connection));
             try (var liquibase = new Liquibase(CHANGELOG, new ClassLoaderResourceAccessor(), database)) {
                 liquibase.update(new Contexts(), new LabelExpression());
-                assertThat(tableNames(connection)).contains("reports");
+                assertThat(tableNames(connection)).contains("reports", "report_idempotency_keys", "integration_inbox",
+                        "deleted_projects");
 
                 int applied = liquibase.getDatabaseChangeLog().getChangeSets().size();
                 liquibase.rollback(applied, new Contexts(), new LabelExpression());
 
-                assertThat(tableNames(connection)).doesNotContain("reports");
+                assertThat(tableNames(connection)).doesNotContain("reports", "report_idempotency_keys",
+                        "integration_inbox", "deleted_projects");
             }
         }
     }

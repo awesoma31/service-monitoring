@@ -2,18 +2,24 @@ package org.awesoma.report.adapters.out.minio;
 
 import io.minio.GetObjectArgs;
 import io.minio.GetObjectResponse;
+import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.Result;
 import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
+import io.minio.messages.Item;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.report.application.content.ContentRejectedException;
 import org.awesoma.report.application.port.ObjectNotFoundException;
 import org.awesoma.report.application.port.ObjectStorage;
 import org.awesoma.report.application.port.ObjectStorageUnavailableException;
+import org.awesoma.report.application.port.StoredKey;
 import org.awesoma.report.application.port.StoredObject;
 import org.awesoma.report.config.MinioProperties;
 import org.springframework.stereotype.Component;
@@ -85,6 +91,21 @@ public class MinioObjectStorage implements ObjectStorage {
             throw unavailable("check", key, error);
         } catch (Exception error) {
             throw unavailable("check", key, error);
+        }
+    }
+
+    @Override
+    public List<StoredKey> list(String prefix) {
+        try {
+            List<StoredKey> keys = new ArrayList<>();
+            for (Result<Item> result : minio.listObjects(ListObjectsArgs.builder()
+                    .bucket(properties.bucket()).prefix(prefix).recursive(true).build())) {
+                Item item = result.get();
+                if (!item.isDir()) keys.add(new StoredKey(item.objectName(), item.lastModified().toInstant()));
+            }
+            return keys;
+        } catch (Exception error) {
+            throw unavailable("list", prefix, error);
         }
     }
 

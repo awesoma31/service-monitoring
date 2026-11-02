@@ -1,0 +1,84 @@
+package org.awesoma.report.application.usecase;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.util.UUID;
+import org.awesoma.report.application.port.IdempotencyKeys;
+import org.awesoma.report.application.port.ObjectStorage;
+import org.awesoma.report.application.port.ObjectStorageUnavailableException;
+import org.awesoma.report.application.port.ReportRepository;
+import org.awesoma.report.application.port.TransactionRunner;
+import org.awesoma.report.domain.ObjectKeys;
+import org.awesoma.report.domain.Report;
+import org.awesoma.report.domain.ReportStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Removes what a report left in storage. Every object of a report lies under its own prefix,
+ * the upload key and the key of each generation attempt alike, so one listing finds them all.
+ * Deleting is idempotent; whatever fails now is retried by the background cleanup.
+ */
+public class ReportCleanup {
+    private static final Logger log = LoggerFactory.getLogger(ReportCleanup.class);
+
+    private final ReportRepository reports;
+    private final ObjectStorage storage;
+    private final IdempotencyKeys keys;
+    private final TransactionRunner transactions;
+    private final Clock clock;
+    private final Duration tombstoneTtl;
+
+    public ReportCleanup(ReportRepository reports, ObjectStorage storage, IdempotencyKeys keys,
+            TransactionRunner transactions, Clock clock, Duration tombstoneTtl) {
+        this.reports = reports;
+        this.storage = storage;
+        this.keys = keys;
+        this.transactions = transactions;
+        this.clock = clock;
+        this.tombstoneTtl = tombstoneTtl;
+    }
+
+    /**
+     * Removes the objects of a DELETING report and then its row; an Idempotency-Key bound to it
+     * stays taken as a tombstone for a while.
+     *
+     * @return whether the report is gone now
+     */
+    public boolean purge(UUID reportId, long projectId) {
+        if (!removeObjects(reportId, projectId)) return false;
+        return transactions.inTransaction(() -> reports.lockById(reportId)
+                .filter(current -> current.status() == ReportStatus.DELETING)
+                .map(current -> {
+                    reports.delete(current.id());
+                    keys.tombstone(current.id(), clock.instant().plus(tombstoneTtl));
+                    return true;
+                })
+                .orElse(false));
+    }
+
+    /** Removes one object, such as that of an attempt that will not be published. */
+    public void removeObject(String key) {
+        if (key == null) return;
+        try {
+            storage.delete(key);
+        } catch (ObjectStorageUnavailableException error) {
+            log.warn("Object left for reconciliation: key={}", key, error);
+        }
+    }
+
+    public boolean removeObjects(UUID reportId, long projectId) {
+        String prefix = ObjectKeys.upload(projectId, reportId);
+        try {
+            for (var stored : storage.list(prefix)) storage.delete(stored.key());
+            return true;
+        } catch (ObjectStorageUnavailableException error) {
+            log.warn("Objects of a report are left for cleanup: report_id={}", reportId, error);
+            return false;
+        }
+    }
+
+    public void purge(Report report) {
+        purge(report.id(), report.projectId());
+    }
+}

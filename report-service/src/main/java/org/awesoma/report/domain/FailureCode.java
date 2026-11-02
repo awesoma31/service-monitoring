@@ -19,5 +19,7 @@ public enum FailureCode {
     /** An attempt did not finish within the time limit after the allowed attempts. */
     TIMED_OUT,
     /** The storage confirmed that the object of a ready report is gone. */
-    OBJECT_MISSING
+    OBJECT_MISSING,
+    /** An unexpected error that persisted through the allowed attempts. */
+    GENERATION_ERROR
 }

@@ -28,6 +28,26 @@ report:
   max-file-size: ${REPORT_MAX_FILE_SIZE:10MB}
   upload-timeout: ${REPORT_UPLOAD_TIMEOUT:PT10M}
   max-page-size: 50
+  # An Idempotency-Key of a deleted report stays taken this long.
+  idempotency-tombstone-ttl: ${REPORT_IDEMPOTENCY_TOMBSTONE_TTL:PT24H}
+  # Objects younger than this are never taken for orphans: a writer may still be at work.
+  reconciliation-grace: ${REPORT_RECONCILIATION_GRACE:PT15M}
+  generation:
+    max-period-days: ${REPORT_GENERATION_MAX_PERIOD_DAYS:31}
+    max-monitors: ${REPORT_GENERATION_MAX_MONITORS:100}
+    max-source-rows: ${REPORT_GENERATION_MAX_SOURCE_ROWS:100000}
+    page-size: 50
+    timeout: ${REPORT_GENERATION_TIMEOUT:PT5M}
+    concurrency: ${REPORT_GENERATION_CONCURRENCY:2}
+    max-attempts: ${REPORT_GENERATION_MAX_ATTEMPTS:3}
+    retry-delay: ${REPORT_GENERATION_RETRY_DELAY:PT30S}
+    lease-duration: ${REPORT_GENERATION_LEASE_DURATION:PT1M}
+  jobs:
+    enabled: ${REPORT_JOBS_ENABLED:true}
+    poll-interval: PT2S
+    recovery-interval: PT30S
+    cleanup-interval: PT30S
+    reconciliation-interval: PT10M
 
 springdoc:
   swagger-ui:

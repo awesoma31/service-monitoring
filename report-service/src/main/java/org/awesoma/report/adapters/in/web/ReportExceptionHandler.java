@@ -9,6 +9,7 @@ import org.awesoma.report.application.content.InvalidContentException;
 import org.awesoma.report.application.content.UnsupportedContentTypeException;
 import org.awesoma.report.application.port.AccessUnavailableException;
 import org.awesoma.report.application.port.ObjectStorageUnavailableException;
+import org.awesoma.report.application.usecase.IdempotencyConflictException;
 import org.awesoma.report.application.usecase.ProjectAccessDeniedException;
 import org.awesoma.report.application.usecase.ReportNotFoundException;
 import org.awesoma.report.application.usecase.ReportNotReadyException;
@@ -91,6 +92,13 @@ public class ReportExceptionHandler {
     @ExceptionHandler(ReportNotFoundException.class)
     public ProblemDetail notFound(ReportNotFoundException error, HttpServletRequest request) {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", error.getMessage(), request);
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ProblemDetail idempotencyConflict(IdempotencyConflictException error, HttpServletRequest request) {
+        var problem = problem(HttpStatus.CONFLICT, "Conflicting state", error.getMessage(), request);
+        problem.setProperty("code", error.code());
+        return problem;
     }
 
     @ExceptionHandler(ReportNotReadyException.class)

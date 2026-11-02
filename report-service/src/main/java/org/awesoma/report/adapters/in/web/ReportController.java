@@ -15,10 +15,13 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.awesoma.report.adapters.in.web.dto.GenerationRequest;
 import org.awesoma.report.adapters.in.web.dto.ReportResponse;
+import org.awesoma.report.application.usecase.GenerateReportCommand;
 import org.awesoma.report.application.usecase.ListReportsQuery;
 import org.awesoma.report.application.usecase.ReportUseCases.DeleteReport;
 import org.awesoma.report.application.usecase.ReportUseCases.DownloadReport;
+import org.awesoma.report.application.usecase.ReportUseCases.GenerateReport;
 import org.awesoma.report.application.usecase.ReportUseCases.GetReportMetadata;
 import org.awesoma.report.application.usecase.ReportUseCases.ListReports;
 import org.awesoma.report.application.usecase.ReportUseCases.UploadReport;
@@ -35,6 +38,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,6 +58,7 @@ public class ReportController {
     private final DownloadReport downloads;
     private final ListReports lists;
     private final DeleteReport deletions;
+    private final GenerateReport generations;
 
     @Operation(summary = "Upload a finished CSV or PDF report",
             responses = {
@@ -71,6 +77,29 @@ public class ReportController {
             return ResponseEntity.created(URI.create("/api/v1/reports/" + report.id()))
                     .body(ReportResponse.of(report));
         }
+    }
+
+    @Operation(summary = "Queue the generation of a CSV or PDF report over a period",
+            description = "Answers at once with the queued job; poll GET /api/v1/reports/{id} until READY, "
+                    + "then download its content. A repeated request with the same Idempotency-Key and "
+                    + "parameters returns the same job.",
+            responses = {
+                @ApiResponse(responseCode = "202", description = "Job stored as QUEUED"),
+                @ApiResponse(responseCode = "400", ref = "BadRequest"),
+                @ApiResponse(responseCode = "409", description = "Idempotency-Key reused with other parameters, "
+                        + "or its report was deleted"),
+                @ApiResponse(responseCode = "503", description = "Access check or data source unavailable")})
+    @PostMapping(path = "/api/v1/projects/{projectId}/reports/generations",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ReportResponse> generate(@PathVariable long projectId,
+            @RequestBody GenerationRequest request,
+            @Parameter(description = "Makes a retried request return the same job")
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal Jwt jwt) {
+        var report = generations.generate(new GenerateReportCommand(projectId, CurrentUser.id(jwt), request.from(),
+                request.to(), request.format(), request.monitorIds(), idempotencyKey));
+        return ResponseEntity.accepted().location(URI.create("/api/v1/reports/" + report.id()))
+                .body(ReportResponse.of(report));
     }
 
     @Operation(summary = "List reports and generation jobs of a project, newest first",

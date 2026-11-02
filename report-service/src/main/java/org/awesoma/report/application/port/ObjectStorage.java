@@ -1,6 +1,7 @@
 package org.awesoma.report.application.port;
 
 import java.io.InputStream;
+import java.util.List;
 
 /**
  * Report contents by object key. Every call is bounded in time; a timeout or an unreachable
@@ -18,4 +19,7 @@ public interface ObjectStorage {
     void delete(String key);
 
     boolean exists(String key);
+
+    /** Every key under the prefix, with the time the object was last written. */
+    List<StoredKey> list(String prefix);
 }

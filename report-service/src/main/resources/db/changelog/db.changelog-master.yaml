@@ -2,3 +2,9 @@ databaseChangeLog:
   - include:
       file: changes/001-create-reports.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/002-create-idempotency-keys.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/003-create-integration-inbox.yaml
+      relativeToChangelogFile: true

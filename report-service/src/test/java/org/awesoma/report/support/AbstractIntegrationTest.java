@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.awesoma.report.adapters.out.http.ProjectLookupClient;
+import org.awesoma.report.adapters.out.http.ReportDataClients;
 import org.awesoma.report.config.MinioProperties;
 import org.awesoma.security.access.ResourceAccessClient;
 import org.awesoma.security.support.TestJwtConfiguration;
@@ -38,6 +39,8 @@ public abstract class AbstractIntegrationTest {
 
     @MockitoBean protected ProjectLookupClient projectLookup;
     @MockitoBean protected ResourceAccessClient resourceAccess;
+    @MockitoBean protected ReportDataClients.MonitorData monitorData;
+    @MockitoBean protected ReportDataClients.CheckData checkData;
     protected final Set<Long> missingProjects = new HashSet<>();
     /** Project → user → may write. */
     private final Map<Long, Map<Long, Boolean>> grants = new HashMap<>();
@@ -51,6 +54,8 @@ public abstract class AbstractIntegrationTest {
         registry.add("storage.minio.bucket", () -> BUCKET);
         registry.add("storage.minio.access-key", Containers.MINIO::getUserName);
         registry.add("storage.minio.secret-key", Containers.MINIO::getPassword);
+        // Tests run the background work themselves, so no scheduled pass races their assertions.
+        registry.add("report.jobs.enabled", () -> false);
     }
 
     @BeforeAll

@@ -267,7 +267,7 @@ services:
       user-service:
         condition: service_healthy
     environment:
-      <<: *jwt-environment
+      <<: [*jwt-environment, *integration-environment]
       SERVICE_CLIENT_SECRET: ${REPORT_SERVICE_CLIENT_SECRET:-local-dev-report-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
@@ -282,6 +282,15 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-local-dev-report-storage-secret-replace-before-deployment}
       REPORT_MAX_FILE_SIZE: ${REPORT_MAX_FILE_SIZE:-10MB}
       REPORT_MAX_REQUEST_SIZE: ${REPORT_MAX_REQUEST_SIZE:-12MB}
+      REPORT_IDEMPOTENCY_TOMBSTONE_TTL: ${REPORT_IDEMPOTENCY_TOMBSTONE_TTL:-PT24H}
+      REPORT_GENERATION_MAX_PERIOD_DAYS: ${REPORT_GENERATION_MAX_PERIOD_DAYS:-31}
+      REPORT_GENERATION_MAX_MONITORS: ${REPORT_GENERATION_MAX_MONITORS:-100}
+      REPORT_GENERATION_MAX_SOURCE_ROWS: ${REPORT_GENERATION_MAX_SOURCE_ROWS:-100000}
+      REPORT_GENERATION_TIMEOUT: ${REPORT_GENERATION_TIMEOUT:-PT5M}
+      REPORT_GENERATION_CONCURRENCY: ${REPORT_GENERATION_CONCURRENCY:-2}
+      REPORT_GENERATION_MAX_ATTEMPTS: ${REPORT_GENERATION_MAX_ATTEMPTS:-3}
+      REPORT_GENERATION_RETRY_DELAY: ${REPORT_GENERATION_RETRY_DELAY:-PT30S}
+      REPORT_GENERATION_LEASE_DURATION: ${REPORT_GENERATION_LEASE_DURATION:-PT1M}
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP" ]
       <<: *actuator-health

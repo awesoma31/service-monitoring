@@ -83,6 +83,10 @@ services:
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+  report-service:
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
 
 volumes:
   kafka-1-data:

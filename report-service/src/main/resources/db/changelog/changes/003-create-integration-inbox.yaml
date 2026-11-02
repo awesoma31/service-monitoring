@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-integration-inbox
+      author: awesoma31
+      comment: >-
+        Handled event IDs, so that a repeated ProjectDeleted changes nothing, and the projects
+        known to be deleted, so that no report of theirs can be created or published again.
+      changes:
+        - sql:
+            sql: >-
+              CREATE TABLE integration_inbox (
+                event_id UUID PRIMARY KEY,
+                processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+              CREATE TABLE deleted_projects (
+                project_id BIGINT PRIMARY KEY,
+                deleted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+      rollback:
+        - sql:
+            sql: DROP TABLE deleted_projects; DROP TABLE integration_inbox;

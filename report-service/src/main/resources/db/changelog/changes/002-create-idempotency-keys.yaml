@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-idempotency-keys
+      author: awesoma31
+      comment: >-
+        Binds an Idempotency-Key, scoped by user and project, to the job it created. The binding
+        has no expiry while its report exists; once the report row is removed it stays as a
+        tombstone until expires_at.
+      changes:
+        - sql:
+            sql: >-
+              CREATE TABLE report_idempotency_keys (
+                user_id BIGINT NOT NULL,
+                project_id BIGINT NOT NULL,
+                idempotency_key VARCHAR(255) NOT NULL,
+                fingerprint VARCHAR(64) NOT NULL,
+                report_id UUID NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                expires_at TIMESTAMPTZ,
+                CONSTRAINT pk_report_idempotency_keys PRIMARY KEY (user_id, project_id, idempotency_key)
+              );
+              CREATE INDEX idx_report_idempotency_keys_report ON report_idempotency_keys (report_id);
+              CREATE INDEX idx_report_idempotency_keys_expiry ON report_idempotency_keys (expires_at)
+                WHERE expires_at IS NOT NULL;
+      rollback:
+        - sql:
+            sql: DROP TABLE report_idempotency_keys;

@@ -6,9 +6,16 @@ plugins {
 val minioVersion = "8.6.0"
 val archunitVersion = "1.4.1"
 val springdocVersion = "2.9.1"
+val pdfboxVersion = "3.0.8"
+// Liberation Sans for PDFs with Cyrillic; only its font files (SIL Open Font License) are used.
+val libreFontsVersion = "2.0.3"
 
 dependencies {
     implementation(project(":security-common"))
+    implementation(project(":integration-contracts"))
+    implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.apache.pdfbox:pdfbox:$pdfboxVersion")
+    runtimeOnly("com.github.librepdf:openpdf-fonts-extra:$libreFontsVersion") { isTransitive = false }
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -27,6 +34,8 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation("org.awaitility:awaitility")
     testImplementation(testFixtures(project(":security-common")))
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
