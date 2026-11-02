@@ -33,6 +33,7 @@
 | `monitor-service` | проекты, участники, мониторы, теги, инциденты (Spring MVC + JPA) |
 | `check-service` | планировщик, HTTP-проверки и их история (WebFlux + R2DBC) |
 | `notification-service` | каналы и уведомления (WebFlux + JPA) |
+| `report-service` | загрузка, генерация и выдача отчётов CSV/PDF; файлы в MinIO (Spring MVC + JPA, Clean Architecture) |
 | `config-server` | конфигурация сервисов из `config-server/src/main/resources/config-repo/` |
 | `eureka-server` | реестр сервисов |
 
@@ -241,6 +242,63 @@ docker compose -f docker-compose.yml -f docker-compose.kafka.yml logs -f notific
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.kafka.yml down
+```
+
+## Отчёты: report-service и MinIO
+
+report-service хранит отчёты проектов: готовые файлы, загруженные пользователями, и отчёты
+о мониторинге, которые он строит сам в фоне. Метаданные и задания лежат в `report_db`,
+содержимое — в приватном bucket `reports` MinIO. Compose поднимает один сервер MinIO с томом
+`minio-data`; `minio-init` при каждом старте создаёт bucket и учётную запись сервиса с правами
+только на объекты этого bucket. Root-учётка MinIO сервису не передаётся. Официальные образы
+MinIO больше не публикуются, поэтому используется поддерживаемая сообществом сборка
+`pgsty/minio` с зафиксированной версией.
+
+| Метод и путь | Назначение | Ответ |
+|---|---|---|
+| `POST /api/v1/projects/{id}/reports` | загрузить `.csv` (UTF-8) или `.pdf`, поле `file` | `201`, `READY` |
+| `POST /api/v1/projects/{id}/reports/generations` | поставить генерацию CSV/PDF в очередь | `202`, `QUEUED` |
+| `GET /api/v1/projects/{id}/reports` | список, `X-Total-Count` и `X-Has-Next` | `200` |
+| `GET /api/v1/reports/{id}` | метаданные и статус | `200` |
+| `GET /api/v1/reports/{id}/content` | скачать готовый файл | `200`; `409` до `READY` |
+| `DELETE /api/v1/reports/{id}` | удалить отчёт или отменить генерацию | `202` |
+
+Права проверяет monitor-service: `VIEWER` читает и скачивает, `OPERATOR` и `SUPERVISOR` ещё
+загружают, генерируют и удаляют. Файл проверяется на лету: CSV должен быть UTF-8, PDF —
+начинаться с `%PDF-`; лимит 10 MiB (`REPORT_MAX_FILE_SIZE`), запрос — 12 MiB, его проверяют и
+gateway, и сервис. Отчёт становится `READY` только после подтверждённой записи в MinIO;
+SHA-256 считается по самим байтам.
+
+Генерация принимает период с часовым поясом (`[from, to)`, не длиннее 31 дня и не позже
+момента запроса), формат `CSV` или `PDF` и необязательный `monitor_ids`. Заголовок
+`Idempotency-Key` делает повтор запроса безопасным: те же параметры вернут то же задание,
+другие — `409`. Фоновый работник берёт задание через `FOR UPDATE SKIP LOCKED` с lease,
+постранично читает данные из внутренних API monitor-service и check-service, считает метрики
+и публикует файл, только пока держит lease. Временные сбои повторяются (до 3 попыток), превышение
+лимитов и отзыв прав завершают задание `FAILED` с кодом причины; частичный отчёт не публикуется.
+Доля успешных проверок — доля результатов `SUCCESS`, а не время доступности.
+
+```bash
+TOKEN=... # access_token из POST /api/v1/auth/login
+curl -s -X POST http://localhost:8080/api/v1/projects/1/reports/generations \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"from":"2026-10-01T00:00:00Z","to":"2026-10-02T00:00:00Z","format":"PDF"}'
+```
+
+Удаление проекта доходит до report-service тем же транспортом, что и до остальных сервисов
+(`RESOURCE_EVENTS_TRANSPORT`): из Kafka-топика `resources.events.v1` в своей группе
+`report-resource-events-v1` или HTTP-вызовом `/internal/integration/events` из outbox
+monitor-service. Событие записывается в inbox, проект помечается удалённым, его отчёты
+скрываются, а файлы затем удаляет фоновая очистка. Периодическая сверка bucket с метаданными
+удаляет объекты, на которые ничего не ссылается.
+
+Сквозная демонстрация — загрузка готового файла, генерация CSV и PDF, опрос статуса и
+скачивание (нужны `curl` и `jq`):
+
+```bash
+export SUPERVISOR_PASSWORD='значение-из-.env'
+./scripts/report-demo.sh
 ```
 
 ## Локальная отправка уведомлений
