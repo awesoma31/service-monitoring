@@ -54,9 +54,11 @@ class CircuitBreakerIntegrationTest extends AbstractIntegrationTest {
         registry.add(
                 "spring.cloud.discovery.client.simple.instances.monitor-service[0].uri",
                 () -> "http://127.0.0.1:" + MONITOR_SERVICE.getAddress().getPort());
+        // Long enough that a slow machine still sees OPEN right after the failing calls; the
+        // circuit then turns HALF_OPEN by itself, which the recovery test waits for.
         registry.add(
                 "resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state",
-                () -> "100ms");
+                () -> "1s");
     }
 
     @BeforeEach
@@ -146,7 +148,7 @@ class CircuitBreakerIntegrationTest extends AbstractIntegrationTest {
 
     private static void awaitState(CircuitBreaker breaker, CircuitBreaker.State expected)
             throws InterruptedException {
-        long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
+        long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
         while (System.nanoTime() < deadline && breaker.getState() != expected) {
             Thread.sleep(10);
         }
