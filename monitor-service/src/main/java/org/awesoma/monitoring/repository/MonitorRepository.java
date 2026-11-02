@@ -1,9 +1,11 @@
 package org.awesoma.monitoring.repository;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.awesoma.monitoring.domain.entity.Monitor;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,6 +31,23 @@ public interface MonitorRepository extends JpaRepository<Monitor, Long> {
 
     @Query("select m.id from Monitor m where m.project.id = :projectId")
     List<Long> findIdsByProjectId(@Param("projectId") Long projectId);
+
+    @Query("select count(m) from Monitor m where m.project.id = :projectId and m.id in :ids")
+    long countByProjectIdAndIdIn(@Param("projectId") Long projectId, @Param("ids") Collection<Long> ids);
+
+    @Query("select coalesce(max(m.id), 0) from Monitor m")
+    long maxId();
+
+    /** One keyset page of a project's monitors, all of them or only the listed ones. */
+    @Query("""
+            select m from Monitor m
+            where m.project.id = :projectId and (:all = true or m.id in :ids)
+              and m.id > :after and m.id <= :upper
+            order by m.id
+            """)
+    List<Monitor> findReportPage(@Param("projectId") Long projectId, @Param("all") boolean all,
+            @Param("ids") Collection<Long> ids, @Param("after") long after, @Param("upper") long upper,
+            Limit limit);
 
     /**
      * Locks a disjoint batch of due monitors. SKIP LOCKED lets concurrent check-service

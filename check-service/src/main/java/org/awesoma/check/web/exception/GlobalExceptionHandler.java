@@ -28,6 +28,17 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage(), exchange);
     }
 
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleInvalidRequest(InvalidRequestException exception, ServerWebExchange exchange) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid request", exception.getMessage(), exchange);
+    }
+
+    @ExceptionHandler(MonitorNotInProjectException.class)
+    public ProblemDetail handleMonitorNotInProject(
+            MonitorNotInProjectException exception, ServerWebExchange exchange) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Monitor not in project", exception.getMessage(), exchange);
+    }
+
     @ExceptionHandler(ServiceUnavailableException.class)
     public ProblemDetail handleUnavailable(
             ServiceUnavailableException exception, ServerWebExchange exchange) {

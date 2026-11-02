@@ -52,6 +52,26 @@ public class GlobalExceptionHandler {
                 request);
     }
 
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleInvalidRequest(
+            InvalidRequestException exception, HttpServletRequest request) {
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                "Invalid request",
+                exception.getMessage(),
+                request);
+    }
+
+    @ExceptionHandler(MonitorNotInProjectException.class)
+    public ProblemDetail handleMonitorNotInProject(
+            MonitorNotInProjectException exception, HttpServletRequest request) {
+        return problem(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "Monitor not in project",
+                exception.getMessage(),
+                request);
+    }
+
     @ExceptionHandler(ConflictStateException.class)
     public ProblemDetail handleConflict(
             ConflictStateException exception, HttpServletRequest request) {
