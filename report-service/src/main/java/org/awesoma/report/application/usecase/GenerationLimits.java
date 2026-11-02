@@ -14,7 +14,6 @@ import java.time.Duration;
  * @param maxAttempts     attempts for temporary failures, the first included
  * @param retryDelay      delay before the second attempt; it doubles after each further one
  * @param leaseDuration   how long a lease lasts unless renewed
- * @param tombstoneTtl    how long a deleted report's idempotency key stays taken
  */
 public record GenerationLimits(
         Duration maxPeriod,
@@ -24,6 +23,5 @@ public record GenerationLimits(
         Duration attemptTimeout,
         int maxAttempts,
         Duration retryDelay,
-        Duration leaseDuration,
-        Duration tombstoneTtl) {
+        Duration leaseDuration) {
 }

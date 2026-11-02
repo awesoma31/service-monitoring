@@ -93,8 +93,10 @@ class InternalReportDataApiIntegrationTest extends AbstractIntegrationTest {
                 .thenReturn(new OwnershipResponse(Ownership.PROJECT_NOT_FOUND))
                 .thenThrow(new IllegalStateException("circuit open"));
 
-        search(body(10)).expectStatus().isEqualTo(422);
-        search(body(10)).expectStatus().isNotFound();
+        search(body(10)).expectStatus().isEqualTo(422)
+                .expectBody().jsonPath("$.code").isEqualTo("MONITOR_NOT_IN_PROJECT");
+        search(body(10)).expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("PROJECT_NOT_FOUND");
         search(body(10)).expectStatus().isEqualTo(503);
     }
 

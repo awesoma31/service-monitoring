@@ -50,7 +50,8 @@ public record ReportResponse(
             Instant generatedAt,
             int attempts,
             Instant nextAttemptAt,
-            @Schema(description = "Where the sources stopped reading for the latest attempt") SourceBounds sourceBounds) {
+            @Schema(description = "Where the sources stopped reading for the latest attempt")
+                    SourceBounds sourceBounds) {
 
         static Generation of(Report report) {
             var parameters = report.generation();

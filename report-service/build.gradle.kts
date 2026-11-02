@@ -4,7 +4,6 @@ plugins {
 }
 
 val minioVersion = "8.6.0"
-val archunitVersion = "1.4.1"
 val springdocVersion = "2.9.1"
 val pdfboxVersion = "3.0.8"
 // Liberation Sans for PDFs with Cyrillic; only its font files (SIL Open Font License) are used.
@@ -41,7 +40,6 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:minio")
-    testImplementation("com.tngtech.archunit:archunit-junit5:$archunitVersion")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

@@ -1,5 +1,7 @@
 package org.awesoma.report.adapters.out.http;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import java.util.List;
 import java.util.function.Function;
@@ -7,6 +9,7 @@ import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.integration.reportdata.ReportDataRequests.MonitorSelectionRequest;
 import org.awesoma.integration.reportdata.ReportDataRequests.PeriodSearchRequest;
+import org.awesoma.integration.reportdata.ReportDataResponses;
 import org.awesoma.integration.reportdata.ReportDataResponses.Page;
 import org.awesoma.report.application.port.MonitorPage;
 import org.awesoma.report.application.port.ProjectNotFoundException;
@@ -26,15 +29,16 @@ import org.awesoma.report.domain.source.ProjectInfo;
 import org.springframework.stereotype.Component;
 
 /**
- * Reads monitoring data over HTTP with report-service's own credentials. A 404 means the
- * project is gone and a 422 that a monitor left it — both are lasting; every other failure,
- * an open circuit included, is a temporary outage worth another attempt.
+ * Reads monitoring data over HTTP with report-service's own credentials. Only a refusal that
+ * names its reason — the project is gone, or a monitor left it — is lasting; any other failure,
+ * a bare 404 from a wrong route or an open circuit included, is an outage worth another attempt.
  */
 @Component
 @RequiredArgsConstructor
 public class HttpReportDataSource implements ReportDataSource {
     private final ReportDataClients.MonitorData monitors;
     private final ReportDataClients.CheckData checks;
+    private final ObjectMapper json;
 
     @Override
     public MonitorPage monitors(long projectId, MonitorSelection selection, String cursor, int limit) {
@@ -63,17 +67,27 @@ public class HttpReportDataSource implements ReportDataSource {
                 IncidentSeverity.valueOf(item.severity()), item.startedAt(), item.resolvedAt()));
     }
 
-    private static <T> T call(long projectId, Supplier<T> request) {
+    private <T> T call(long projectId, Supplier<T> request) {
         try {
             return request.get();
         } catch (RuntimeException error) {
-            FeignException response = feignCause(error);
-            if (response != null && response.status() == 404) throw new ProjectNotFoundException(projectId);
-            if (response != null && response.status() == 422) {
-                throw new SourceRejectedException(FailureCode.MONITOR_NOT_IN_PROJECT,
-                        "A monitor does not belong to project " + projectId);
+            switch (refusalCode(error)) {
+                case ReportDataResponses.PROJECT_NOT_FOUND -> throw new ProjectNotFoundException(projectId);
+                case ReportDataResponses.MONITOR_NOT_IN_PROJECT -> throw new SourceRejectedException(
+                        FailureCode.MONITOR_NOT_IN_PROJECT, "A monitor does not belong to project " + projectId);
+                default -> throw new SourceUnavailableException("Report data source is unavailable", error);
             }
-            throw new SourceUnavailableException("Report data source is unavailable", error);
+        }
+    }
+
+    /** The {@code code} of a problem body, or an empty string when there is none. */
+    private String refusalCode(RuntimeException error) {
+        FeignException response = feignCause(error);
+        if (response == null || response.status() < 400 || response.status() >= 500) return "";
+        try {
+            return json.readTree(response.contentUTF8()).path("code").asText("");
+        } catch (JsonProcessingException | RuntimeException unreadable) {
+            return "";
         }
     }
 

@@ -93,6 +93,22 @@ class ReportDataContractTest {
     }
 
     @Test
+    void aPageOfLimitPlusOneRowsHasACursorAfterItsLastItem() {
+        var cursor = ReportDataCursor.start(9, CAPTURED);
+        String scope = new MonitorSelectionRequest(null, 2, null).scope(42);
+
+        var full = Page.of(List.of(4L, 6L, 8L), 2, cursor, scope, Long::longValue, String::valueOf, null);
+        var last = Page.of(List.of(4L), 2, cursor, scope, Long::longValue, String::valueOf, null);
+
+        assertEquals(List.of("4", "6"), full.items());
+        assertEquals(6, ReportDataCursor.decode(full.nextCursor(), scope).lastId());
+        assertEquals(9L, full.upperId());
+        assertEquals(List.of("4"), last.items());
+        assertEquals(null, last.nextCursor());
+        assertEquals(false, last.hasNext());
+    }
+
+    @Test
     void aPageKeepsItsOwnCopyOfTheItems() {
         var items = new ArrayList<>(List.of("a"));
         var page = new Page<>(items, null, false, CAPTURED, 1L, null);

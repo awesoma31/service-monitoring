@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.awesoma.integration.reportdata.ReportDataResponses;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -62,14 +63,28 @@ public class GlobalExceptionHandler {
                 request);
     }
 
+    @ExceptionHandler(ProjectNotFoundException.class)
+    public ProblemDetail handleProjectNotFound(
+            ProjectNotFoundException exception, HttpServletRequest request) {
+        ProblemDetail problem = problem(
+                HttpStatus.NOT_FOUND,
+                "Resource not found",
+                exception.getMessage(),
+                request);
+        problem.setProperty("code", ReportDataResponses.PROJECT_NOT_FOUND);
+        return problem;
+    }
+
     @ExceptionHandler(MonitorNotInProjectException.class)
     public ProblemDetail handleMonitorNotInProject(
             MonitorNotInProjectException exception, HttpServletRequest request) {
-        return problem(
+        ProblemDetail problem = problem(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "Monitor not in project",
                 exception.getMessage(),
                 request);
+        problem.setProperty("code", ReportDataResponses.MONITOR_NOT_IN_PROJECT);
+        return problem;
     }
 
     @ExceptionHandler(ConflictStateException.class)

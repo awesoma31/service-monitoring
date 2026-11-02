@@ -12,8 +12,8 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@EnableFeignClients(clients = {ResourceAccessClient.class, ProjectLookupClient.class, ReportDataClients.MonitorData.class,
-    ReportDataClients.CheckData.class})
+@EnableFeignClients(clients = {ResourceAccessClient.class, ProjectLookupClient.class,
+    ReportDataClients.MonitorData.class, ReportDataClients.CheckData.class})
 @Import(ServiceTokenConfiguration.class)
 public class ReportServiceApplication {
 

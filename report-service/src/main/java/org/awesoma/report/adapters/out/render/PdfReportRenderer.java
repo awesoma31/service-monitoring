@@ -90,6 +90,7 @@ public class PdfReportRenderer implements ReportRenderer {
         private final PDFont bold;
         private final float[] widths;
         private PDPageContentStream stream;
+        private List<String> header;
         private float y;
 
         Layout(PDDocument document, PDFont regular, PDFont bold) throws IOException {
@@ -106,15 +107,16 @@ public class PdfReportRenderer implements ReportRenderer {
 
         void title(ReportContent content) throws IOException {
             line("Отчёт о мониторинге", bold, 14);
-            line("Проект: " + text(content.project().name()) + " (ID " + content.project().id() + ")", regular, 9);
+            line("Проект: " + text(content.project().name()) + " (ID " + content.project().id() + ")",
+                    regular, 9);
             line("Период (UTC): " + content.period().from() + " — " + content.period().to()
                     + " (начало включено, конец исключён)", regular, 9);
-            line("Запрошен: " + content.requestedAt() + "    Сформирован: " + content.generatedAt(), regular, 9);
-            line("Доля успешных — доля проверок с результатом SUCCESS, а не время доступности.", regular, 8);
+            line("Запрошен: " + content.requestedAt() + "    Сформирован: " + content.generatedAt(),
+                    regular, 9);
+            line("Доля успешных — доля проверок с результатом SUCCESS, а не время доступности.",
+                    regular, 8);
             y -= 6;
         }
-
-        private List<String> header;
 
         void row(List<String> cells, boolean isHeader) throws IOException {
             if (isHeader) header = cells;

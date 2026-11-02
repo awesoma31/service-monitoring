@@ -2,9 +2,17 @@ package org.awesoma.integration.reportdata;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.ToLongFunction;
 
 /** Pages the data-owning services return to report-service. */
 public final class ReportDataResponses {
+    /**
+     * The {@code code} of a refusal in the problem body. report-service acts only on these: a
+     * bare 404, such as one from a missing route, is an outage and never deletes a report.
+     */
+    public static final String PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND";
+    public static final String MONITOR_NOT_IN_PROJECT = "MONITOR_NOT_IN_PROJECT";
 
     private ReportDataResponses() {
     }
@@ -19,6 +27,16 @@ public final class ReportDataResponses {
 
         public Page {
             items = List.copyOf(items);
+        }
+
+        /** Builds a page from {@code limit + 1} rows: the extra row only tells that more follow. */
+        public static <R, T> Page<T> of(List<R> rows, int limit, ReportDataCursor cursor, String scope,
+                ToLongFunction<R> id, Function<R, T> item, ProjectItem project) {
+            boolean hasNext = rows.size() > limit;
+            var visible = hasNext ? rows.subList(0, limit) : rows;
+            String next = hasNext ? cursor.after(id.applyAsLong(visible.get(limit - 1))).encode(scope) : null;
+            return new Page<>(visible.stream().map(item).toList(), next, hasNext, cursor.capturedAt(),
+                    cursor.upperId(), project);
         }
     }
 

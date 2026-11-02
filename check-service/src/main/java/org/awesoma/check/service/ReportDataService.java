@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.check.client.ReportDataMonitorClient;
 import org.awesoma.check.web.exception.InvalidRequestException;
 import org.awesoma.check.web.exception.MonitorNotInProjectException;
-import org.awesoma.check.web.exception.NotFoundException;
+import org.awesoma.check.web.exception.ProjectNotFoundException;
 import org.awesoma.check.web.exception.ServiceUnavailableException;
 import org.awesoma.integration.reportdata.ReportDataCursor;
 import org.awesoma.integration.reportdata.ReportDataRequests.MonitorOwnershipRequest;
@@ -56,7 +56,8 @@ public class ReportDataService {
                                 row.get("checked_at", OffsetDateTime.class).toInstant()))
                         .all()
                         .collectList()
-                        .map(rows -> page(rows, request, cursor)));
+                        .map(rows -> Page.of(rows, request.limit(), cursor,
+                                request.scope("checks", request.projectId()), CheckItem::id, item -> item, null)));
     }
 
     private Mono<Void> requireOwned(long projectId, List<Long> monitorIds) {
@@ -65,7 +66,7 @@ public class ReportDataService {
                 .onErrorMap(error -> new ServiceUnavailableException("monitor-service", error))
                 .flatMap(answer -> switch (answer.ownership()) {
                     case OWNED -> Mono.empty();
-                    case PROJECT_NOT_FOUND -> Mono.error(NotFoundException.of("Project", projectId));
+                    case PROJECT_NOT_FOUND -> Mono.error(new ProjectNotFoundException(projectId));
                     case MONITOR_NOT_IN_PROJECT -> Mono.error(new MonitorNotInProjectException(projectId));
                 });
     }
@@ -83,15 +84,6 @@ public class ReportDataService {
                 .map(row -> row.get("upper", Long.class))
                 .one()
                 .map(upper -> ReportDataCursor.start(upper, Instant.now(clock)));
-    }
-
-    private static Page<CheckItem> page(List<CheckItem> rows, PeriodSearchRequest request, ReportDataCursor cursor) {
-        boolean hasNext = rows.size() > request.limit();
-        var visible = hasNext ? rows.subList(0, request.limit()) : rows;
-        String next = hasNext
-                ? cursor.after(visible.get(visible.size() - 1).id()).encode(request.scope("checks", request.projectId()))
-                : null;
-        return new Page<>(visible, next, hasNext, cursor.capturedAt(), cursor.upperId(), null);
     }
 
     private static void validate(PeriodSearchRequest request) {

@@ -15,10 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Background housekeeping. Deleted reports lose their objects and then their rows; expired
- * tombstones of Idempotency-Keys are dropped; and reconciliation compares the bucket with
- * the metadata, removing objects nothing refers to — those of failed or superseded attempts,
- * of reports whose rows are gone, and those a late writer put there after its lease ended.
+ * Background housekeeping: removes deleted reports, expired Idempotency-Key tombstones and
+ * objects nothing refers to — of failed or superseded attempts, of removed reports, or put
+ * there by a late writer after its lease ended.
  */
 public class ReportMaintenance {
     private static final Logger log = LoggerFactory.getLogger(ReportMaintenance.class);
@@ -45,8 +44,7 @@ public class ReportMaintenance {
     public int purgeDeleted(int limit) {
         int purged = 0;
         for (UUID id : reports.findDeleting(limit)) {
-            var report = reports.findById(id);
-            if (report.isPresent() && cleanup.purge(id, report.get().projectId())) purged++;
+            if (reports.findById(id).map(cleanup::purge).orElse(false)) purged++;
         }
         return purged;
     }
@@ -56,9 +54,8 @@ public class ReportMaintenance {
     }
 
     /**
-     * Objects younger than the grace period are left alone: an upload or an attempt may still be
-     * writing them, and its report may not show the key yet. A single absent object is never
-     * taken as proof that a slow writer will not create it later; the next run checks again.
+     * Objects younger than the grace period are left alone: a writer may still be at work. A late
+     * object is caught by a later run.
      *
      * @return how many objects were removed
      */

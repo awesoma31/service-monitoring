@@ -2,7 +2,6 @@ package org.awesoma.report.application.usecase;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.UUID;
 import org.awesoma.report.application.port.IdempotencyKeys;
 import org.awesoma.report.application.port.ObjectStorage;
 import org.awesoma.report.application.port.ObjectStorageUnavailableException;
@@ -45,9 +44,9 @@ public class ReportCleanup {
      *
      * @return whether the report is gone now
      */
-    public boolean purge(UUID reportId, long projectId) {
-        if (!removeObjects(reportId, projectId)) return false;
-        return transactions.inTransaction(() -> reports.lockById(reportId)
+    public boolean purge(Report report) {
+        if (!removeObjects(report)) return false;
+        return transactions.inTransaction(() -> reports.lockById(report.id())
                 .filter(current -> current.status() == ReportStatus.DELETING)
                 .map(current -> {
                     reports.delete(current.id());
@@ -67,18 +66,15 @@ public class ReportCleanup {
         }
     }
 
-    public boolean removeObjects(UUID reportId, long projectId) {
-        String prefix = ObjectKeys.upload(projectId, reportId);
+    private boolean removeObjects(Report report) {
         try {
-            for (var stored : storage.list(prefix)) storage.delete(stored.key());
+            for (var stored : storage.list(ObjectKeys.upload(report.projectId(), report.id()))) {
+                storage.delete(stored.key());
+            }
             return true;
         } catch (ObjectStorageUnavailableException error) {
-            log.warn("Objects of a report are left for cleanup: report_id={}", reportId, error);
+            log.warn("Objects of a report are left for cleanup: report_id={}", report.id(), error);
             return false;
         }
-    }
-
-    public void purge(Report report) {
-        purge(report.id(), report.projectId());
     }
 }

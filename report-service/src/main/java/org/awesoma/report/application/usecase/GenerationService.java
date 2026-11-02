@@ -66,33 +66,35 @@ public class GenerationService implements GenerateReport {
             throw new InvalidReportRequestException("monitor_ids", "At most " + limits.maxMonitors() + " monitors");
         }
         ProjectAccessCheck.require(access, command.projectId(), command.userId(), AccessLevel.WRITE);
-        requireMonitors(command.projectId(), selection);
-
         var parameters = new GenerationParameters(period, selection, now);
         String fingerprint = parameters.fingerprint(command.format());
-        try {
-            return transactions.inTransaction(() -> accept(command, parameters, fingerprint));
-        } catch (KeyTakenException concurrent) {
-            // Another request bound the key first; its transaction has committed by now.
-            return transactions.inTransaction(() -> existing(command, fingerprint)
-                    .orElseThrow(IdempotencyConflictException::otherParameters));
-        }
+        // A retried request gets its job back even while the monitors cannot be checked.
+        var known = transactions.inTransaction(() -> existing(command, fingerprint));
+        if (known.isPresent()) return known.get();
+
+        requireMonitors(command.projectId(), selection);
+        return transactions.inTransaction(() -> accept(command, parameters, fingerprint))
+                // A concurrent request bound the key first; its transaction has committed by now.
+                .or(() -> transactions.inTransaction(() -> existing(command, fingerprint)))
+                .orElseThrow(IdempotencyConflictException::otherParameters);
     }
 
-    private Report accept(GenerateReportCommand command, GenerationParameters parameters, String fingerprint) {
+    /** @return the new job, or nothing when another request bound the same key meanwhile */
+    private Optional<Report> accept(GenerateReportCommand command, GenerationParameters parameters,
+            String fingerprint) {
         projects.lock(command.projectId());
         if (projects.deleted(command.projectId())) {
             throw new ReportNotFoundException("Project " + command.projectId() + " not found");
         }
         var known = existing(command, fingerprint);
-        if (known.isPresent()) return known.get();
+        if (known.isPresent()) return known;
         var report = Report.queueGeneration(UUID.randomUUID(), command.projectId(), command.userId(),
                 command.format(), parameters);
         if (command.idempotencyKey() != null && !keys.bind(new IdempotencyRecord(command.userId(),
                 command.projectId(), command.idempotencyKey(), fingerprint, report.id(), null))) {
-            throw new KeyTakenException();
+            return Optional.empty();
         }
-        return reports.save(report);
+        return Optional.of(reports.save(report));
     }
 
     /** The job an Idempotency-Key already stands for, if the key is still bound. */
@@ -129,12 +131,6 @@ public class GenerationService implements GenerateReport {
             throw new ReportNotFoundException("Project " + projectId + " not found");
         } catch (SourceUnavailableException unavailable) {
             throw new ReportUnavailableException("Monitors of the project cannot be checked now", unavailable);
-        }
-    }
-
-    private static final class KeyTakenException extends RuntimeException {
-        KeyTakenException() {
-            super(null, null, false, false);
         }
     }
 }

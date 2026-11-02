@@ -143,7 +143,7 @@ class GenerationWorkerTest {
     @Test
     void neverPublishesAReportCutAtALimit() {
         limits = new GenerationLimits(Duration.ofDays(31), 100, 100, 50, Duration.ofMinutes(5), 3,
-                Duration.ofSeconds(30), Duration.ofMinutes(1), Duration.ofHours(24));
+                Duration.ofSeconds(30), Duration.ofMinutes(1));
         var rows = queue(MonitorSelection.allMonitors());
         worker().runNext();
         assertThat(reports.row(rows.id()).failure()).isEqualTo(FailureCode.LIMIT_EXCEEDED);

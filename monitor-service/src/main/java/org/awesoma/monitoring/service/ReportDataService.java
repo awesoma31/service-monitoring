@@ -5,9 +5,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.LongSupplier;
-import java.util.function.ToLongFunction;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.integration.reportdata.ReportDataCursor;
 import org.awesoma.integration.reportdata.ReportDataRequests.MonitorOwnershipRequest;
@@ -25,7 +23,7 @@ import org.awesoma.monitoring.repository.MonitorRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.web.exception.InvalidRequestException;
 import org.awesoma.monitoring.web.exception.MonitorNotInProjectException;
-import org.awesoma.monitoring.web.exception.NotFoundException;
+import org.awesoma.monitoring.web.exception.ProjectNotFoundException;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,14 +45,14 @@ public class ReportDataService {
 
     public Page<MonitorItem> monitors(long projectId, MonitorSelectionRequest request) {
         validate(request::validate);
-        var project = projects.findById(projectId).orElseThrow(() -> NotFoundException.of("Project", projectId));
+        var project = projects.findById(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
         boolean all = request.monitorIds() == null;
         if (!all) requireOwned(projectId, request.monitorIds());
         var cursor = position(request.cursor(), request.scope(projectId), monitors::maxId);
         List<Long> ids = all ? List.of(-1L) : request.monitorIds();
         var rows = monitors.findReportPage(projectId, all, ids, cursor.lastId(), cursor.upperId(),
                 Limit.of(request.limit() + 1));
-        return page(rows, request.limit(), cursor, request.scope(projectId), Monitor::getId,
+        return Page.of(rows, request.limit(), cursor, request.scope(projectId), Monitor::getId,
                 monitor -> new MonitorItem(monitor.getId(), monitor.getName(), monitor.getUrl()),
                 new ProjectItem(project.getId(), project.getName()));
     }
@@ -69,14 +67,14 @@ public class ReportDataService {
 
     public Page<IncidentItem> incidents(long projectId, PeriodSearchRequest request) {
         validate(request::validate);
-        if (!projects.existsById(projectId)) throw NotFoundException.of("Project", projectId);
+        if (!projects.existsById(projectId)) throw new ProjectNotFoundException(projectId);
         requireOwned(projectId, request.monitorIds());
         String scope = request.scope("incidents", projectId);
         var cursor = position(request.cursor(), scope, incidents::maxId);
         var rows = incidents.findReportPage(request.monitorIds(), request.from().atOffset(ZoneOffset.UTC),
                 request.to().atOffset(ZoneOffset.UTC), cursor.lastId(), cursor.upperId(),
                 Limit.of(request.limit() + 1));
-        return page(rows, request.limit(), cursor, scope, Incident::getId, incident -> new IncidentItem(
+        return Page.of(rows, request.limit(), cursor, scope, Incident::getId, incident -> new IncidentItem(
                 incident.getId(), incident.getMonitor().getId(), incident.getSeverity().name(),
                 incident.getStartedAt().toInstant(),
                 incident.getResolvedAt() == null ? null : incident.getResolvedAt().toInstant()), null);
@@ -98,15 +96,6 @@ public class ReportDataService {
             }
         }
         return ReportDataCursor.start(maxId.getAsLong(), Instant.now(clock));
-    }
-
-    private static <R, T> Page<T> page(List<R> rows, int limit, ReportDataCursor cursor, String scope,
-            ToLongFunction<R> id, Function<R, T> item, ProjectItem project) {
-        boolean hasNext = rows.size() > limit;
-        var visible = hasNext ? rows.subList(0, limit) : rows;
-        String next = hasNext ? cursor.after(id.applyAsLong(visible.get(limit - 1))).encode(scope) : null;
-        return new Page<>(visible.stream().map(item).toList(), next, hasNext, cursor.capturedAt(),
-                cursor.upperId(), project);
     }
 
     private static void validate(Runnable validation) {

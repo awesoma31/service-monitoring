@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 
 class GenerationServiceTest {
     static final GenerationLimits LIMITS = new GenerationLimits(Duration.ofDays(31), 100, 100_000, 50,
-            Duration.ofMinutes(5), 3, Duration.ofSeconds(30), Duration.ofMinutes(1), Duration.ofHours(24));
+            Duration.ofMinutes(5), 3, Duration.ofSeconds(30), Duration.ofMinutes(1));
     private static final OffsetDateTime FROM = OffsetDateTime.parse("2026-10-01T00:00:00Z");
     private static final OffsetDateTime TO = OffsetDateTime.parse("2026-10-02T03:00:00+03:00");
 
@@ -57,6 +57,15 @@ class GenerationServiceTest {
         assertThat(reports.rows).hasSize(1);
         assertThat(service.generate(command(List.of(11L), null)).id()).isNotEqualTo(first.id());
         assertThat(service.generate(command(List.of(11L), "key-2")).id()).isNotEqualTo(first.id());
+    }
+
+    @Test
+    void aRetryGetsItsJobEvenWhileTheMonitorsCannotBeChecked() {
+        var first = service.generate(command(List.of(11L), "key-1"));
+        sources.failOnCall.put("monitors#2", () -> new SourceUnavailableException("down", null));
+
+        assertThat(service.generate(command(List.of(11L), "key-1")).id()).isEqualTo(first.id());
+        assertThat(sources.calls.get("monitors")).isEqualTo(1);
     }
 
     @Test

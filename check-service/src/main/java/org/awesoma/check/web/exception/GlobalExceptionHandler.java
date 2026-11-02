@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.awesoma.integration.reportdata.ReportDataResponses;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -33,10 +34,20 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, "Invalid request", exception.getMessage(), exchange);
     }
 
+    @ExceptionHandler(ProjectNotFoundException.class)
+    public ProblemDetail handleProjectNotFound(ProjectNotFoundException exception, ServerWebExchange exchange) {
+        ProblemDetail problem = problem(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage(), exchange);
+        problem.setProperty("code", ReportDataResponses.PROJECT_NOT_FOUND);
+        return problem;
+    }
+
     @ExceptionHandler(MonitorNotInProjectException.class)
     public ProblemDetail handleMonitorNotInProject(
             MonitorNotInProjectException exception, ServerWebExchange exchange) {
-        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Monitor not in project", exception.getMessage(), exchange);
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "Monitor not in project",
+                exception.getMessage(), exchange);
+        problem.setProperty("code", ReportDataResponses.MONITOR_NOT_IN_PROJECT);
+        return problem;
     }
 
     @ExceptionHandler(ServiceUnavailableException.class)

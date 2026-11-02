@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import feign.Request;
 import feign.Response;
@@ -42,7 +43,7 @@ class HttpReportDataSourceTest {
 
     private final ReportDataClients.MonitorData monitors = mock(ReportDataClients.MonitorData.class);
     private final ReportDataClients.CheckData checks = mock(ReportDataClients.CheckData.class);
-    private final HttpReportDataSource source = new HttpReportDataSource(monitors, checks);
+    private final HttpReportDataSource source = new HttpReportDataSource(monitors, checks, new ObjectMapper());
 
     @Test
     void convertsPagesAndSendsTheSelection() {
@@ -76,11 +77,13 @@ class HttpReportDataSourceTest {
     }
 
     @Test
-    void mapsRefusalsAndOutages() {
+    void actsOnlyOnRefusalsThatNameTheirReason() {
         when(monitors.selection(anyLong(), any()))
-                .thenThrow(new NoFallbackAvailableException("open", status(404)))
-                .thenThrow(status(422))
-                .thenThrow(status(500))
+                .thenThrow(new NoFallbackAvailableException("open", status(404, "{\"code\":\"PROJECT_NOT_FOUND\"}")))
+                .thenThrow(status(422, "{\"code\":\"MONITOR_NOT_IN_PROJECT\"}"))
+                .thenThrow(status(404, "{\"title\":\"Not Found\"}"))
+                .thenThrow(status(404, "not json"))
+                .thenThrow(status(500, "{\"code\":\"PROJECT_NOT_FOUND\"}"))
                 .thenThrow(new IllegalStateException("circuit open"));
 
         assertThatThrownBy(() -> source.monitors(42, MonitorSelection.allMonitors(), null, 1))
@@ -88,16 +91,17 @@ class HttpReportDataSourceTest {
         assertThatThrownBy(() -> source.monitors(42, MonitorSelection.allMonitors(), null, 1))
                 .isInstanceOf(SourceRejectedException.class)
                 .extracting("reason").isEqualTo(FailureCode.MONITOR_NOT_IN_PROJECT);
-        assertThatThrownBy(() -> source.monitors(42, MonitorSelection.allMonitors(), null, 1))
-                .isInstanceOf(SourceUnavailableException.class);
-        assertThatThrownBy(() -> source.monitors(42, MonitorSelection.allMonitors(), null, 1))
-                .isInstanceOf(SourceUnavailableException.class);
+        for (int outage = 0; outage < 4; outage++) {
+            assertThatThrownBy(() -> source.monitors(42, MonitorSelection.allMonitors(), null, 1))
+                    .as("a bare 404 or a server error is an outage")
+                    .isInstanceOf(SourceUnavailableException.class);
+        }
     }
 
-    private static FeignException status(int status) {
+    private static FeignException status(int status, String body) {
         var request = Request.create(Request.HttpMethod.POST, "/internal", Map.of(), new byte[0],
                 StandardCharsets.UTF_8, null);
         return FeignException.errorStatus("call", Response.builder().status(status).reason("x")
-                .request(request).headers(Map.of()).build());
+                .request(request).headers(Map.of()).body(body, StandardCharsets.UTF_8).build());
     }
 }

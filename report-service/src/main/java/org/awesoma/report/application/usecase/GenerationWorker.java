@@ -47,14 +47,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Builds queued reports. An attempt claims a job with a lease, reads the sources page by page
- * into a fresh aggregation, renders the file into a bounded temporary file, stores it under the
- * attempt's own key and publishes it only while it still holds the lease. Network calls, the
- * rendering and the upload all run outside any transaction; the lease is renewed between pages.
- *
- * <p>A temporary failure puts the job back in the queue with a growing delay; a lasting one,
- * such as a revoked right or an exceeded limit, fails it at once. A partial report is never
- * published: the object of an attempt that does not finish is removed.
+ * Builds queued reports. An attempt claims a job with a lease, reads the sources page by page,
+ * renders into a bounded temporary file, stores it under its own key and publishes it only while
+ * it still holds the lease. Nothing of this runs inside a transaction. A temporary failure
+ * requeues the job with a growing delay, a lasting one fails it; a partial report is never
+ * published.
  */
 public class GenerationWorker {
     private static final Logger log = LoggerFactory.getLogger(GenerationWorker.class);
@@ -181,10 +178,10 @@ public class GenerationWorker {
 
         var aggregation = new ReportAggregation(project, period, monitors);
         List<Long> ids = monitors.stream().map(MonitorInfo::id).toList();
-        var rows = new long[1];
-        var checks = walk(attempt, rows, next -> sources.checks(report.projectId(), ids, period, next,
+        var budget = new RowBudget(limits.maxSourceRows());
+        var checks = walk(attempt, budget, next -> sources.checks(report.projectId(), ids, period, next,
                 limits.pageSize()), aggregation::add);
-        var incidents = walk(attempt, rows, next -> sources.incidents(report.projectId(), ids, period, next,
+        var incidents = walk(attempt, budget, next -> sources.incidents(report.projectId(), ids, period, next,
                 limits.pageSize()), aggregation::add);
         var observed = checks.capturedAt() != null ? checks.capturedAt() : clock.instant();
         transactions.inTransaction(() -> {
@@ -196,16 +193,15 @@ public class GenerationWorker {
         return aggregation;
     }
 
-    private <T> SourcePage<T> walk(Attempt attempt, long[] rows, Function<String, SourcePage<T>> read,
+    /** Reads every page of one source; returns the first, which carries the bounds of the walk. */
+    private <T> SourcePage<T> walk(Attempt attempt, RowBudget budget, Function<String, SourcePage<T>> read,
             Consumer<T> add) {
         SourcePage<T> first = null;
-        SourcePage<T> page;
         String cursor = null;
         do {
-            page = read.apply(cursor);
+            var page = read.apply(cursor);
             if (first == null) first = page;
-            rows[0] += page.items().size();
-            if (rows[0] > limits.maxSourceRows()) throw Failure.permanent(FailureCode.LIMIT_EXCEEDED);
+            budget.take(page.items().size());
             page.items().forEach(add);
             cursor = page.hasNext() ? page.nextCursor() : null;
             checkpoint(attempt);
@@ -301,6 +297,20 @@ public class GenerationWorker {
             Files.deleteIfExists(file);
         } catch (IOException error) {
             log.warn("Temporary report file was not removed: file={}", file, error);
+        }
+    }
+
+    /** Rows of checks and incidents together that one attempt may read. */
+    private static final class RowBudget {
+        private long left;
+
+        RowBudget(long limit) {
+            this.left = limit;
+        }
+
+        void take(int rows) {
+            left -= rows;
+            if (left < 0) throw Failure.permanent(FailureCode.LIMIT_EXCEEDED);
         }
     }
 

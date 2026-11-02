@@ -87,7 +87,8 @@ class InternalReportDataApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.items[*].id").value(contains(
                         monitors.get(0).getId().intValue(), monitors.get(2).getId().intValue())));
         call("/selection", Map.of("limit", 50, "monitor_ids", List.of(monitors.get(0).getId(), foreign.getId())))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("MONITOR_NOT_IN_PROJECT"));
     }
 
     @Test
@@ -154,7 +155,8 @@ class InternalReportDataApiIntegrationTest extends AbstractIntegrationTest {
         call("/incidents/search", Map.of("monitor_ids", List.of(foreign.getId()), "from", FROM.toInstant().toString(),
                 "to", TO.toInstant().toString(), "limit", 10)).andExpect(status().isUnprocessableEntity());
         http.perform(service(post("/internal/report-data/projects/{id}/selection", 999_999), Map.of("limit", 10)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
     }
 
     @Test

@@ -38,7 +38,7 @@ public class ReportUseCaseConfiguration {
         var generation = properties.generation();
         return new GenerationLimits(Duration.ofDays(generation.maxPeriodDays()), generation.maxMonitors(),
                 generation.maxSourceRows(), generation.pageSize(), generation.timeout(), generation.maxAttempts(),
-                generation.retryDelay(), generation.leaseDuration(), properties.idempotencyTombstoneTtl());
+                generation.retryDelay(), generation.leaseDuration());
     }
 
     @Bean
