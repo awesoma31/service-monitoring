@@ -165,7 +165,7 @@ INCIDENT_EVENTS_TRANSPORT=kafka
 RESOURCE_EVENTS_TRANSPORT=kafka
 ```
 
-Эти значения Compose передаёт всем трём сервисам, поэтому отправитель и получатель видят
+Эти значения Compose передаёт всем бизнес-сервисам, поэтому отправитель и получатель видят
 одинаковую настройку. Получение заданий на проверку через `/internal/monitors/due` и чтение API
 остаются на HTTP. Допустимы смешанные настройки, например только инциденты через Kafka.
 
@@ -186,7 +186,7 @@ Overlay поднимает три брокера Apache Kafka в KRaft-режи�
 |---|---|---|
 | `checks.completed.v1` | Результаты проверок | monitor-service |
 | `incidents.events.v1` | Открытие и закрытие инцидентов | notification-service |
-| `resources.events.v1` | Удаление монитора или проекта | check-service и notification-service |
+| `resources.events.v1` | Удаление монитора или проекта | check-service, notification-service и report-service |
 
 У каждого топика три партиции, фактор репликации 3 и `min.insync.replicas=2`.
 Начальная настройка также создаёт соответствующие топики с суффиксом `.dlt`.
@@ -223,7 +223,7 @@ docker compose -f docker-compose.yml -f docker-compose.kafka.yml start notificat
 docker compose -f docker-compose.yml -f docker-compose.kafka.yml logs -f notification-service
 ```
 
-При смене транспорта обработайте отложенные события и перезапустите все три бизнес-сервиса:
+При смене транспорта обработайте отложенные события и перезапустите все бизнес-сервисы:
 условные компоненты выбираются при старте, накопившиеся сообщения автоматически в другой
 транспорт не переносятся. Запись в outbox запоминает выбранный при её создании транспорт:
 если переключиться с непустым outbox, соответствующий поток остановится на такой записи.
