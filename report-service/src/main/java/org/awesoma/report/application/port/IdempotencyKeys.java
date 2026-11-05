@@ -15,7 +15,8 @@ public interface IdempotencyKeys {
     /** @return {@code false} when the key is already bound, for example by a concurrent request */
     boolean bind(IdempotencyRecord record);
 
-    void remove(long userId, long projectId, String key);
+    /** Remove only the expired binding observed by the caller. */
+    boolean removeExpired(IdempotencyRecord observed, Instant now);
 
     /** Turns the bindings of a removed report into tombstones that expire at the given time. */
     void tombstone(UUID reportId, Instant expiresAt);

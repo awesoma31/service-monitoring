@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
 
     private final ObjectMapper objectMapper;
 
-    @ExceptionHandler(AuthenticationException.class)
+    @ExceptionHandler({AuthenticationException.class, org.awesoma.user.application.exception.InvalidCredentials.class})
     public ProblemDetail handleAuthentication(Exception error, HttpServletRequest request) {
         return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Invalid email or password", request);
     }
@@ -46,9 +46,9 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.FORBIDDEN, "Forbidden", "Insufficient permissions", request);
     }
 
-    @ExceptionHandler(NotFoundException.class)
+    @ExceptionHandler({NotFoundException.class, org.awesoma.user.application.exception.UserNotFound.class})
     public ProblemDetail handleNotFound(
-            NotFoundException exception, HttpServletRequest request) {
+            RuntimeException exception, HttpServletRequest request) {
         return problem(
                 HttpStatus.NOT_FOUND,
                 "Resource not found",
@@ -56,9 +56,9 @@ public class GlobalExceptionHandler {
                 request);
     }
 
-    @ExceptionHandler(ConflictStateException.class)
+    @ExceptionHandler({ConflictStateException.class, org.awesoma.user.application.exception.UserConflict.class})
     public ProblemDetail handleConflict(
-            ConflictStateException exception, HttpServletRequest request) {
+            RuntimeException exception, HttpServletRequest request) {
         return problem(
                 HttpStatus.CONFLICT,
                 "Conflicting state",

@@ -15,9 +15,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.awesoma.monitoring.domain.entity.Incident;
-import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Incident;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
@@ -214,7 +214,10 @@ class InternalReportDataApiIntegrationTest extends AbstractIntegrationTest {
         incident.setMonitor(monitor);
         incident.setStartedAt(startedAt);
         incident.setSeverity(severity);
-        if (resolvedAt != null) incident.resolve(resolvedAt);
+        if (resolvedAt != null) {
+            incident.setStatus(org.awesoma.monitoring.domain.enums.IncidentStatus.RESOLVED);
+            incident.setResolvedAt(resolvedAt);
+        }
         entities.persist(incident);
         return incident;
     }

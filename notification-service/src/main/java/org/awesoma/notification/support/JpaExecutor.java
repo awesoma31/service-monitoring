@@ -13,7 +13,7 @@ import reactor.core.scheduler.Schedulers;
  * transaction is programmatic because @Transactional does not reach across that hop.
  */
 @Component
-public class JpaExecutor {
+public class JpaExecutor implements org.awesoma.notification.application.port.UnitOfWork {
 
     private final TransactionTemplate readWrite;
     private final TransactionTemplate readOnly;

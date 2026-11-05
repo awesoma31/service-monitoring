@@ -105,8 +105,9 @@ public class GenerationService implements GenerateReport {
         if (record.isEmpty()) return Optional.empty();
         var now = clock.instant();
         if (record.get().expiredAt(now)) {
-            keys.remove(command.userId(), command.projectId(), key);
-            return Optional.empty();
+            if (keys.removeExpired(record.get(), now)) return Optional.empty();
+            // Another request replaced the expired binding after our read.
+            return existing(command, fingerprint);
         }
         if (record.get().tombstoneAt(now)) throw IdempotencyConflictException.reportDeleted();
         if (!record.get().fingerprint().equals(fingerprint)) throw IdempotencyConflictException.otherParameters();

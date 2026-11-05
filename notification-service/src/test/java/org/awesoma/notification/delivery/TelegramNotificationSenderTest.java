@@ -1,5 +1,9 @@
 package org.awesoma.notification.delivery;
 
+import org.awesoma.notification.application.model.DeliveryTask;
+import org.awesoma.notification.application.port.NotificationSender;
+import org.awesoma.notification.application.exception.DeliveryException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;

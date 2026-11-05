@@ -1,12 +1,9 @@
 package org.awesoma.check.domain;
 
 import java.time.OffsetDateTime;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
 
-@Table("check_results")
 public record CheckResult(
-        @Id Long id,
+        Long id,
         Long monitorId,
         OffsetDateTime checkedAt,
         CheckResultType result,

@@ -1,4 +1,4 @@
-package org.awesoma.monitoring.service;
+package org.awesoma.monitoring.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -12,18 +12,18 @@ import java.util.Optional;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.ProjectMember;
 import org.awesoma.monitoring.domain.entity.ProjectMemberId;
-import org.awesoma.monitoring.integration.ProjectDeleted;
-import org.awesoma.monitoring.repository.MonitorRepository;
-import org.awesoma.monitoring.repository.ProjectMemberRepository;
-import org.awesoma.monitoring.repository.ProjectRepository;
-import org.awesoma.monitoring.security.AccessPolicy;
+import org.awesoma.monitoring.application.event.ProjectDeleted;
+import org.awesoma.monitoring.application.port.MonitorRepositoryPort;
+import org.awesoma.monitoring.application.port.MemberRepositoryPort;
+import org.awesoma.monitoring.application.port.ProjectRepositoryPort;
+import org.awesoma.monitoring.application.port.CurrentActor;
 import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectMemberRequest;
-import org.awesoma.monitoring.web.dto.project.ProjectResponse;
+import org.awesoma.monitoring.application.model.view.ProjectResponse;
 import org.awesoma.monitoring.web.dto.project.ProjectUpdateRequest;
-import org.awesoma.monitoring.web.exception.ConflictStateException;
-import org.awesoma.monitoring.web.exception.NotFoundException;
+import org.awesoma.monitoring.application.exception.ConflictStateException;
+import org.awesoma.monitoring.application.exception.NotFoundException;
 import org.awesoma.monitoring.web.mapper.ProjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,21 +31,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.awesoma.monitoring.application.port.DomainEvents;
+import org.awesoma.monitoring.application.model.Page;
+import org.awesoma.monitoring.application.model.PageRequest;
+import org.awesoma.monitoring.application.model.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectServiceTest {
 
-    @Mock private ProjectRepository projects;
-    @Mock private ProjectMemberRepository members;
-    @Mock private UserDirectory users;
+    @Mock private ProjectRepositoryPort projects;
+    @Mock private MemberRepositoryPort members;
+    @Mock private org.awesoma.monitoring.application.port.UserDirectoryPort users;
     @Mock private ProjectMapper mapper;
-    @Mock private ApplicationEventPublisher events;
-    @Mock private MonitorRepository monitorRepository;
-    @Mock private AccessPolicy access;
+    @Mock private DomainEvents events;
+    @Mock private MonitorRepositoryPort monitorRepository;
+    @Mock private CurrentActor access;
     @InjectMocks private ProjectService service;
 
     @Test
@@ -122,7 +122,7 @@ class ProjectServiceTest {
     void listingMembersOfAMissingProjectFails() {
         when(projects.existsById(9L)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.listMembers(9L, Pageable.unpaged()))
+        assertThatThrownBy(() -> service.listMembers(9L, PageRequest.unpaged()))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -134,7 +134,7 @@ class ProjectServiceTest {
         ProjectResponse firstResponse = new ProjectResponse(1L, 10L, "First", "first", null, true);
         ProjectResponse secondResponse = new ProjectResponse(2L, 10L, "Second", "second", null, true);
         PageRequest pageable = PageRequest.of(1, 2);
-        when(projects.findAll(pageable)).thenReturn(new PageImpl<>(List.of(first, second), pageable, 4));
+        when(projects.findAll(pageable)).thenReturn(new Page<>(List.of(first, second), pageable.page(), pageable.size(), 4));
         when(mapper.toResponse(first)).thenReturn(firstResponse);
         when(mapper.toResponse(second)).thenReturn(secondResponse);
 
@@ -192,7 +192,7 @@ class ProjectServiceTest {
         service.delete(4L);
 
         verify(projects).delete(project);
-        verify(events).publishEvent(new ProjectDeleted(4L, List.of(10L, 11L)));
+        verify(events).publish(new ProjectDeleted(4L, List.of(10L, 11L)));
     }
 
     private Project projectWithOwner(long ownerId) {

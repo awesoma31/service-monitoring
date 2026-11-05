@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
  * transport failure or the monitor's own timeout turns into an error outcome.
  */
 @Component
-public class MonitorProbe {
+public class MonitorProbe implements org.awesoma.check.application.port.MonitorProbe {
 
     private final WebClient webClient;
 

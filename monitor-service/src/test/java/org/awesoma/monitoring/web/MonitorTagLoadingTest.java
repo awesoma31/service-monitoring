@@ -4,18 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
 import java.util.Set;
-import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Project;
-import org.awesoma.monitoring.domain.entity.Tag;
-import org.awesoma.monitoring.service.MonitorService;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Tag;
+import org.awesoma.monitoring.application.usecase.MonitorService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
-import org.awesoma.monitoring.web.dto.monitor.MonitorResponse;
+import org.awesoma.monitoring.application.model.view.MonitorResponse;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.awesoma.monitoring.application.model.Page;
+import org.awesoma.monitoring.application.model.PageRequest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +47,7 @@ class MonitorTagLoadingTest extends AbstractIntegrationTest {
         statistics.clear();
 
         Page<MonitorResponse> page =
-                monitors.listByProject(project.getId(), null, PageRequest.of(0, PAGE_SIZE));
+                monitors.listByProject(project.getId(), null, new PageRequest(0, PAGE_SIZE));
         page.getContent().forEach(monitor -> assertThat(monitor.tags()).isNotEmpty());
 
         assertThat(page.getContent()).hasSize(PAGE_SIZE);

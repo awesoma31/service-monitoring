@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.awesoma.integration.IntegrationEvent;
 import org.awesoma.monitoring.domain.enums.CheckResultType;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.service.MonitorCheckService;
+import org.awesoma.monitoring.application.usecase.MonitorCheckService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.monitoring.service.ServiceHealthService;
+import org.awesoma.monitoring.adapters.out.health.ServiceHealthService;
 import org.awesoma.monitoring.web.dto.common.ServiceHealthResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;

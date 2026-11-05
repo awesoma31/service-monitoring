@@ -1,5 +1,7 @@
 package org.awesoma.notification.integration;
 
+import org.awesoma.notification.application.usecase.NotificationEventHandler;
+
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Hidden;
 import org.awesoma.integration.IntegrationEvent;
@@ -20,7 +22,7 @@ class NotificationEventsController {
     private final NotificationEventHandler events;
     @PostMapping("/events")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    Mono<Void> handle(@RequestBody IntegrationEvent event) { return events.handle(event); }
+    Mono<Void> handle(@RequestBody IntegrationEvent event) { return events.handle(ResourceEventMapper.from(event)); }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

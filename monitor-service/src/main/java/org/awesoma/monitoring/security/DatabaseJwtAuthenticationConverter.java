@@ -3,7 +3,7 @@ package org.awesoma.monitoring.security;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.awesoma.monitoring.service.UserDirectory;
+import org.awesoma.monitoring.adapters.out.http.UserDirectory;
 import org.awesoma.security.exception.IdentityServiceUnavailableException;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;

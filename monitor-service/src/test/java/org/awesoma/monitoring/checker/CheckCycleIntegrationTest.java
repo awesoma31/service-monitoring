@@ -6,17 +6,17 @@ import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.awesoma.monitoring.domain.entity.Incident;
-import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Incident;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.integration.IncidentChanged;
+import org.awesoma.monitoring.application.event.IncidentChanged;
 import org.awesoma.monitoring.repository.IncidentRepository;
-import org.awesoma.monitoring.service.MonitorCheckService;
-import org.awesoma.monitoring.service.MonitorService;
+import org.awesoma.monitoring.application.usecase.MonitorCheckService;
+import org.awesoma.monitoring.application.usecase.MonitorService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
 import org.junit.jupiter.api.Test;
@@ -178,7 +178,8 @@ class CheckCycleIntegrationTest extends AbstractIntegrationTest {
 
     private void record(Monitor monitor, ProbeOutcome outcome) {
         UUID token = UUID.randomUUID();
-        monitor.claimForCheck(token, OffsetDateTime.now().plusMinutes(1));
+        monitor.setCheckClaimToken(token);
+        monitor.setCheckClaimedUntil(OffsetDateTime.now().plusMinutes(1));
         checks.record(monitor.getId(), outcome.forClaim(token));
     }
 

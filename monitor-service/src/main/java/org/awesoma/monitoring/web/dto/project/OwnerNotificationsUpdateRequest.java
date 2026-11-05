@@ -8,5 +8,5 @@ public record OwnerNotificationsUpdateRequest(
                         description = "Whether incident notifications are enabled for the project owner",
                         example = "false")
                 @NotNull
-                Boolean enabled) {
+                Boolean enabled) implements org.awesoma.monitoring.application.port.command.OwnerNotificationsUpdateRequest {
 }

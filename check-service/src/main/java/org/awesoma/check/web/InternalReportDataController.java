@@ -2,7 +2,7 @@ package org.awesoma.check.web;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.check.service.ReportDataService;
+import org.awesoma.check.application.usecase.ReportDataService;
 import org.awesoma.integration.reportdata.ReportDataRequests.PeriodSearchRequest;
 import org.awesoma.integration.reportdata.ReportDataResponses.CheckItem;
 import org.awesoma.integration.reportdata.ReportDataResponses.Page;
@@ -23,6 +23,10 @@ public class InternalReportDataController {
 
     @PostMapping("/internal/report-data/checks/search")
     public Mono<Page<CheckItem>> checks(@RequestBody PeriodSearchRequest request) {
-        return reportData.checks(request);
+        return reportData.checks(new org.awesoma.check.application.model.ReportQuery(request.projectId(),
+                request.monitorIds(), request.from(), request.to(), request.limit(), request.cursor()))
+                .map(page -> new Page<>(page.items().stream().map(item -> new CheckItem(item.id(), item.monitorId(),
+                        item.result(), item.responseMs(), item.checkedAt())).toList(), page.nextCursor(),
+                        page.hasNext(), page.sourceCapturedAt(), page.upperId(), null));
     }
 }

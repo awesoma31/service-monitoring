@@ -60,7 +60,7 @@ final class Fakes {
 
     /** Keeps copies, as a database would: a change counts only once it is saved. */
     static final class Reports implements ReportRepository, ReportJobQueue {
-        final Map<UUID, Report> rows = new LinkedHashMap<>();
+        final Map<UUID, Report> rows = java.util.Collections.synchronizedMap(new LinkedHashMap<>());
 
         Report row(UUID id) {
             return rows.get(id);
@@ -121,6 +121,12 @@ final class Fakes {
         public List<UUID> expiredLeases(Instant now, int limit) {
             return rows.values().stream().filter(report -> report.status() == ReportStatus.GENERATING
                     && !report.lease().heldAt(now)).map(Report::id).limit(limit).toList();
+        }
+
+        @Override
+        public List<UUID> expiredUploads(Instant now, int limit) {
+            return rows.values().stream().filter(report -> report.status() == ReportStatus.UPLOADING
+                    && report.lease() != null && !report.lease().heldAt(now)).map(Report::id).limit(limit).toList();
         }
     }
 
@@ -192,8 +198,9 @@ final class Fakes {
         }
 
         @Override
-        public void remove(long userId, long projectId, String key) {
-            records.remove(id(userId, projectId, key));
+        public boolean removeExpired(IdempotencyRecord observed, Instant now) {
+            return observed.expiredAt(now) && records.remove(id(observed.userId(), observed.projectId(),
+                    observed.key()), observed);
         }
 
         @Override

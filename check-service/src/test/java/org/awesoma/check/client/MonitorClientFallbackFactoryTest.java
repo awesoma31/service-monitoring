@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.awesoma.check.domain.ProbeOutcome;
-import org.awesoma.check.web.exception.ServiceUnavailableException;
+import org.awesoma.check.application.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 
 class MonitorClientFallbackFactoryTest {

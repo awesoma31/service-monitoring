@@ -10,7 +10,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.monitoring.service.ProjectService;
+import org.awesoma.monitoring.application.usecase.ProjectService;
+import org.awesoma.monitoring.web.mapper.Views;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.project.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.web.dto.project.ProjectCreateRequest;
@@ -45,7 +46,7 @@ public class ProjectController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
     public ResponseEntity<Page<ProjectResponse>> list(@Valid PageParams page) {
-        return ResponseEntity.ok(projectService.list(page.toPageable()));
+        return ResponseEntity.ok(Views.page(projectService.list(page.toPageable()), Views::project));
     }
 
     @GetMapping("/{id}")
@@ -57,7 +58,7 @@ public class ProjectController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public ResponseEntity<ProjectResponse> get(@PathVariable @Positive Long id) {
-        return ResponseEntity.ok(projectService.get(id));
+        return ResponseEntity.ok(Views.project(projectService.get(id)));
     }
 
     @PostMapping
@@ -78,7 +79,7 @@ public class ProjectController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<ProjectResponse> create(@Valid @RequestBody ProjectCreateRequest request) {
-        ProjectResponse created = projectService.create(request);
+        ProjectResponse created = Views.project(projectService.create(request));
         return ResponseEntity.created(URI.create("/api/v1/projects/" + created.id())).body(created);
     }
 
@@ -92,7 +93,7 @@ public class ProjectController {
     })
     public ResponseEntity<ProjectResponse> update(
             @PathVariable @Positive Long id, @Valid @RequestBody ProjectUpdateRequest request) {
-        return ResponseEntity.ok(projectService.update(id, request));
+        return ResponseEntity.ok(Views.project(projectService.update(id, request)));
     }
 
     @PutMapping("/{id}/owner-notifications")
@@ -109,7 +110,7 @@ public class ProjectController {
     public ResponseEntity<ProjectResponse> updateOwnerNotifications(
             @PathVariable @Positive Long id,
             @Valid @RequestBody OwnerNotificationsUpdateRequest request) {
-        return ResponseEntity.ok(projectService.updateOwnerNotifications(id, request));
+        return ResponseEntity.ok(Views.project(projectService.updateOwnerNotifications(id, request)));
     }
 
     @DeleteMapping("/{id}")
@@ -136,7 +137,7 @@ public class ProjectController {
     })
     public ResponseEntity<Page<ProjectMemberResponse>> listMembers(
             @PathVariable @Positive Long id, @Valid PageParams page) {
-        return ResponseEntity.ok(projectService.listMembers(id, page.toPageable()));
+        return ResponseEntity.ok(Views.page(projectService.listMembers(id, page.toPageable()), Views::member));
     }
 
     @PostMapping("/{id}/members")
@@ -157,7 +158,7 @@ public class ProjectController {
     public ResponseEntity<ProjectMemberResponse> addMember(
             @PathVariable @Positive Long id,
             @Valid @RequestBody ProjectMemberRequest request) {
-        ProjectMemberResponse created = projectService.addMember(id, request);
+        ProjectMemberResponse created = Views.member(projectService.addMember(id, request));
         return ResponseEntity.created(
                         URI.create("/api/v1/projects/" + id + "/members/" + created.userId()))
                 .body(created);

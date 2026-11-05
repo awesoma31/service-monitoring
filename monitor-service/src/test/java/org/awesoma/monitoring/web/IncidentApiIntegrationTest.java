@@ -9,14 +9,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import org.awesoma.monitoring.domain.entity.Incident;
-import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Incident;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
 import org.awesoma.monitoring.repository.IncidentRepository;
-import org.awesoma.monitoring.service.MonitorCheckService;
+import org.awesoma.monitoring.application.usecase.MonitorCheckService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +76,8 @@ class IncidentApiIntegrationTest extends AbstractIntegrationTest {
 
     private void record(Monitor monitor, ProbeOutcome outcome) {
         UUID token = UUID.randomUUID();
-        monitor.claimForCheck(token, OffsetDateTime.now().plusMinutes(1));
+        monitor.setCheckClaimToken(token);
+        monitor.setCheckClaimedUntil(OffsetDateTime.now().plusMinutes(1));
         checks.record(monitor.getId(), outcome.forClaim(token));
         entityManager.flush();
     }

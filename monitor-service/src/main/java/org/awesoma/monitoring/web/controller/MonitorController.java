@@ -11,7 +11,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.monitoring.service.MonitorService;
+import org.awesoma.monitoring.application.usecase.MonitorService;
+import org.awesoma.monitoring.web.mapper.Views;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.monitor.MonitorCreateRequest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorResponse;
@@ -63,7 +64,7 @@ public class MonitorController {
                     @RequestParam(required = false)
                     String tag,
             @Valid PageParams page) {
-        Page<MonitorResponse> monitorPage = monitorService.listByProject(projectId, tag, page.toPageable());
+        Page<MonitorResponse> monitorPage = Views.page(monitorService.listByProject(projectId, tag, page.toPageable()), Views::monitor);
         return ResponseEntity.ok()
                 .header(TOTAL_COUNT_HEADER, String.valueOf(monitorPage.getTotalElements()))
                 .body(monitorPage);
@@ -87,7 +88,7 @@ public class MonitorController {
     public ResponseEntity<MonitorResponse> create(
             @PathVariable @Positive Long projectId,
             @Valid @RequestBody MonitorCreateRequest request) {
-        MonitorResponse created = monitorService.create(projectId, request);
+        MonitorResponse created = Views.monitor(monitorService.create(projectId, request));
         return ResponseEntity.created(URI.create("/api/v1/monitors/" + created.id())).body(created);
     }
 
@@ -100,7 +101,7 @@ public class MonitorController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public ResponseEntity<MonitorResponse> get(@PathVariable @Positive Long id) {
-        return ResponseEntity.ok(monitorService.get(id));
+        return ResponseEntity.ok(Views.monitor(monitorService.get(id)));
     }
 
     @PutMapping("/monitors/{id}")
@@ -116,7 +117,7 @@ public class MonitorController {
     })
     public ResponseEntity<MonitorResponse> update(
             @PathVariable @Positive Long id, @Valid @RequestBody MonitorUpdateRequest request) {
-        return ResponseEntity.ok(monitorService.update(id, request));
+        return ResponseEntity.ok(Views.monitor(monitorService.update(id, request)));
     }
 
     @PutMapping("/monitors/{id}/tags")
@@ -132,7 +133,7 @@ public class MonitorController {
     })
     public ResponseEntity<MonitorResponse> replaceTags(
             @PathVariable @Positive Long id, @Valid @RequestBody MonitorTagsRequest request) {
-        return ResponseEntity.ok(monitorService.replaceTags(id, request.tags()));
+        return ResponseEntity.ok(Views.monitor(monitorService.replaceTags(id, request.tags())));
     }
 
     @DeleteMapping("/monitors/{id}")

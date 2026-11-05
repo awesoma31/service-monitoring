@@ -79,6 +79,28 @@ class JobQueueIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void staleExpirationCleanupCannotDeleteAReplacementBinding() throws Exception {
+        String key = "race-" + UUID.randomUUID();
+        var old = new IdempotencyRecord(7, 42, key, "old", UUID.randomUUID(), FAR.minusSeconds(1));
+        var replacement = new IdempotencyRecord(7, 42, key, "new", UUID.randomUUID(), null);
+        assertThat(keys.bind(old)).isTrue();
+        var read = new CountDownLatch(1);
+        var replaced = new CountDownLatch(1);
+        var first = CompletableFuture.supplyAsync(() -> {
+            var observed = keys.find(7, 42, key).orElseThrow();
+            read.countDown();
+            await(replaced);
+            return keys.removeExpired(observed, FAR);
+        });
+        assertThat(read.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(keys.removeExpired(old, FAR)).isTrue();
+        assertThat(keys.bind(replacement)).isTrue();
+        replaced.countDown();
+        assertThat(first.get(10, TimeUnit.SECONDS)).isFalse();
+        assertThat(keys.find(7, 42, key)).contains(replacement);
+    }
+
+    @Test
     void theProjectMarkerAndInboxLiveInTheTransaction() {
         long project = 991_001;
         UUID event = UUID.randomUUID();

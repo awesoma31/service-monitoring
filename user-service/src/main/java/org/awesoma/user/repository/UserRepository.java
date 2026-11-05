@@ -1,7 +1,7 @@
 package org.awesoma.user.repository;
 
 import java.util.Optional;
-import org.awesoma.user.domain.entity.User;
+import org.awesoma.user.adapters.persistence.User;
 import org.awesoma.user.domain.enums.UserRole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

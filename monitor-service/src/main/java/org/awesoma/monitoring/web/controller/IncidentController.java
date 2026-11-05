@@ -9,7 +9,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
-import org.awesoma.monitoring.service.IncidentService;
+import org.awesoma.monitoring.application.usecase.IncidentService;
+import org.awesoma.monitoring.web.mapper.Views;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.incident.IncidentResponse;
 import org.springframework.data.domain.Page;
@@ -46,7 +47,7 @@ public class IncidentController {
                     @RequestParam(required = false)
                     IncidentStatus status,
             @Valid PageParams page) {
-        return ResponseEntity.ok(incidentService.listByMonitor(monitorId, status, page.toPageable()));
+        return ResponseEntity.ok(Views.page(incidentService.listByMonitor(monitorId, status, page.toPageable()), Views::incident));
     }
 
     @GetMapping("/incidents/{id}")
@@ -58,7 +59,7 @@ public class IncidentController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public ResponseEntity<IncidentResponse> get(@PathVariable @Positive Long id) {
-        return ResponseEntity.ok(incidentService.get(id));
+        return ResponseEntity.ok(Views.incident(incidentService.get(id)));
     }
 
     @PostMapping("/incidents/{id}/resolve")
@@ -73,7 +74,7 @@ public class IncidentController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<IncidentResponse> resolve(@PathVariable @Positive Long id) {
-        return ResponseEntity.ok(incidentService.resolve(id));
+        return ResponseEntity.ok(Views.incident(incidentService.resolve(id)));
     }
 
 }

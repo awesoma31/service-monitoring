@@ -29,5 +29,5 @@ public record MonitorUpdateRequest(
                 @Min(100)
                 @Max(599)
                 int expectedStatus,
-        @Schema(example = "true") boolean active) {
+        @Schema(example = "true") boolean active) implements org.awesoma.monitoring.application.port.command.MonitorUpdateRequest {
 }

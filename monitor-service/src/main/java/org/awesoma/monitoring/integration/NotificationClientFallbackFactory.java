@@ -1,5 +1,7 @@
 package org.awesoma.monitoring.integration;
 
+import org.awesoma.monitoring.application.event.IncidentChanged;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;

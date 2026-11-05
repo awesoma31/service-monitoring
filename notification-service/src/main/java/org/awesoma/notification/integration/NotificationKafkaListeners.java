@@ -1,5 +1,7 @@
 package org.awesoma.notification.integration;
 
+import org.awesoma.notification.application.usecase.NotificationEventHandler;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +40,7 @@ final class NotificationKafkaListeners {
             if (expectedType != null && !expectedType.equals(event.type())) throw new IllegalArgumentException("Unexpected event type");
             if (expectedType == null && !IntegrationEvent.PROJECT_DELETED.equals(event.type())
                     && !IntegrationEvent.MONITOR_DELETED.equals(event.type())) throw new IllegalArgumentException("Unexpected event type");
-            handler.handle(event).block();
+            handler.handle(ResourceEventMapper.from(event)).block();
         } catch (JsonProcessingException e) { throw new IllegalArgumentException("Invalid event JSON", e); }
     }
 }

@@ -1,5 +1,7 @@
 package org.awesoma.monitoring.integration;
 
+import org.awesoma.monitoring.application.event.IncidentChanged;
+
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import org.junit.jupiter.api.Test;

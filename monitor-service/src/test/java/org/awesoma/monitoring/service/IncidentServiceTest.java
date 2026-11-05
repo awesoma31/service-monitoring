@@ -1,4 +1,4 @@
-package org.awesoma.monitoring.service;
+package org.awesoma.monitoring.application.usecase;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -10,23 +10,23 @@ import org.awesoma.monitoring.domain.entity.Incident;
 import org.awesoma.monitoring.domain.entity.Monitor;
 import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.enums.MonitorState;
-import org.awesoma.monitoring.integration.IncidentChanged;
-import org.awesoma.monitoring.repository.IncidentRepository;
+import org.awesoma.monitoring.application.event.IncidentChanged;
+import org.awesoma.monitoring.application.port.IncidentRepositoryPort;
 import org.awesoma.monitoring.web.mapper.IncidentMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import org.awesoma.monitoring.application.port.DomainEvents;
 
 @ExtendWith(MockitoExtension.class)
 class IncidentServiceTest {
 
-    @Mock private IncidentRepository incidents;
+    @Mock private IncidentRepositoryPort incidents;
     @Mock private MonitorService monitors;
     @Mock private IncidentMapper mapper;
-    @Mock private ApplicationEventPublisher events;
+    @Mock private DomainEvents events;
     @InjectMocks private IncidentService service;
 
     @Test
@@ -44,7 +44,7 @@ class IncidentServiceTest {
 
         service.resolve(3L);
 
-        verify(events).publishEvent(new IncidentChanged(3L, 7L, IncidentChanged.Kind.RESOLVED));
+        verify(events).publish(new IncidentChanged(3L, 7L, IncidentChanged.Kind.RESOLVED));
     }
 
     @Test
@@ -62,6 +62,6 @@ class IncidentServiceTest {
 
         service.resolve(3L);
 
-        verify(events, never()).publishEvent(any());
+        verify(events, never()).publish(any());
     }
 }

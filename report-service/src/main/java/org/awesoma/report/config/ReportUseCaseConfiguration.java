@@ -12,6 +12,7 @@ import org.awesoma.report.application.port.ReportDataSource;
 import org.awesoma.report.application.port.ReportJobQueue;
 import org.awesoma.report.application.port.ReportRenderer;
 import org.awesoma.report.application.port.ReportRepository;
+import org.awesoma.report.application.port.ReportWorkspace;
 import org.awesoma.report.application.port.TransactionRunner;
 import org.awesoma.report.application.usecase.GenerationLimits;
 import org.awesoma.report.application.usecase.GenerationService;
@@ -66,9 +67,9 @@ public class ReportUseCaseConfiguration {
     public GenerationWorker generationWorker(ReportRepository reports, ReportJobQueue queue, ReportDataSource sources,
             ProjectAccessPort access, ProjectGuard projects, ObjectStorage storage, List<ReportRenderer> renderers,
             ReportCleanup cleanup, TransactionRunner transactions, Clock clock, GenerationLimits limits,
-            ReportProperties properties) {
+            ReportProperties properties, ReportWorkspace workspace) {
         return new GenerationWorker(reports, queue, sources, access, projects, storage, renderers, cleanup,
-                transactions, clock, limits, properties.maxFileSize().toBytes());
+                transactions, clock, limits, properties.maxFileSize().toBytes(), workspace);
     }
 
     @Bean

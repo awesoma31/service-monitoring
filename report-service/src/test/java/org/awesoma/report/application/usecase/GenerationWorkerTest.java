@@ -22,6 +22,8 @@ import org.awesoma.report.domain.Report;
 import org.awesoma.report.domain.ReportFormat;
 import org.awesoma.report.domain.ReportPeriod;
 import org.awesoma.report.domain.ReportStatus;
+import org.awesoma.report.domain.FileName;
+import org.awesoma.report.application.port.TransactionRunner;
 import org.awesoma.report.domain.content.ReportContent;
 import org.awesoma.report.domain.source.CheckOutcome;
 import org.awesoma.report.domain.source.CheckRecord;
@@ -70,7 +72,7 @@ class GenerationWorkerTest {
             }
         };
         return new GenerationWorker(reports, reports, sources, access, projects, storage, List.of(renderer), cleanup,
-                Fakes.TRANSACTIONS, clock, limits, maxFileSize);
+                Fakes.TRANSACTIONS, clock, limits, maxFileSize, new TestWorkspace());
     }
 
     private Report queue(MonitorSelection selection) {
@@ -252,5 +254,234 @@ class GenerationWorkerTest {
         clock.advance(Duration.ofSeconds(30));
         worker().runNext();
         assertThat(reports.row(job.id()).status()).isEqualTo(ReportStatus.READY);
+    }
+
+    @Test
+    void recoversOnlyExpiredUploadsAndReconciliationRemovesLateWrites() {
+        var expiredLease = new Lease(UUID.randomUUID(), UUID.randomUUID(), NOW.plusSeconds(10));
+        var activeLease = new Lease(UUID.randomUUID(), UUID.randomUUID(), NOW.plusSeconds(120));
+        var expired = reports.save(Report.startUpload(UUID.randomUUID(), 42, 7, FileName.fromClient("old.csv"),
+                expiredLease, NOW));
+        var active = reports.save(Report.startUpload(UUID.randomUUID(), 42, 7, FileName.fromClient("active.csv"),
+                activeLease, NOW));
+        var withoutObject = reports.save(Report.startUpload(UUID.randomUUID(), 42, 7,
+                FileName.fromClient("missing.csv"), expiredLease, NOW));
+        storage.objects.put(expired.objectKey(), new byte[] {1});
+        clock.advance(Duration.ofSeconds(11));
+        assertThat(worker().recoverExpired(10)).isEqualTo(2);
+        assertThat(reports.row(expired.id()).status()).isEqualTo(ReportStatus.FAILED);
+        assertThat(reports.row(withoutObject.id()).status()).isEqualTo(ReportStatus.FAILED);
+        assertThat(reports.row(active.id()).status()).isEqualTo(ReportStatus.UPLOADING);
+        assertThat(storage.objects).doesNotContainKey(expired.objectKey());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> reports.row(expired.id())
+                .completeUpload(expiredLease.token(), 1, "a".repeat(64), clock.instant()))
+                .isInstanceOf(org.awesoma.report.domain.StaleAttemptException.class);
+        storage.objects.put(expired.objectKey(), new byte[] {1});
+        storage.written.put(expired.objectKey(), NOW);
+        var cleanup = new ReportCleanup(reports, storage, keys, Fakes.TRANSACTIONS, clock, Duration.ofHours(24));
+        var maintenance = new ReportMaintenance(reports, storage, keys, cleanup, clock, Duration.ofSeconds(1));
+        assertThat(maintenance.reconcile()).isEqualTo(1);
+        assertThat(storage.objects).doesNotContainKey(expired.objectKey());
+    }
+
+    @Test
+    void doesNotDeletePublishedObjectWhenCommitResultIsAmbiguous() {
+        var job = queue(MonitorSelection.allMonitors());
+        var failedOnce = new java.util.concurrent.atomic.AtomicBoolean();
+        TransactionRunner ambiguous = new TransactionRunner() {
+            @Override
+            public <T> T inTransaction(java.util.function.Supplier<T> work) {
+                T result = work.get();
+                if (reports.row(job.id()).status() == ReportStatus.READY && failedOnce.compareAndSet(false, true))
+                    throw new IllegalStateException("commit acknowledged too late");
+                return result;
+            }
+        };
+        var cleanup = new ReportCleanup(reports, storage, keys, ambiguous, clock, Duration.ofHours(24));
+        ReportRenderer renderer = new ReportRenderer() {
+            public ReportFormat format() { return ReportFormat.CSV; }
+            public void render(ReportContent content, OutputStream out) throws java.io.IOException { out.write(1); }
+        };
+        var worker = new GenerationWorker(reports, reports, sources, access, projects, storage, List.of(renderer),
+                cleanup, ambiguous, clock, limits, maxFileSize, new TestWorkspace());
+        worker.runNext();
+        var ready = reports.row(job.id());
+        assertThat(ready.status()).isEqualTo(ReportStatus.READY);
+        assertThat(storage.objects).containsKey(ready.objectKey());
+        assertThat(worker.runNext()).isFalse();
+    }
+
+    @Test
+    void cannotPublishWhenTheUploadCrossesTheAttemptDeadline() {
+        var job = queue(MonitorSelection.allMonitors());
+        storage.onPut = () -> clock.advance(Duration.ofMinutes(6));
+        worker().runNext();
+        assertThat(reports.row(job.id()).status()).isEqualTo(ReportStatus.QUEUED);
+        assertThat(storage.objects).isEmpty();
+    }
+
+    @Test
+    void heartbeatRenewsWhileRendererIsBlockedAndDoesNotInterruptTheNextJob() throws Exception {
+        var job = queue(MonitorSelection.allMonitors());
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var realClock = java.time.Clock.systemUTC();
+        var shortLease = new GenerationLimits(Duration.ofDays(31), 100, 100_000, 50, Duration.ofSeconds(5), 3,
+                Duration.ofSeconds(1), Duration.ofMillis(600));
+        var cleanup = new ReportCleanup(reports, storage, keys, Fakes.TRANSACTIONS, realClock, Duration.ofHours(24));
+        ReportRenderer renderer = new ReportRenderer() {
+            public ReportFormat format() { return ReportFormat.CSV; }
+            public void render(ReportContent content, OutputStream out) throws java.io.IOException {
+                entered.countDown();
+                try { if (!release.await(3, java.util.concurrent.TimeUnit.SECONDS)) throw new java.io.IOException("timeout"); }
+                catch (InterruptedException error) { throw new java.io.IOException(error); }
+                out.write(1);
+            }
+        };
+        var worker = new GenerationWorker(reports, reports, sources, access, projects, storage, List.of(renderer),
+                cleanup, Fakes.TRANSACTIONS, realClock, shortLease, maxFileSize, new TestWorkspace());
+        var result = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            worker.runNext();
+            boolean interrupted = Thread.currentThread().isInterrupted();
+            worker.runNext();
+            return interrupted || Thread.currentThread().isInterrupted();
+        });
+        assertThat(entered.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        Instant original = reports.findById(job.id()).orElseThrow().lease().until();
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                assertThat(reports.findById(job.id()).orElseThrow().lease().until()).isAfter(original));
+        release.countDown();
+        assertThat(result.get(3, java.util.concurrent.TimeUnit.SECONDS)).isFalse();
+        assertThat(reports.row(job.id()).status()).isEqualTo(ReportStatus.READY);
+    }
+
+    @Test
+    void deadlineInterruptsABlockedRendererAndRetriesTheJob() throws Exception {
+        var job = queue(MonitorSelection.allMonitors());
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var realClock = java.time.Clock.systemUTC();
+        var shortTimeout = new GenerationLimits(Duration.ofDays(31), 100, 100_000, 50, Duration.ofMillis(600), 3,
+                Duration.ofSeconds(1), Duration.ofSeconds(3));
+        var cleanup = new ReportCleanup(reports, storage, keys, Fakes.TRANSACTIONS, realClock, Duration.ofHours(24));
+        ReportRenderer renderer = new ReportRenderer() {
+            public ReportFormat format() { return ReportFormat.CSV; }
+            public void render(ReportContent content, OutputStream out) throws java.io.IOException {
+                entered.countDown();
+                try { new java.util.concurrent.CountDownLatch(1).await(); }
+                catch (InterruptedException error) { throw new java.io.IOException(error); }
+            }
+        };
+        var worker = new GenerationWorker(reports, reports, sources, access, projects, storage, List.of(renderer),
+                cleanup, Fakes.TRANSACTIONS, realClock, shortTimeout, maxFileSize, new TestWorkspace());
+        var result = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            worker.runNext();
+            return Thread.currentThread().isInterrupted();
+        });
+        assertThat(entered.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        assertThat(result.get(3, java.util.concurrent.TimeUnit.SECONDS)).isFalse();
+        assertThat(reports.row(job.id()).status()).isEqualTo(ReportStatus.QUEUED);
+        assertThat(storage.objects).isEmpty();
+    }
+
+    @Test
+    void deadlineInterruptsABlockedObjectUploadAndRetriesTheJob() throws Exception {
+        var job = queue(MonitorSelection.allMonitors());
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var realClock = java.time.Clock.systemUTC();
+        var shortTimeout = new GenerationLimits(Duration.ofDays(31), 100, 100_000, 50, Duration.ofMillis(600), 3,
+                Duration.ofSeconds(1), Duration.ofSeconds(3));
+        org.awesoma.report.application.port.ObjectStorage blocking = new org.awesoma.report.application.port.ObjectStorage() {
+            public void put(String key, java.io.InputStream content, long size, String type) {
+                entered.countDown();
+                try { new java.util.concurrent.CountDownLatch(1).await(); }
+                catch (InterruptedException error) {
+                    throw new org.awesoma.report.application.port.ObjectStorageUnavailableException("interrupted", error);
+                }
+            }
+            public org.awesoma.report.application.port.StoredObject open(String key) { return storage.open(key); }
+            public void delete(String key) { storage.delete(key); }
+            public boolean exists(String key) { return storage.exists(key); }
+            public java.util.List<org.awesoma.report.application.port.StoredKey> list(String prefix) { return storage.list(prefix); }
+        };
+        var cleanup = new ReportCleanup(reports, blocking, keys, Fakes.TRANSACTIONS, realClock, Duration.ofHours(24));
+        ReportRenderer renderer = new ReportRenderer() {
+            public ReportFormat format() { return ReportFormat.CSV; }
+            public void render(ReportContent content, OutputStream out) throws java.io.IOException { out.write(1); }
+        };
+        var worker = new GenerationWorker(reports, reports, sources, access, projects, blocking, List.of(renderer),
+                cleanup, Fakes.TRANSACTIONS, realClock, shortTimeout, maxFileSize, new TestWorkspace());
+        var result = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            worker.runNext();
+            return Thread.currentThread().isInterrupted();
+        });
+        assertThat(entered.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        assertThat(result.get(3, java.util.concurrent.TimeUnit.SECONDS)).isFalse();
+        assertThat(reports.row(job.id()).status()).isEqualTo(ReportStatus.QUEUED);
+        assertThat(storage.objects).isEmpty();
+    }
+
+    @Test
+    void schedulerShutdownPreservesItsInterruptAndFencesAnUncooperativeAttempt() throws Exception {
+        var job = queue(MonitorSelection.allMonitors());
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var finished = new java.util.concurrent.CountDownLatch(1);
+        var interrupted = new java.util.concurrent.CountDownLatch(1);
+        var schedulerInterrupted = new java.util.concurrent.atomic.AtomicBoolean();
+        var realClock = java.time.Clock.systemUTC();
+        var shortLease = new GenerationLimits(Duration.ofDays(31), 100, 100_000, 50, Duration.ofSeconds(5), 3,
+                Duration.ofSeconds(1), Duration.ofMillis(600));
+        var cleanup = new ReportCleanup(reports, storage, keys, Fakes.TRANSACTIONS, realClock, Duration.ofHours(24));
+        ReportRenderer renderer = new ReportRenderer() {
+            public ReportFormat format() { return ReportFormat.CSV; }
+            public void render(ReportContent content, OutputStream out) throws java.io.IOException {
+                entered.countDown();
+                while (true) {
+                    try { release.await(); break; }
+                    catch (InterruptedException ignored) { interrupted.countDown(); /* Simulate a slow unwind. */ }
+                }
+                out.write(1);
+                finished.countDown();
+            }
+        };
+        var worker = new GenerationWorker(reports, reports, sources, access, projects, storage, List.of(renderer),
+                cleanup, Fakes.TRANSACTIONS, realClock, shortLease, maxFileSize, new TestWorkspace());
+        var scheduler = Thread.ofPlatform().start(() -> {
+            try { worker.runNext(); }
+            catch (IllegalStateException expected) {
+                schedulerInterrupted.set(Thread.currentThread().isInterrupted());
+                org.assertj.core.api.Assertions.assertThatThrownBy(worker::runNext).isInstanceOf(IllegalStateException.class);
+            }
+        });
+        try {
+            assertThat(entered.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            scheduler.interrupt();
+            assertThat(interrupted.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            assertThat(scheduler.isAlive()).isTrue();
+            release.countDown();
+            scheduler.join(3000);
+            assertThat(scheduler.isAlive()).isFalse();
+            assertThat(schedulerInterrupted).isTrue();
+        } finally {
+            release.countDown();
+        }
+        assertThat(finished.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(4)).untilAsserted(() -> {
+            worker.recoverExpired(10);
+            assertThat(reports.row(job.id()).status()).isEqualTo(ReportStatus.QUEUED);
+        });
+        assertThat(storage.objects).isEmpty();
+    }
+    private static final class TestWorkspace implements org.awesoma.report.application.port.ReportWorkspace {
+        @Override
+        public TemporaryReport create(UUID id, ReportFormat format) {
+            return new TemporaryReport() {
+                private final java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                public java.io.OutputStream write() { return bytes; }
+                public java.io.InputStream read() { return new java.io.ByteArrayInputStream(bytes.toByteArray()); }
+                public long size() { return bytes.size(); }
+                public void close() { }
+            };
+        }
     }
 }

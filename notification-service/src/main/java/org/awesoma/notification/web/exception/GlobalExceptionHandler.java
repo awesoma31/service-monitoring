@@ -1,5 +1,7 @@
 package org.awesoma.notification.web.exception;
 
+import org.awesoma.notification.application.exception.NotFoundException;
+import org.awesoma.notification.application.exception.ConflictStateException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import java.net.URI;

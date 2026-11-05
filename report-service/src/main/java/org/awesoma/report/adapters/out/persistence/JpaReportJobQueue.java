@@ -37,4 +37,9 @@ class JpaReportJobQueue implements ReportJobQueue {
     public List<UUID> expiredLeases(Instant now, int limit) {
         return rows.findExpiredLeases(ReportStatus.GENERATING, now, Limit.of(limit));
     }
+
+    @Override
+    public List<UUID> expiredUploads(Instant now, int limit) {
+        return rows.findExpiredLeases(ReportStatus.UPLOADING, now, Limit.of(limit));
+    }
 }

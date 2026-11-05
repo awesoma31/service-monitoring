@@ -4,25 +4,28 @@ import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import org.awesoma.monitoring.domain.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 
 public interface MonitorRepository extends JpaRepository<Monitor, Long> {
     @Query("select m.project.id from Monitor m where m.id = :id")
     Optional<Long> findProjectId(Long id);
 
+    @EntityGraph(attributePaths = "project")
     Page<Monitor> findByProjectId(Long projectId, Pageable pageable);
 
     /**
      * Joins rather than fetches the tags: a fetch would force Hibernate to page the result
      * in memory, loading every monitor of the project to return one page of them.
      */
+    @EntityGraph(attributePaths = "project")
     Page<Monitor> findByProjectIdAndTagsName(Long projectId, String tagName, Pageable pageable);
 
     boolean existsByProjectIdAndName(Long projectId, String name);

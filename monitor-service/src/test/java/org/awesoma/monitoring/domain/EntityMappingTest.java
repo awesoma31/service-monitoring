@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
-import org.awesoma.monitoring.domain.entity.Incident;
-import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Project;
-import org.awesoma.monitoring.domain.entity.Tag;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Incident;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Tag;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -77,10 +77,11 @@ class EntityMappingTest extends AbstractIntegrationTest {
         incident.setSeverity(Severity.LOW);
         entityManager.persist(incident);
 
-        incident.resolve(OffsetDateTime.now());
+        incident.setStatus(org.awesoma.monitoring.domain.enums.IncidentStatus.RESOLVED);
+        incident.setResolvedAt(OffsetDateTime.now());
         entityManager.flush();
 
-        assertThat(incident.isOpen()).isFalse();
+        assertThat(incident.getStatus()).isEqualTo(org.awesoma.monitoring.domain.enums.IncidentStatus.RESOLVED);
         assertThat(incident.getResolvedAt()).isNotNull();
     }
 

@@ -21,7 +21,7 @@ public record ProjectCreateRequest(
                         description = "Whether incident notifications are enabled for the project owner",
                         example = "false",
                         defaultValue = "true")
-                Boolean ownerNotificationsEnabled) {
+                Boolean ownerNotificationsEnabled) implements org.awesoma.monitoring.application.port.command.ProjectCreateRequest {
 
     public ProjectCreateRequest {
         ownerNotificationsEnabled = ownerNotificationsEnabled == null

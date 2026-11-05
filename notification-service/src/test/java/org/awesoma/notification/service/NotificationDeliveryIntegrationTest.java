@@ -1,5 +1,7 @@
 package org.awesoma.notification.service;
 
+import org.awesoma.notification.application.usecase.NotificationDeliveryService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -12,7 +14,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.awesoma.notification.config.DeliveryProperties;
-import org.awesoma.notification.delivery.DeliveryException;
+import org.awesoma.notification.application.exception.DeliveryException;
 import org.awesoma.notification.delivery.EmailNotificationSender;
 import org.awesoma.notification.delivery.TelegramNotificationSender;
 import org.awesoma.notification.delivery.WebhookNotificationSender;

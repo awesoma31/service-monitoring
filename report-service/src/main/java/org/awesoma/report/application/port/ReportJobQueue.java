@@ -18,4 +18,7 @@ public interface ReportJobQueue {
 
     /** Jobs whose worker stopped renewing its lease, for recovery after a crash. */
     List<UUID> expiredLeases(Instant now, int limit);
+
+    /** Uploads whose writer has not completed before its lease expired. */
+    List<UUID> expiredUploads(Instant now, int limit);
 }

@@ -1,24 +1,24 @@
 package org.awesoma.check.repository;
 
+import lombok.RequiredArgsConstructor;
+import org.awesoma.check.adapters.out.persistence.CheckResultRow;
+import org.awesoma.check.adapters.out.persistence.CheckResultRows;
+import org.awesoma.check.application.port.CheckHistory;
 import org.awesoma.check.domain.CheckResult;
-import org.springframework.data.r2dbc.repository.Query;
-import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public interface CheckResultRepository extends ReactiveCrudRepository<CheckResult, Long> {
-
-    /**
-     * One page of history, newest first. The caller asks for one row more than it returns:
-     * that extra row tells whether another page follows, so no count query is ever needed.
-     */
-    @Query("""
-            SELECT * FROM check_results
-            WHERE monitor_id = :monitorId
-            ORDER BY checked_at DESC, id DESC
-            LIMIT :limit OFFSET :offset
-            """)
-    Flux<CheckResult> findPage(Long monitorId, int limit, long offset);
-
-    Mono<Long> deleteByMonitorId(Long monitorId);
+/** R2DBC persistence adapter for the check-history port. */
+@Component
+@RequiredArgsConstructor
+public class CheckResultRepository implements CheckHistory {
+    private final CheckResultRows rows;
+    public Mono<CheckResult> save(CheckResult result) {
+        return rows.save(CheckResultRow.from(result)).map(CheckResultRow::toDomain);
+    }
+    public Flux<CheckResult> findPage(Long monitorId, int limit, long offset) {
+        return rows.findPage(monitorId, limit, offset).map(CheckResultRow::toDomain);
+    }
+    public Mono<Long> deleteByMonitorId(Long monitorId) { return rows.deleteByMonitorId(monitorId); }
 }

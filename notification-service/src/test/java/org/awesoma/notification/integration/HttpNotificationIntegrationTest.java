@@ -1,5 +1,7 @@
 package org.awesoma.notification.integration;
 
+import org.awesoma.notification.application.usecase.NotificationEventHandler;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -56,14 +58,14 @@ class HttpNotificationIntegrationTest extends AbstractIntegrationTest {
         var event = event(projectId, incidentId);
         db.execute("ALTER TABLE notifications ADD CONSTRAINT test_reject_notifications CHECK (false) NOT VALID");
         try {
-            assertThrows(RuntimeException.class, () -> events.handle(event).block());
+            assertThrows(RuntimeException.class, () -> events.handle(ResourceEventMapper.from(event)).block());
             assertThat(db.queryForObject("SELECT count(*) FROM integration_inbox WHERE event_id = ?",
                     Integer.class, event.eventId())).isZero();
         } finally {
             db.execute("ALTER TABLE notifications DROP CONSTRAINT test_reject_notifications");
         }
-        events.handle(event).block();
-        events.handle(event).block();
+        events.handle(ResourceEventMapper.from(event)).block();
+        events.handle(ResourceEventMapper.from(event)).block();
         assertThat(notifications.findAll().stream().filter(n -> n.getIncidentId().equals(incidentId))).hasSize(1);
     }
 

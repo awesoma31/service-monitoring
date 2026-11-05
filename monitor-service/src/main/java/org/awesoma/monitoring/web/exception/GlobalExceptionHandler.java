@@ -1,5 +1,11 @@
 package org.awesoma.monitoring.web.exception;
 
+import org.awesoma.monitoring.application.exception.NotFoundException;
+import org.awesoma.monitoring.application.exception.ConflictStateException;
+import org.awesoma.monitoring.application.exception.InvalidRequestException;
+import org.awesoma.monitoring.application.exception.ProjectNotFoundException;
+import org.awesoma.monitoring.application.exception.MonitorNotInProjectException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,10 +29,10 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
- * Turns failures at the HTTP boundary into one RFC 7807 response shape. Database details and
- * parser internals deliberately stay out of the response: they are useful in logs, but expose
- * implementation details without helping an API client fix its request.
- */
+    * Turns failures at the HTTP boundary into one RFC 7807 response shape. Database details and
+    * parser internals deliberately stay out of the response: they are useful in logs, but expose
+    * implementation details without helping an API client fix its request.
+    */
 @RestControllerAdvice
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {

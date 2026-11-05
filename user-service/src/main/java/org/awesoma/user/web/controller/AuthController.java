@@ -6,8 +6,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.user.service.AuthService;
-import org.awesoma.user.service.UserService;
+import org.awesoma.user.application.usecase.AuthService;
+import org.awesoma.user.application.usecase.UserService;
 import org.awesoma.user.web.dto.user.LoginRequest;
 import org.awesoma.user.web.dto.user.TokenResponse;
 import org.awesoma.user.web.dto.user.UserCreateRequest;
@@ -33,13 +33,14 @@ public class AuthController {
     @SecurityRequirements
     @Operation(summary = "Log in and receive a JWT Bearer token")
     public TokenResponse login(@Valid @RequestBody LoginRequest request) {
-        return auth.login(request);
+        var token = auth.login(request.email(), request.password());
+        return new TokenResponse(token.accessToken(), token.tokenType(), token.expiresIn());
     }
 
     @GetMapping("/me")
     @Operation(summary = "Get the currently authenticated user without password fields")
     public UserResponse me(Authentication authentication) {
-        return users.get(Long.parseLong(authentication.getName()));
+        return org.awesoma.user.web.mapper.UserMapper.toResponse(users.get(Long.parseLong(authentication.getName())));
     }
 
     @PostMapping("/register")
@@ -47,7 +48,8 @@ public class AuthController {
     @Operation(summary = "Register a user", description = "Only supervisors may register new users.")
     public ResponseEntity<UserResponse> register(
             @Valid @RequestBody UserCreateRequest request) {
-        var created = users.create(request);
+        var created = org.awesoma.user.web.mapper.UserMapper.toResponse(
+                users.create(request.email(), request.password(), request.fullName(), request.role()));
         return ResponseEntity.created(URI.create("/api/v1/users/" + created.id())).body(created);
     }
 }

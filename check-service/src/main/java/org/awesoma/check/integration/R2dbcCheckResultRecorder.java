@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.awesoma.check.application.port.CheckResultRecorder;
 import org.awesoma.check.domain.CheckResult;
 import org.awesoma.check.domain.ProbeOutcome;
 import org.awesoma.check.repository.CheckResultRepository;

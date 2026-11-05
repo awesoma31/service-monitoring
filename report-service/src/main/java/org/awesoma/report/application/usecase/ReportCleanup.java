@@ -66,6 +66,25 @@ public class ReportCleanup {
         }
     }
 
+    /**
+     * An uncertain commit may have published this very key. Never remove a key that can
+     * still become, or already is, the current content. Attempt keys are never reused, so
+     * after a durable transition away from the attempt this decision cannot be reversed.
+     * If the database cannot be read, reconciliation will retry later.
+     */
+    public void removeUnreferenced(Report attempt) {
+        try {
+            var current = reports.findById(attempt.id());
+            if (current.isPresent() && attempt.objectKey().equals(current.get().objectKey())
+                    && (current.get().status() == ReportStatus.READY
+                    || current.get().status() == ReportStatus.UPLOADING
+                    || current.get().status() == ReportStatus.GENERATING)) return;
+            removeObject(attempt.objectKey());
+        } catch (RuntimeException error) {
+            log.warn("Object cleanup deferred until reconciliation: report_id={}", attempt.id(), error);
+        }
+    }
+
     private boolean removeObjects(Report report) {
         try {
             for (var stored : storage.list(ObjectKeys.upload(report.projectId(), report.id()))) {

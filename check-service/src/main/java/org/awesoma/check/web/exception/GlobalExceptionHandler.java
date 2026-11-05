@@ -1,5 +1,6 @@
 package org.awesoma.check.web.exception;
 
+import org.awesoma.check.application.exception.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import java.net.URI;

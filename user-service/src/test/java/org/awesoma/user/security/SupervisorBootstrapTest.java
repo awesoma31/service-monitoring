@@ -3,61 +3,53 @@ package org.awesoma.user.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import org.awesoma.user.domain.entity.User;
+import java.util.function.Supplier;
+import org.awesoma.user.application.port.PasswordHasher;
+import org.awesoma.user.application.port.Transactions;
+import org.awesoma.user.application.port.UserStore;
+import org.awesoma.user.application.usecase.SupervisorSetup;
+import org.awesoma.user.domain.User;
 import org.awesoma.user.domain.enums.UserRole;
-import org.awesoma.user.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 
-@ExtendWith(MockitoExtension.class)
 class SupervisorBootstrapTest {
-    @Mock private UserRepository users;
-    @Mock private PasswordEncoder passwords;
-    @InjectMocks private SupervisorBootstrap bootstrap;
-
-    @BeforeEach
-    void properties() {
-        ReflectionTestUtils.setField(bootstrap, "email", "supervisor@example.com");
-        ReflectionTestUtils.setField(bootstrap, "password", "initial-password");
-    }
+    private final UserStore users = mock(UserStore.class);
+    private final PasswordHasher passwords = mock(PasswordHasher.class);
+    private final Transactions transactions = new Transactions() {
+        public <T> T read(Supplier<T> work) { return work.get(); }
+        public <T> T write(Supplier<T> work) { return work.get(); }
+        public void afterCommit(Runnable work) { work.run(); }
+    };
+    private final SupervisorSetup bootstrap = new SupervisorSetup(users, passwords, transactions);
 
     @Test
     void createsOnlyTheInitialSupervisorWithAHashedPassword() {
         when(passwords.encode("initial-password")).thenReturn("encoded");
-        bootstrap.run(null);
+        when(users.save(any())).thenAnswer(call -> call.getArgument(0));
+        bootstrap.ensure("supervisor@example.com", "initial-password");
         var saved = ArgumentCaptor.forClass(User.class);
         verify(users).save(saved.capture());
-        assertThat(saved.getValue().getRole()).isEqualTo(UserRole.SUPERVISOR);
-        assertThat(saved.getValue().getPassword()).isEqualTo("encoded");
+        assertThat(saved.getValue().role()).isEqualTo(UserRole.SUPERVISOR);
+        assertThat(saved.getValue().passwordHash()).isEqualTo("encoded");
     }
 
     @Test
     void neverResetsExistingSupervisorsOrCreatesOneWithoutCredentials() {
-        when(users.existsByRole(UserRole.SUPERVISOR)).thenReturn(true);
-        bootstrap.run(null);
-        when(users.existsByRole(UserRole.SUPERVISOR)).thenReturn(false);
-        ReflectionTestUtils.setField(bootstrap, "password", "");
-        bootstrap.run(null);
+        when(users.existsByRole(UserRole.SUPERVISOR)).thenReturn(true, false);
+        bootstrap.ensure("supervisor@example.com", "initial-password");
+        bootstrap.ensure("supervisor@example.com", "");
         verify(users, never()).save(any());
     }
 
     @Test
     void refusesWeakPasswordsAndDoesNotPromoteAnExistingOrdinaryUser() {
-        ReflectionTestUtils.setField(bootstrap, "password", "short");
-        assertThatThrownBy(() -> bootstrap.run(null)).isInstanceOf(IllegalArgumentException.class);
-        ReflectionTestUtils.setField(bootstrap, "password", "initial-password");
+        assertThatThrownBy(() -> bootstrap.ensure("supervisor@example.com", "short"))
+                .isInstanceOf(IllegalArgumentException.class);
         when(users.existsByEmail("supervisor@example.com")).thenReturn(true);
-        assertThatThrownBy(() -> bootstrap.run(null)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> bootstrap.ensure("supervisor@example.com", "initial-password"))
+                .isInstanceOf(IllegalStateException.class);
     }
 }

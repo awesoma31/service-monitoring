@@ -10,13 +10,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.user.service.UserService;
+import org.awesoma.user.application.usecase.UserService;
 import org.awesoma.user.web.dto.common.PageParams;
 import org.awesoma.user.web.dto.user.UserCreateRequest;
 import org.awesoma.user.web.dto.user.UserResponse;
 import org.awesoma.user.web.dto.user.UserRoleUpdateRequest;
 import org.awesoma.user.web.dto.user.UserUpdateRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.awesoma.user.web.mapper.UserMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,7 +46,9 @@ public class UserController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
     public ResponseEntity<Page<UserResponse>> list(@Valid PageParams page) {
-        return ResponseEntity.ok(userService.list(page.toPageable()));
+        var result = userService.list(page.page(), page.size());
+        return ResponseEntity.ok(new PageImpl<>(result.items().stream().map(UserMapper::toResponse).toList(),
+                page.toPageable(), result.total()));
     }
 
     @GetMapping("/{id}")
@@ -56,7 +60,7 @@ public class UserController {
         @ApiResponse(responseCode = "404", ref = "#/components/responses/NotFound")
     })
     public ResponseEntity<UserResponse> get(@PathVariable @Positive Long id) {
-        return ResponseEntity.ok(userService.get(id));
+        return ResponseEntity.ok(UserMapper.toResponse(userService.get(id)));
     }
 
     @PostMapping
@@ -73,7 +77,8 @@ public class UserController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<UserResponse> create(@Valid @RequestBody UserCreateRequest request) {
-        UserResponse created = userService.create(request);
+        UserResponse created = UserMapper.toResponse(userService.create(
+                request.email(), request.password(), request.fullName(), request.role()));
         return ResponseEntity.created(URI.create("/api/v1/users/" + created.id())).body(created);
     }
 
@@ -86,7 +91,7 @@ public class UserController {
     })
     public ResponseEntity<UserResponse> update(
             @PathVariable @Positive Long id, @Valid @RequestBody UserUpdateRequest request) {
-        return ResponseEntity.ok(userService.update(id, request));
+        return ResponseEntity.ok(UserMapper.toResponse(userService.update(id, request.fullName(), request.status())));
     }
 
     @DeleteMapping("/{id}")
@@ -106,6 +111,6 @@ public class UserController {
     @Operation(summary = "Change a user's role", description = "Available only to supervisors.")
     public UserResponse updateRole(@PathVariable @Positive Long id,
             @Valid @RequestBody UserRoleUpdateRequest request) {
-        return userService.updateRole(id, request);
+        return UserMapper.toResponse(userService.updateRole(id, request.role()));
     }
 }

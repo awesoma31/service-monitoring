@@ -8,9 +8,9 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
-import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.service.MonitorCheckService;
-import org.awesoma.monitoring.service.MonitorService;
+import org.awesoma.monitoring.web.dto.ProbeOutcomeRequest;
+import org.awesoma.monitoring.application.usecase.MonitorCheckService;
+import org.awesoma.monitoring.application.usecase.MonitorService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,8 +44,8 @@ public class InternalMonitorController {
 
     @PostMapping("/{id}/outcomes")
     public ResponseEntity<Void> recordOutcome(
-            @PathVariable @Positive Long id, @Valid @RequestBody ProbeOutcome outcome) {
-        monitorCheckService.record(id, outcome);
+            @PathVariable @Positive Long id, @Valid @RequestBody ProbeOutcomeRequest outcome) {
+        monitorCheckService.record(id, outcome.toDomain());
         return ResponseEntity.noContent().build();
     }
 

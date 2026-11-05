@@ -1,4 +1,4 @@
-package org.awesoma.monitoring.service;
+package org.awesoma.monitoring.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,24 +18,27 @@ import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.enums.Severity;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.repository.IncidentRepository;
-import org.awesoma.monitoring.repository.MonitorRepository;
+import org.awesoma.monitoring.application.port.IncidentRepositoryPort;
+import org.awesoma.monitoring.application.port.MonitorRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.awesoma.monitoring.integration.IncidentChanged;
-import org.springframework.context.ApplicationEventPublisher;
+import org.awesoma.monitoring.application.event.IncidentChanged;
+import org.awesoma.monitoring.application.port.DomainEvents;
 
 @ExtendWith(MockitoExtension.class)
 class MonitorCheckServiceTest {
 
-    @Mock private MonitorRepository monitors;
-    @Mock private IncidentRepository incidents;
-    @Mock private ApplicationEventPublisher events;
+    @Mock private MonitorRepositoryPort monitors;
+    @Mock private IncidentRepositoryPort incidents;
+    @Mock private DomainEvents events;
     @InjectMocks private MonitorCheckService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void saveReturnsThePersistedIncident() { org.mockito.Mockito.lenient().when(incidents.save(any())).thenAnswer(call -> call.getArgument(0)); }
 
     @Test
     void aFailureOnAHealthyMonitorOpensAnIncidentAndAnnouncesIt() {
@@ -53,7 +56,7 @@ class MonitorCheckServiceTest {
         assertThat(opened.getValue().getCause()).isEqualTo("read timed out");
         assertThat(opened.getValue().getStatus()).isEqualTo(IncidentStatus.OPEN);
 
-        verify(events).publishEvent(new IncidentChanged(null, 7L, IncidentChanged.Kind.OPENED));
+        verify(events).publish(new IncidentChanged(null, 7L, IncidentChanged.Kind.OPENED));
     }
 
     @Test
@@ -65,7 +68,7 @@ class MonitorCheckServiceTest {
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
         verify(incidents, never()).save(any());
-        verify(events, never()).publishEvent(any(Object.class));
+        verify(events, never()).publish(any(Object.class));
     }
 
     @Test
@@ -82,7 +85,7 @@ class MonitorCheckServiceTest {
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
         assertThat(open.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
         assertThat(open.getResolvedAt()).isNotNull();
-        verify(events).publishEvent(new IncidentChanged(null, 7L, IncidentChanged.Kind.RESOLVED));
+        verify(events).publish(new IncidentChanged(null, 7L, IncidentChanged.Kind.RESOLVED));
     }
 
     @Test
@@ -94,7 +97,7 @@ class MonitorCheckServiceTest {
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
         verify(incidents, never()).findByMonitorIdAndStatus(any(), any());
-        verify(events, never()).publishEvent(any(Object.class));
+        verify(events, never()).publish(any(Object.class));
     }
 
     @Test
@@ -107,7 +110,7 @@ class MonitorCheckServiceTest {
 
         assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
         verify(incidents).save(any(Incident.class));
-        verify(events, never()).publishEvent(any(Object.class));
+        verify(events, never()).publish(any(Object.class));
     }
 
     @Test
@@ -123,7 +126,7 @@ class MonitorCheckServiceTest {
         service.record(1L, claimed(monitor, ProbeOutcome.success(120, 200)));
 
         assertThat(open.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
-        verify(events, never()).publishEvent(any(Object.class));
+        verify(events, never()).publish(any(Object.class));
     }
 
     @Test

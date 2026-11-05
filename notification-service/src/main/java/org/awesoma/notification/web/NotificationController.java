@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.notification.service.NotificationService;
+import org.awesoma.notification.application.usecase.NotificationService;
 import org.awesoma.notification.web.dto.NotificationResponse;
 import org.awesoma.notification.web.dto.PageParams;
 import org.awesoma.security.access.RemoteAccess;
@@ -41,11 +41,11 @@ public class NotificationController {
             @PathVariable @Positive Long incidentId, @Valid PageParams page,
             ServerHttpResponse response, @AuthenticationPrincipal Jwt jwt) {
         return access.require("incident", incidentId, jwt, false)
-                .then(notificationService.listByIncident(incidentId, page.toPageable()))
+                .then(notificationService.listByIncident(incidentId, page.page(), page.size()))
                 .doOnNext(result -> {
-                    response.getHeaders().set("X-Total-Count", Long.toString(result.getTotalElements()));
+                    response.getHeaders().set("X-Total-Count", Long.toString(result.total()));
                     response.getHeaders().set("X-Has-Next", Boolean.toString(result.hasNext()));
                 })
-                .flatMapIterable(result -> result.getContent());
+                .flatMapIterable(result -> result.items().stream().map(NotificationResponse::of).toList());
     }
 }

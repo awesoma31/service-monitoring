@@ -13,14 +13,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
 import org.awesoma.monitoring.repository.IncidentRepository;
 import org.awesoma.monitoring.repository.MonitorRepository;
-import org.awesoma.monitoring.service.MonitorCheckService;
+import org.awesoma.monitoring.application.usecase.MonitorCheckService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,7 +71,8 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
             monitor.setIntervalSec(60);
             monitor.setTimeoutMs(5000);
             claimToken = UUID.randomUUID();
-            monitor.claimForCheck(claimToken, OffsetDateTime.now().plusMinutes(5));
+            monitor.setCheckClaimToken(claimToken);
+            monitor.setCheckClaimedUntil(OffsetDateTime.now().plusMinutes(5));
             entityManager.persist(monitor);
 
             ownerId = owner;

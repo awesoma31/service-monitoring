@@ -4,7 +4,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.awesoma.check.domain.MonitorTarget;
 import org.awesoma.check.domain.ProbeOutcome;
-import org.awesoma.check.web.exception.ServiceUnavailableException;
+import org.awesoma.check.application.exception.ServiceUnavailableException;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 import org.awesoma.integration.IntegrationEvent;

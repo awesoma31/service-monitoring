@@ -8,7 +8,7 @@ import reactor.core.scheduler.Schedulers;
 /** Feign blocks, so its calls run on the bounded elastic scheduler, off the event loop. */
 @Component
 @RequiredArgsConstructor
-public class ReactiveMonitorClient {
+public class ReactiveMonitorClient implements org.awesoma.notification.application.port.MonitorDirectory {
 
     private final MonitorClient client;
 

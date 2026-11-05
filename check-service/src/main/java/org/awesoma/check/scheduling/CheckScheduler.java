@@ -2,7 +2,7 @@ package org.awesoma.check.scheduling;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.awesoma.check.service.CheckRunner;
+import org.awesoma.check.application.usecase.CheckRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;

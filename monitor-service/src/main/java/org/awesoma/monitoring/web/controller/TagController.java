@@ -10,7 +10,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.monitoring.service.TagService;
+import org.awesoma.monitoring.application.usecase.TagService;
+import org.awesoma.monitoring.web.mapper.Views;
 import org.awesoma.monitoring.web.dto.common.PageParams;
 import org.awesoma.monitoring.web.dto.tag.TagCreateRequest;
 import org.awesoma.monitoring.web.dto.tag.TagResponse;
@@ -40,7 +41,7 @@ public class TagController {
         @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     })
     public ResponseEntity<Page<TagResponse>> list(@Valid PageParams page) {
-        return ResponseEntity.ok(tagService.list(page.toPageable()));
+        return ResponseEntity.ok(Views.page(tagService.list(page.toPageable()), Views::tag));
     }
 
     @PostMapping
@@ -57,7 +58,7 @@ public class TagController {
         @ApiResponse(responseCode = "409", ref = "#/components/responses/Conflict")
     })
     public ResponseEntity<TagResponse> create(@Valid @RequestBody TagCreateRequest request) {
-        TagResponse created = tagService.create(request);
+        TagResponse created = Views.tag(tagService.create(request));
         return ResponseEntity.created(URI.create("/api/v1/tags/" + created.id())).body(created);
     }
 

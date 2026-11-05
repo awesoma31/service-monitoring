@@ -39,9 +39,12 @@ class JdbcIdempotencyKeys implements IdempotencyKeys {
     }
 
     @Override
-    public void remove(long userId, long projectId, String key) {
-        db.update("DELETE FROM report_idempotency_keys WHERE user_id = ? AND project_id = ? AND idempotency_key = ?",
-                userId, projectId, key);
+    public boolean removeExpired(IdempotencyRecord observed, Instant now) {
+        return db.update("""
+                DELETE FROM report_idempotency_keys WHERE user_id = ? AND project_id = ? AND idempotency_key = ?
+                AND report_id = ? AND expires_at = ? AND expires_at <= ?
+                """, observed.userId(), observed.projectId(), observed.key(), observed.reportId(),
+                Timestamp.from(observed.expiresAt()), Timestamp.from(now)) == 1;
     }
 
     @Override

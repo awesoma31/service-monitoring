@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.check.service.CheckHistoryService;
+import org.awesoma.check.application.usecase.CheckHistoryService;
 import org.awesoma.check.web.dto.CheckResultResponse;
 import org.awesoma.check.web.dto.PageParams;
 import org.awesoma.security.access.RemoteAccess;
@@ -43,8 +43,8 @@ public class CheckHistoryController {
             @PathVariable @Positive Long monitorId, @Valid PageParams page,
             ServerHttpResponse response, @AuthenticationPrincipal Jwt jwt) {
         return access.require("monitor", monitorId, jwt, false)
-                .then(history.list(monitorId, page.toPageable()))
+                .then(history.list(monitorId, page.page(), page.size()))
                 .doOnNext(slice -> response.getHeaders().set("X-Has-Next", Boolean.toString(slice.hasNext())))
-                .flatMapIterable(slice -> slice.getContent());
+                .flatMapIterable(slice -> slice.items().stream().map(CheckResultResponse::of).toList());
     }
 }

@@ -1,5 +1,6 @@
 package org.awesoma.check.service;
 
+import org.awesoma.check.application.usecase.CheckRunner;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -8,12 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.UUID;
-import org.awesoma.check.client.ReactiveMonitorClient;
-import org.awesoma.check.integration.CheckResultRecorder;
+import org.awesoma.check.application.port.MonitorDirectory;
+import org.awesoma.check.application.port.CheckResultRecorder;
 import org.awesoma.check.domain.HttpMethod;
 import org.awesoma.check.domain.MonitorTarget;
 import org.awesoma.check.domain.ProbeOutcome;
-import org.awesoma.check.probe.MonitorProbe;
+import org.awesoma.check.application.port.MonitorProbe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -22,7 +23,7 @@ import reactor.test.StepVerifier;
 
 class CheckRunnerTest {
 
-    private final ReactiveMonitorClient monitors = mock(ReactiveMonitorClient.class);
+    private final MonitorDirectory monitors = mock(MonitorDirectory.class);
     private final MonitorProbe probe = mock(MonitorProbe.class);
     private final CheckResultRecorder results = mock(CheckResultRecorder.class);
     private final CheckRunner runner = new CheckRunner(monitors, probe, results, 10, 4);

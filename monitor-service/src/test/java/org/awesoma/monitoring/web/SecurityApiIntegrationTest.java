@@ -7,8 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
-import org.awesoma.monitoring.domain.entity.Project;
-import org.awesoma.monitoring.domain.entity.ProjectMember;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.ProjectMember;
 import org.awesoma.monitoring.repository.ProjectMemberRepository;
 import org.awesoma.monitoring.repository.ProjectRepository;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;

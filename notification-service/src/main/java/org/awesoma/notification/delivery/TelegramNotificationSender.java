@@ -1,5 +1,9 @@
 package org.awesoma.notification.delivery;
 
+import org.awesoma.notification.application.model.DeliveryTask;
+import org.awesoma.notification.application.port.NotificationSender;
+import org.awesoma.notification.application.exception.DeliveryException;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.awesoma.notification.config.TelegramProperties;
 import org.awesoma.notification.domain.ChannelType;

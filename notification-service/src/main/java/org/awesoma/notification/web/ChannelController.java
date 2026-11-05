@@ -7,7 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.notification.service.ChannelService;
+import org.awesoma.notification.application.usecase.ChannelService;
 import org.awesoma.notification.web.dto.ChannelCreateRequest;
 import org.awesoma.notification.web.dto.ChannelResponse;
 import org.awesoma.notification.web.dto.ChannelUpdateRequest;
@@ -50,12 +50,12 @@ public class ChannelController {
             @PathVariable @Positive Long projectId, @Valid PageParams page,
             ServerHttpResponse response, @AuthenticationPrincipal Jwt jwt) {
         return access.require("project", projectId, jwt, false)
-                .then(channelService.listByProject(projectId, page.toPageable()))
+                .then(channelService.listByProject(projectId, page.page(), page.size()))
                 .doOnNext(result -> {
-                    response.getHeaders().set("X-Total-Count", Long.toString(result.getTotalElements()));
+                    response.getHeaders().set("X-Total-Count", Long.toString(result.total()));
                     response.getHeaders().set("X-Has-Next", Boolean.toString(result.hasNext()));
                 })
-                .flatMapIterable(result -> result.getContent());
+                .flatMapIterable(result -> result.items().stream().map(ChannelResponse::of).toList());
     }
 
     @PostMapping(value = "/projects/{projectId}/channels", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -72,7 +72,7 @@ public class ChannelController {
             @Valid @RequestBody ChannelCreateRequest request,
             ServerHttpResponse response, @AuthenticationPrincipal Jwt jwt) {
         return access.require("project", projectId, jwt, true)
-                .then(channelService.create(projectId, request))
+                .then(channelService.create(projectId, request.type(), request.target()).map(ChannelResponse::of))
                 .doOnNext(created -> response.getHeaders()
                         .setLocation(URI.create("/api/v1/channels/" + created.id())));
     }
@@ -97,7 +97,7 @@ public class ChannelController {
     public Mono<ChannelResponse> update(
             @PathVariable @Positive Long id, @Valid @RequestBody ChannelUpdateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        return authorizedChannel(id, jwt, true).then(Mono.defer(() -> channelService.update(id, request)));
+        return authorizedChannel(id, jwt, true).then(Mono.defer(() -> channelService.update(id, request.target(), request.enabled()).map(ChannelResponse::of)));
     }
 
     @DeleteMapping("/channels/{id}")
@@ -112,7 +112,7 @@ public class ChannelController {
     }
 
     private Mono<ChannelResponse> authorizedChannel(Long id, Jwt jwt, boolean write) {
-        return channelService.get(id).flatMap(channel -> access.require("project", channel.projectId(), jwt, write)
-                .thenReturn(channel));
+        return channelService.get(id).flatMap(channel -> access.require("project", channel.getProjectId(), jwt, write)
+                .thenReturn(ChannelResponse.of(channel)));
     }
 }

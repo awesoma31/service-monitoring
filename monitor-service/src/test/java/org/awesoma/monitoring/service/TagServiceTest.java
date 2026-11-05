@@ -1,4 +1,4 @@
-package org.awesoma.monitoring.service;
+package org.awesoma.monitoring.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,9 +10,9 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Set;
 import org.awesoma.monitoring.domain.entity.Tag;
-import org.awesoma.monitoring.repository.TagRepository;
+import org.awesoma.monitoring.application.port.TagRepositoryPort;
 import org.awesoma.monitoring.web.dto.tag.TagCreateRequest;
-import org.awesoma.monitoring.web.exception.ConflictStateException;
+import org.awesoma.monitoring.application.exception.ConflictStateException;
 import org.awesoma.monitoring.web.mapper.TagMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class TagServiceTest {
 
-    @Mock private TagRepository tags;
+    @Mock private TagRepositoryPort tags;
     @Mock private TagMapper mapper;
     @InjectMocks private TagService service;
 

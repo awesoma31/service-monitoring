@@ -8,7 +8,7 @@ import java.time.ZoneOffset;
 
 /** A clock a test moves forward while the code under test is running. */
 final class MutableClock extends Clock {
-    private Instant now;
+    private volatile Instant now;
 
     MutableClock(Instant now) {
         this.now = now;

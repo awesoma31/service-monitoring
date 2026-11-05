@@ -4,8 +4,8 @@ import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.notification.service.ChannelService;
-import org.awesoma.notification.service.NotificationService;
+import org.awesoma.notification.application.usecase.ChannelService;
+import org.awesoma.notification.application.usecase.NotificationService;
 import org.awesoma.notification.web.dto.IncidentEvent;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,7 +33,7 @@ public class InternalNotificationController {
     @PostMapping("/notifications")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public Mono<Void> incidentChanged(@Valid @RequestBody IncidentEvent event) {
-        return notificationService.record(event).then();
+        return notificationService.record(new org.awesoma.notification.application.model.IncidentNotice(event.incidentId(), event.projectId(), event.kind())).then();
     }
 
     @DeleteMapping("/projects/{projectId}/channels")

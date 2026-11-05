@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.awesoma.user.repository.UserRepository;
 import org.awesoma.user.security.AccessPolicy;
 import org.awesoma.user.security.SecurityConfig;
-import org.awesoma.user.service.UserService;
+import org.awesoma.user.application.usecase.UserService;
 import org.awesoma.user.web.controller.UserController;
 import org.awesoma.user.web.dto.user.UserCreateRequest;
 import org.awesoma.user.web.exception.ConflictStateException;
@@ -64,7 +64,7 @@ class ErrorHandlingWebTest {
                 .andExpect(jsonPath("$.violations[*].field")
                         .value(containsInAnyOrder("email", "password", "full_name")));
 
-        verify(users, never()).create(any());
+        verify(users, never()).create(any(), any(), any(), any());
     }
 
     @Test
@@ -76,7 +76,7 @@ class ErrorHandlingWebTest {
                 .andExpect(jsonPath("$.violations[0].field").value("id"))
                 .andExpect(jsonPath("$.violations[0].message").value("must be greater than 0"));
 
-        verify(users, never()).get(any());
+        verify(users, never()).get(ArgumentMatchers.anyLong());
     }
 
     @Test
@@ -102,7 +102,7 @@ class ErrorHandlingWebTest {
                 .andExpect(jsonPath("$.detail")
                         .value("Request body is malformed or contains an unsupported value"));
 
-        verify(users, never()).update(any(), any());
+        verify(users, never()).update(ArgumentMatchers.anyLong(), any(), any());
     }
 
     @Test
@@ -120,7 +120,7 @@ class ErrorHandlingWebTest {
 
     @Test
     void domainConflictUsesConflictStatus() throws Exception {
-        when(users.create(any(UserCreateRequest.class)))
+        when(users.create(any(), any(), any(), any()))
                 .thenThrow(new ConflictStateException("Email is already taken"));
 
         mockMvc.perform(post("/api/v1/users")
@@ -135,7 +135,7 @@ class ErrorHandlingWebTest {
 
     @Test
     void databaseConflictHidesConstraintDetails() throws Exception {
-        when(users.create(any(UserCreateRequest.class)))
+        when(users.create(any(), any(), any(), any()))
                 .thenThrow(new DataIntegrityViolationException(
                         "duplicate key value violates unique constraint users_email_key"));
 

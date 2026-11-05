@@ -34,7 +34,7 @@ public record MonitorCreateRequest(
                 @Max(599)
                 Integer expectedStatus,
         @Schema(example = "[\"production\", \"api\"]")
-                Set<@NotBlank @Size(max = 50) String> tags) {
+                Set<@NotBlank @Size(max = 50) String> tags) implements org.awesoma.monitoring.application.port.command.MonitorCreateRequest {
 
     public MonitorCreateRequest {
         httpMethod = httpMethod == null ? HttpMethod.GET : httpMethod;

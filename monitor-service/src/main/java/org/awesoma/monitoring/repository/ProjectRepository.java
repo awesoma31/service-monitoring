@@ -1,6 +1,6 @@
 package org.awesoma.monitoring.repository;
 
-import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

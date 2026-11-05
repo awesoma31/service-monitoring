@@ -7,7 +7,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import org.awesoma.monitoring.integration.IncidentChanged;
+import org.awesoma.monitoring.application.event.IncidentChanged;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

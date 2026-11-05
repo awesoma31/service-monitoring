@@ -10,7 +10,7 @@ import org.awesoma.integration.reportdata.ReportDataResponses.IncidentItem;
 import org.awesoma.integration.reportdata.ReportDataResponses.MonitorItem;
 import org.awesoma.integration.reportdata.ReportDataResponses.OwnershipResponse;
 import org.awesoma.integration.reportdata.ReportDataResponses.Page;
-import org.awesoma.monitoring.service.ReportDataService;
+import org.awesoma.monitoring.application.usecase.ReportDataService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;

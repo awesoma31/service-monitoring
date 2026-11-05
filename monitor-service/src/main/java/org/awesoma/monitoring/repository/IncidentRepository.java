@@ -4,7 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import org.awesoma.monitoring.domain.entity.Incident;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Incident;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;

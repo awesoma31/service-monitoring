@@ -191,7 +191,7 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
         } catch (StaleAttemptException alreadyChanged) {
             log.info("Upload changed state before it could be marked failed: report_id={}", report.id());
         }
-        cleanup.removeObject(report.objectKey());
+        cleanup.removeUnreferenced(report);
     }
 
     private static ReportNotFoundException notFound(UUID reportId) {

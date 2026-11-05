@@ -1,4 +1,4 @@
-package org.awesoma.monitoring.service;
+package org.awesoma.monitoring.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,11 +18,11 @@ import org.awesoma.monitoring.domain.entity.Project;
 import org.awesoma.monitoring.domain.entity.Tag;
 import org.awesoma.monitoring.domain.enums.HttpMethod;
 import org.awesoma.monitoring.domain.enums.MonitorState;
-import org.awesoma.monitoring.repository.MonitorRepository;
+import org.awesoma.monitoring.application.port.MonitorRepositoryPort;
 import org.awesoma.monitoring.web.dto.monitor.MonitorCreateRequest;
 import org.awesoma.monitoring.web.dto.monitor.MonitorUpdateRequest;
-import org.awesoma.monitoring.web.exception.ConflictStateException;
-import org.awesoma.monitoring.web.exception.NotFoundException;
+import org.awesoma.monitoring.application.exception.ConflictStateException;
+import org.awesoma.monitoring.application.exception.NotFoundException;
 import org.awesoma.monitoring.web.mapper.MonitorMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,19 +30,19 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.context.ApplicationEventPublisher;
-import org.awesoma.monitoring.integration.MonitorDeleted;
+import org.awesoma.monitoring.application.model.Page;
+import org.awesoma.monitoring.application.model.PageRequest;
+import org.awesoma.monitoring.application.port.DomainEvents;
+import org.awesoma.monitoring.application.event.MonitorDeleted;
 
 @ExtendWith(MockitoExtension.class)
 class MonitorServiceTest {
 
-    @Mock private MonitorRepository monitors;
+    @Mock private MonitorRepositoryPort monitors;
     @Mock private ProjectService projects;
     @Mock private TagService tags;
     @Mock private MonitorMapper mapper;
-    @Mock private ApplicationEventPublisher events;
+    @Mock private DomainEvents events;
     @InjectMocks private MonitorService service;
 
     @Test
@@ -155,7 +155,7 @@ class MonitorServiceTest {
     void listingWithoutATagAsksForTheWholeProject() {
         when(monitors.findByProjectId(eq(1L), any())).thenReturn(Page.empty());
 
-        service.listByProject(1L, null, Pageable.unpaged());
+        service.listByProject(1L, null, PageRequest.unpaged());
 
         verify(monitors).findByProjectId(eq(1L), any());
         verify(monitors, never()).findByProjectIdAndTagsName(any(), any(), any());
@@ -165,7 +165,7 @@ class MonitorServiceTest {
     void listingWithATagNarrowsTheQuery() {
         when(monitors.findByProjectIdAndTagsName(eq(1L), eq("prod"), any())).thenReturn(Page.empty());
 
-        service.listByProject(1L, "prod", Pageable.unpaged());
+        service.listByProject(1L, "prod", PageRequest.unpaged());
 
         verify(monitors).findByProjectIdAndTagsName(eq(1L), eq("prod"), any());
         verify(monitors, never()).findByProjectId(any(), any());
@@ -175,7 +175,7 @@ class MonitorServiceTest {
     void aBlankTagIsTreatedAsNoFilter() {
         when(monitors.findByProjectId(eq(1L), any())).thenReturn(Page.empty());
 
-        service.listByProject(1L, "  ", Pageable.unpaged());
+        service.listByProject(1L, "  ", PageRequest.unpaged());
 
         verify(monitors).findByProjectId(eq(1L), any());
     }
@@ -195,7 +195,7 @@ class MonitorServiceTest {
         service.delete(5L);
 
         verify(monitors).delete(monitor);
-        verify(events).publishEvent(new MonitorDeleted(5L));
+        verify(events).publish(new MonitorDeleted(5L));
     }
 
     private MonitorCreateRequest request(String name) {

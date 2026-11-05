@@ -15,7 +15,7 @@ import org.awesoma.integration.IntegrationEvent;
  */
 @Component
 @RequiredArgsConstructor
-public class ReactiveMonitorClient {
+public class ReactiveMonitorClient implements org.awesoma.check.application.port.MonitorDirectory {
 
     private final MonitorClient client;
 
