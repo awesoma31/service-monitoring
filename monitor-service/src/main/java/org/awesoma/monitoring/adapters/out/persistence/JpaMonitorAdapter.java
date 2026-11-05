@@ -4,8 +4,10 @@ import jakarta.persistence.EntityManager;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Tag;
 import org.awesoma.monitoring.application.model.Page;
 import org.awesoma.monitoring.application.model.PageRequest;
 import org.awesoma.monitoring.application.port.MonitorRepositoryPort;
@@ -72,9 +74,22 @@ public class JpaMonitorAdapter implements MonitorRepositoryPort {
     target.setLastCheckedAt(source.getLastCheckedAt());
     target.setCheckClaimToken(source.getCheckClaimToken());
     target.setCheckClaimedUntil(source.getCheckClaimedUntil());
-    target.setTags(source.getTags().stream().map(tag -> em.getReference(org.awesoma.monitoring.adapters.out.persistence.entity.Tag.class,tag.getId())).collect(Collectors.toCollection(java.util.LinkedHashSet::new)));
+    syncTags(target, source);
     return PersistenceMapping.monitor(rows.save(target));
     }
+
+    /**
+     * Changes the loaded collection in place: Hibernate then writes only the rows that differ,
+     * while a new collection would make it delete and re-insert all of them on every save.
+     */
+    private void syncTags(org.awesoma.monitoring.adapters.out.persistence.entity.Monitor target, Monitor source) {
+        Set<Tag> wanted = source.getTags().stream()
+                .map(tag -> em.getReference(Tag.class, tag.getId()))
+                .collect(Collectors.toSet());
+        target.getTags().retainAll(wanted);
+        target.getTags().addAll(wanted);
+    }
+
     public void delete(Monitor source) {
         rows.deleteById(source.getId());
     }
