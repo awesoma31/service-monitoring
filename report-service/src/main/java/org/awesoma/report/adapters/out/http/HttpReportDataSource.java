@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.awesoma.integration.reportdata.ReportDataRequests.MonitorSelectionRequest;
 import org.awesoma.integration.reportdata.ReportDataRequests.PeriodSearchRequest;
 import org.awesoma.integration.reportdata.ReportDataResponses;
@@ -35,6 +36,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class HttpReportDataSource implements ReportDataSource {
     private final ReportDataClients.MonitorData monitors;
     private final ReportDataClients.CheckData checks;
@@ -42,7 +44,7 @@ public class HttpReportDataSource implements ReportDataSource {
 
     @Override
     public MonitorPage monitors(long projectId, MonitorSelection selection, String cursor, int limit) {
-        var page = call(projectId, () -> monitors.selection(projectId, new MonitorSelectionRequest(
+        var page = call(projectId, "monitor-service", "monitors", () -> monitors.selection(projectId, new MonitorSelectionRequest(
                 selection.all() ? null : selection.monitorIds(), limit, cursor)));
         var project = page.project() == null ? new ProjectInfo(projectId, null)
                 : new ProjectInfo(page.project().id(), page.project().name());
@@ -52,7 +54,7 @@ public class HttpReportDataSource implements ReportDataSource {
     @Override
     public SourcePage<CheckRecord> checks(long projectId, List<Long> monitorIds, ReportPeriod period, String cursor,
             int limit) {
-        var page = call(projectId, () -> checks.checks(new PeriodSearchRequest(projectId, monitorIds,
+        var page = call(projectId, "check-service", "checks", () -> checks.checks(new PeriodSearchRequest(projectId, monitorIds,
                 period.from(), period.to(), limit, cursor)));
         return convert(page, item -> new CheckRecord(item.id(), item.monitorId(), CheckOutcome.valueOf(item.result()),
                 item.responseMs() == null ? null : item.responseMs().longValue(), item.checkedAt()));
@@ -61,16 +63,18 @@ public class HttpReportDataSource implements ReportDataSource {
     @Override
     public SourcePage<IncidentRecord> incidents(long projectId, List<Long> monitorIds, ReportPeriod period,
             String cursor, int limit) {
-        var page = call(projectId, () -> monitors.incidents(projectId, new PeriodSearchRequest(null, monitorIds,
+        var page = call(projectId, "monitor-service", "incidents", () -> monitors.incidents(projectId, new PeriodSearchRequest(null, monitorIds,
                 period.from(), period.to(), limit, cursor)));
         return convert(page, item -> new IncidentRecord(item.id(), item.monitorId(),
                 IncidentSeverity.valueOf(item.severity()), item.startedAt(), item.resolvedAt()));
     }
 
-    private <T> T call(long projectId, Supplier<T> request) {
+    private <T> T call(long projectId, String service, String operation, Supplier<T> request) {
         try {
             return request.get();
         } catch (RuntimeException error) {
+            log.warn("Report data request failed: service={} operation={} project_id={} error_type={}",
+                    service, operation, projectId, error.getClass().getSimpleName());
             switch (refusalCode(error)) {
                 case ReportDataResponses.PROJECT_NOT_FOUND -> throw new ProjectNotFoundException(projectId);
                 case ReportDataResponses.MONITOR_NOT_IN_PROJECT -> throw new SourceRejectedException(

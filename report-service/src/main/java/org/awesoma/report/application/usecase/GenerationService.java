@@ -20,6 +20,8 @@ import org.awesoma.report.domain.InvalidReportRequestException;
 import org.awesoma.report.domain.MonitorSelection;
 import org.awesoma.report.domain.Report;
 import org.awesoma.report.domain.ReportPeriod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Accepts a generation job. Everything that can be checked now is checked before anything is
@@ -27,6 +29,7 @@ import org.awesoma.report.domain.ReportPeriod;
  * caller gets 202 without waiting for the report. A worker builds it later.
  */
 public class GenerationService implements GenerateReport {
+    private static final Logger log = LoggerFactory.getLogger(GenerationService.class);
     static final int MAX_KEY_LENGTH = 255;
 
     private final ReportRepository reports;
@@ -70,13 +73,20 @@ public class GenerationService implements GenerateReport {
         String fingerprint = parameters.fingerprint(command.format());
         // A retried request gets its job back even while the monitors cannot be checked.
         var known = transactions.inTransaction(() -> existing(command, fingerprint));
-        if (known.isPresent()) return known.get();
+        if (known.isPresent()) {
+            log.info("Report generation request reused: report_id={} project_id={} user_id={}",
+                    known.get().id(), command.projectId(), command.userId());
+            return known.get();
+        }
 
         requireMonitors(command.projectId(), selection);
-        return transactions.inTransaction(() -> accept(command, parameters, fingerprint))
+        var report = transactions.inTransaction(() -> accept(command, parameters, fingerprint))
                 // A concurrent request bound the key first; its transaction has committed by now.
                 .or(() -> transactions.inTransaction(() -> existing(command, fingerprint)))
                 .orElseThrow(IdempotencyConflictException::otherParameters);
+        log.info("Report generation request accepted: report_id={} project_id={} user_id={} format={} status={}",
+                report.id(), command.projectId(), command.userId(), report.format(), report.status());
+        return report;
     }
 
     /** @return the new job, or nothing when another request bound the same key meanwhile */

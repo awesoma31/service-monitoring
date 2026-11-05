@@ -2,6 +2,7 @@ package org.awesoma.check.integration;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.awesoma.check.client.ReactiveMonitorClient;
 import org.awesoma.integration.IntegrationEvent;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,6 +14,7 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 
 @Configuration(proxyBeanMethods = false)
+@Slf4j
 class CheckPublisherConfiguration {
     @Bean
     @ConditionalOnProperty(prefix = "integration.check-results", name = "transport", havingValue = "http", matchIfMissing = true)
@@ -37,8 +39,22 @@ class CheckPublisherConfiguration {
                                         event.monitorId().toString(), payload))
                                 .subscribeOn(Schedulers.boundedElastic())
                                 .flatMap(Mono::fromFuture)
-                                .timeout(Duration.ofSeconds(20)).then();
-                    } catch (JsonProcessingException e) { return Mono.error(e); }
+                                .timeout(Duration.ofSeconds(20))
+                                .doOnNext(result -> {
+                                    var metadata = result.getRecordMetadata();
+                                    if (metadata != null) {
+                                        log.info("Kafka event published: topic=checks.completed.v1 partition={} offset={} event_id={} type={} monitor_id={}",
+                                                metadata.partition(), metadata.offset(), event.eventId(), event.type(), event.monitorId());
+                                    }
+                                })
+                                .doOnError(error -> log.warn("Kafka event publication failed: topic=checks.completed.v1 event_id={} type={} monitor_id={} error_type={}",
+                                        event.eventId(), event.type(), event.monitorId(), error.getClass().getSimpleName()))
+                                .then();
+                    } catch (JsonProcessingException e) {
+                        log.warn("Kafka event serialization failed: topic=checks.completed.v1 event_id={} type={} monitor_id={} error_type={}",
+                                event.eventId(), event.type(), event.monitorId(), e.getClass().getSimpleName());
+                        return Mono.error(e);
+                    }
                 });
             }
         };

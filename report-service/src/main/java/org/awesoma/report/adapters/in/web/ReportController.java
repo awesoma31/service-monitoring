@@ -141,6 +141,8 @@ public class ReportController {
     public void content(@PathVariable UUID reportId, @AuthenticationPrincipal Jwt jwt,
             HttpServletResponse response) throws IOException {
         var download = downloads.download(reportId, CurrentUser.id(jwt));
+        log.info("Report download started: report_id={} user_id={}", reportId, CurrentUser.id(jwt));
+        long transferred;
         try (var content = download.content()) {
             var report = download.report();
             response.setContentType(report.format().contentType());
@@ -148,11 +150,13 @@ public class ReportController {
             response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
                     .filename(report.fileName().value(), StandardCharsets.UTF_8).build().toString());
             response.setHeader("X-Content-Type-Options", "nosniff");
-            content.content().transferTo(response.getOutputStream());
+            transferred = content.content().transferTo(response.getOutputStream());
         } catch (IOException interrupted) {
             log.warn("Report download did not complete: report_id={}", reportId, interrupted);
             throw interrupted;
         }
+        log.info("Report download completed: report_id={} user_id={} bytes={}",
+                reportId, CurrentUser.id(jwt), transferred);
     }
 
     @Operation(summary = "Delete a report or cancel its generation",

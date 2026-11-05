@@ -85,6 +85,8 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
             return reports.save(Report.startUpload(UUID.randomUUID(), command.projectId(), command.userId(), name,
                     lease, now));
         });
+        log.info("Report upload started: report_id={} project_id={} user_id={} format={} declared_bytes={}",
+                report.id(), command.projectId(), command.userId(), format, command.declaredSize());
         try {
             var inspected = ContentInspector.of(command.content(), format);
             var measured = new MeasuredInputStream(inspected, limits.maxFileSize());
@@ -104,11 +106,17 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
                 cleanup.purge(published);
                 throw projectGone(report.projectId());
             }
+            log.info("Report upload completed: report_id={} project_id={} bytes={}",
+                    published.id(), published.projectId(), published.sizeBytes());
             return published;
         } catch (ContentRejectedException rejected) {
+            log.warn("Report upload rejected: report_id={} project_id={} reason={}",
+                    report.id(), report.projectId(), rejected.getClass().getSimpleName());
             discard(report);
             throw rejected;
         } catch (ObjectStorageUnavailableException | StaleAttemptException error) {
+            log.warn("Report upload failed: report_id={} project_id={} error_type={}",
+                    report.id(), report.projectId(), error.getClass().getSimpleName());
             fail(report, lease);
             throw new ReportUnavailableException("The file could not be stored, try again later", error);
         }
@@ -163,6 +171,8 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
             var current = reports.lockById(reportId).orElseThrow(() -> notFound(reportId));
             if (current.markDeleting(clock.instant())) reports.save(current);
         });
+        log.info("Report deletion requested: report_id={} project_id={} user_id={}",
+                report.id(), report.projectId(), userId);
         cleanup.purge(report);
     }
 

@@ -95,6 +95,8 @@ public class GenerationWorker {
         var claimed = queue.claimNext(lease, now);
         if (claimed.isEmpty()) return false;
         var attempt = new Attempt(claimed.get(), lease, now.plus(limits.attemptTimeout()));
+        log.info("Report generation started: report_id={} project_id={} format={} attempt={}",
+                attempt.report.id(), attempt.report.projectId(), attempt.report.format(), attempt.report.attempts());
         var task = new java.util.concurrent.FutureTask<Void>(() -> { run(attempt); return null; });
         Thread attemptThread = Thread.ofVirtual().name("report-attempt-" + attempt.report.id()).start(task);
         try {
@@ -160,11 +162,16 @@ public class GenerationWorker {
         try (var heartbeat = new Heartbeat(attempt)) {
             requireAuthor(report);
             var aggregation = collect(attempt);
+            log.info("Report source data collected: report_id={} project_id={} monitors={}",
+                    report.id(), report.projectId(), aggregation.monitorCount());
             try (var file = workspace.create(report.id(), report.format())) {
                 render(report, aggregation, file);
+                log.debug("Report rendering completed: report_id={} format={}", report.id(), report.format());
                 requireAuthor(report);
                 checkpoint(attempt);
                 var measured = upload(report, file);
+                log.debug("Report object uploaded: report_id={} project_id={} bytes={}",
+                        report.id(), report.projectId(), measured.size());
                 checkpoint(attempt);
                 requireAuthor(report);
                 publish(attempt, measured);
@@ -285,6 +292,8 @@ public class GenerationWorker {
             attempt.completed = true;
         }
         if (!ready) cleanup.purge(report);
+        else log.info("Report generation completed: report_id={} project_id={} format={} bytes={}",
+                report.id(), report.projectId(), report.format(), measured.size());
     }
 
     /** Ends the attempt: the time limit, then the lease, which is renewed once half of it is used. */

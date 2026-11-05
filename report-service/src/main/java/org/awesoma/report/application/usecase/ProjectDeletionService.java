@@ -6,6 +6,8 @@ import org.awesoma.report.application.port.EventInbox;
 import org.awesoma.report.application.port.ProjectGuard;
 import org.awesoma.report.application.port.ReportRepository;
 import org.awesoma.report.application.port.TransactionRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Reacts to a deleted project, whether the event came over Kafka or HTTP. In one transaction
@@ -15,6 +17,7 @@ import org.awesoma.report.application.port.TransactionRunner;
  * by the background cleanup. A repeated event finds its ID in the inbox and changes nothing.
  */
 public class ProjectDeletionService {
+    private static final Logger log = LoggerFactory.getLogger(ProjectDeletionService.class);
     private final ReportRepository reports;
     private final ProjectGuard projects;
     private final EventInbox inbox;
@@ -32,7 +35,7 @@ public class ProjectDeletionService {
 
     /** @return how many reports were moved to DELETING; 0 for a repeated event */
     public int projectDeleted(UUID eventId, long projectId) {
-        return transactions.inTransaction(() -> {
+        int marked = transactions.inTransaction(() -> {
             if (!inbox.record(eventId)) return 0;
             projects.lock(projectId);
             projects.markDeleted(projectId);
@@ -45,6 +48,8 @@ public class ProjectDeletionService {
             }
             return deleting;
         });
+        log.info("Project deletion event handled: event_id={} project_id={} reports_marked={}", eventId, projectId, marked);
+        return marked;
     }
 
     /** A deleted monitor needs nothing here: reports of its project stay as they are. */

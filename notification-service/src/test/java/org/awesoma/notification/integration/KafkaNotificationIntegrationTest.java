@@ -8,6 +8,11 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
+import org.slf4j.LoggerFactory;
 import org.awesoma.integration.IntegrationEvent;
 import org.awesoma.notification.domain.Channel;
 import org.awesoma.notification.domain.ChannelType;
@@ -61,6 +66,13 @@ class KafkaNotificationIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void malformedMessagesAndJsonNullGoToDeadLetterTopic() throws Exception {
+        var logger = (Logger) LoggerFactory.getLogger("org.awesoma.notification.config.KafkaConsumerErrors");
+        var messages = new CopyOnWriteArrayList<String>();
+        var appender = new AppenderBase<ILoggingEvent>() {
+            @Override protected void append(ILoggingEvent event) { messages.add(event.getFormattedMessage()); }
+        };
+        appender.start();
+        logger.addAppender(appender);
         var properties = KafkaTestUtils.consumerProps(UUID.randomUUID().toString(), "false", broker);
         var factory = new DefaultKafkaConsumerFactory<String, String>(properties,
                 new StringDeserializer(), new StringDeserializer());
@@ -72,6 +84,15 @@ class KafkaNotificationIntegrationTest extends AbstractIntegrationTest {
             kafka.send("incidents.events.v1", "null-json", "null").get();
             assertThat(KafkaTestUtils.getSingleRecord(consumer, "incidents.events.v1.dlt", Duration.ofSeconds(30)).value())
                     .isEqualTo("null");
+            await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+                assertThat(messages.stream().filter(message -> message.contains("Kafka event sent to DLT")
+                        && message.contains("source_topic=incidents.events.v1")
+                        && message.contains("dlt_topic=incidents.events.v1.dlt"))).hasSize(2);
+                assertThat(messages).noneMatch(message -> message.contains("{bad"));
+            });
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
         }
     }
 }

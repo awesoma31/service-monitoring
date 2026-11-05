@@ -46,7 +46,7 @@ public class ReportCleanup {
      */
     public boolean purge(Report report) {
         if (!removeObjects(report)) return false;
-        return transactions.inTransaction(() -> reports.lockById(report.id())
+        boolean purged = transactions.inTransaction(() -> reports.lockById(report.id())
                 .filter(current -> current.status() == ReportStatus.DELETING)
                 .map(current -> {
                     reports.delete(current.id());
@@ -54,6 +54,8 @@ public class ReportCleanup {
                     return true;
                 })
                 .orElse(false));
+        if (purged) log.info("Report cleanup completed: report_id={} project_id={}", report.id(), report.projectId());
+        return purged;
     }
 
     /** Removes one object, such as that of an attempt that will not be published. */
