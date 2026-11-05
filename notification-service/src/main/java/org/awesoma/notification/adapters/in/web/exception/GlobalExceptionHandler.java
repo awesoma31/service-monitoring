@@ -1,4 +1,4 @@
-package org.awesoma.notification.web.exception;
+package org.awesoma.notification.adapters.in.web.exception;
 
 import org.awesoma.notification.application.exception.NotFoundException;
 import org.awesoma.notification.application.exception.ConflictStateException;

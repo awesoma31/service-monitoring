@@ -1,4 +1,4 @@
-package org.awesoma.notification.web.dto;
+package org.awesoma.notification.adapters.in.web.dto;
 
 import java.time.OffsetDateTime;
 import org.awesoma.notification.domain.ChannelType;

@@ -1,4 +1,4 @@
-package org.awesoma.notification.web;
+package org.awesoma.notification.adapters.in.web;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.notification.application.usecase.ChannelService;
 import org.awesoma.notification.application.usecase.NotificationService;
-import org.awesoma.notification.web.dto.IncidentEvent;
+import org.awesoma.notification.adapters.in.web.dto.IncidentEvent;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;

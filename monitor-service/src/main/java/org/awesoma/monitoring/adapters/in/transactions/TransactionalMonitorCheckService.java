@@ -8,28 +8,34 @@ import org.awesoma.monitoring.application.port.IncidentRepositoryPort;
 
 
 import org.awesoma.monitoring.application.usecase.MonitorCheckService;
+
 import java.time.OffsetDateTime;
 import java.util.List;
+
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
+
 @Component
 public class TransactionalMonitorCheckService extends MonitorCheckService {
-    public TransactionalMonitorCheckService(MonitorRepositoryPort monitors,IncidentRepositoryPort incidents,DomainEvents events) {
-        super(monitors,incidents,events);
+    public TransactionalMonitorCheckService(MonitorRepositoryPort monitors, IncidentRepositoryPort incidents, DomainEvents events) {
+        super(monitors, incidents, events);
     }
+
     @Override
     @Transactional
-    public List<MonitorTarget> claimDueTargets(int limit,int concurrency) {
-        return super.claimDueTargets(limit,concurrency);
+    public List<MonitorTarget> claimDueTargets(int limit, int concurrency) {
+        return super.claimDueTargets(limit, concurrency);
     }
+
     @Override
     @Transactional
-    public void record(Long id,ProbeOutcome outcome) {
-        super.record(id,outcome);
+    public void record(Long id, ProbeOutcome outcome) {
+        super.record(id, outcome);
     }
+
     @Override
     @Transactional
-    public void record(Long id,ProbeOutcome outcome,OffsetDateTime at) {
-        super.record(id,outcome,at);
+    public void record(Long id, ProbeOutcome outcome, OffsetDateTime at) {
+        super.record(id, outcome, at);
     }
 }

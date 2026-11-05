@@ -5,11 +5,7 @@ import java.io.OutputStream;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.awesoma.report.application.content.ContentTooLargeException;
@@ -99,7 +95,6 @@ public class GenerationWorker {
         var claimed = queue.claimNext(lease, now);
         if (claimed.isEmpty()) return false;
         var attempt = new Attempt(claimed.get(), lease, now.plus(limits.attemptTimeout()));
-        // Isolate the heartbeat's cooperative interrupt from the scheduler's own thread.
         var task = new java.util.concurrent.FutureTask<Void>(() -> { run(attempt); return null; });
         Thread attemptThread = Thread.ofVirtual().name("report-attempt-" + attempt.report.id()).start(task);
         try {
@@ -107,9 +102,6 @@ public class GenerationWorker {
         } catch (InterruptedException interrupted) {
             synchronized (attempt) { attempt.cancelled = true; }
             task.cancel(true);
-            // FutureTask.cancel marks the future done before its body unwinds. Keep the
-            // scheduler slot until the actual attempt has stopped and cleaned its heartbeat
-            // and temporary file; don't wait while holding the attempt lock.
             while (attemptThread.isAlive()) {
                 try { attemptThread.join(); }
                 catch (InterruptedException again) { attemptThread.interrupt(); }
@@ -128,7 +120,7 @@ public class GenerationWorker {
     public int recoverExpired(int limit) {
         int recovered = 0;
         for (UUID id : queue.expiredUploads(clock.instant(), limit)) {
-            String abandoned = transactions.inTransaction(() -> reports.lockById(id)
+            String abandoned = transactions.inTransaction(() -> Objects.requireNonNull(reports.lockById(id)
                     .filter(current -> current.status() == ReportStatus.UPLOADING && current.lease() != null
                             && !current.lease().heldAt(clock.instant()))
                     .map(current -> {
@@ -136,14 +128,14 @@ public class GenerationWorker {
                         current.failUpload(current.lease().token(), clock.instant());
                         reports.save(current);
                         return key;
-                    }).orElse(null));
+                    }).orElse(null)));
             if (abandoned != null) {
                 cleanup.removeObject(abandoned);
                 recovered++;
             }
         }
         for (UUID id : queue.expiredLeases(clock.instant(), limit)) {
-            String abandoned = transactions.inTransaction(() -> reports.lockById(id)
+            String abandoned = transactions.inTransaction(() -> Objects.requireNonNull(reports.lockById(id)
                     .filter(current -> current.status() == ReportStatus.GENERATING && current.lease() != null
                             && !current.lease().heldAt(clock.instant()))
                     .map(current -> {
@@ -153,7 +145,7 @@ public class GenerationWorker {
                         reports.save(current);
                         return key;
                     })
-                    .orElse(null));
+                    .orElse(null)));
             if (abandoned != null) {
                 log.warn("Generation lease expired, job recovered: report_id={}", id);
                 cleanup.removeObject(abandoned);

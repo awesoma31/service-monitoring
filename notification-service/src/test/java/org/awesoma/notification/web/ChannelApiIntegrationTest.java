@@ -5,13 +5,11 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.concurrent.atomic.AtomicLong;
 import org.awesoma.notification.support.AbstractIntegrationTest;
-import org.awesoma.notification.web.dto.ChannelResponse;
-import org.awesoma.notification.web.exception.ServiceUnavailableException;
+import org.awesoma.notification.adapters.in.web.dto.ChannelResponse;
+import org.awesoma.notification.adapters.in.web.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.reactive.server.WebTestClient;
 
 class ChannelApiIntegrationTest extends AbstractIntegrationTest {
 

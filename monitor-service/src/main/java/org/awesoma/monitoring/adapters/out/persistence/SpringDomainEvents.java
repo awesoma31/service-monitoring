@@ -11,16 +11,21 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class SpringDomainEvents implements DomainEvents {
     private final ApplicationEventPublisher publisher;
+
     public void publish(Object event) {
         publisher.publishEvent(event);
     }
+
     public void afterCommit(Runnable action) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) { action.run();
-    return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-    @Override public void afterCommit() { action.run();
-    }
-    });
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 }

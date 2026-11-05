@@ -1,4 +1,4 @@
-package org.awesoma.notification.web.dto;
+package org.awesoma.notification.adapters.in.web.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

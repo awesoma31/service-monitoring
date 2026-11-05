@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.awesoma.monitoring.application.port.UserDirectoryPort;
 import org.awesoma.monitoring.integration.UserClient;
 import org.awesoma.monitoring.application.exception.NotFoundException;
 import org.awesoma.monitoring.application.model.UserProfile;
@@ -15,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
-public class UserDirectory implements org.awesoma.monitoring.application.port.UserDirectoryPort {
+public class UserDirectory implements UserDirectoryPort {
     private final UserClient client;
 
     public UserSecurity security(Long id) { var user = client.security(id); return new UserSecurity(user.id(), user.role(), user.status()); }

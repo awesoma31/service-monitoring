@@ -1,4 +1,4 @@
-package org.awesoma.notification.web;
+package org.awesoma.notification.adapters.in.web;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -8,10 +8,10 @@ import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.notification.application.usecase.ChannelService;
-import org.awesoma.notification.web.dto.ChannelCreateRequest;
-import org.awesoma.notification.web.dto.ChannelResponse;
-import org.awesoma.notification.web.dto.ChannelUpdateRequest;
-import org.awesoma.notification.web.dto.PageParams;
+import org.awesoma.notification.adapters.in.web.dto.ChannelCreateRequest;
+import org.awesoma.notification.adapters.in.web.dto.ChannelResponse;
+import org.awesoma.notification.adapters.in.web.dto.ChannelUpdateRequest;
+import org.awesoma.notification.adapters.in.web.dto.PageParams;
 import org.awesoma.security.access.RemoteAccess;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;

@@ -1,4 +1,4 @@
-package org.awesoma.notification.web.exception;
+package org.awesoma.notification.adapters.in.web.exception;
 
 /** A service this one depends on cannot answer right now; reported to the client as 503. */
 public class ServiceUnavailableException extends RuntimeException {

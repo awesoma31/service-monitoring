@@ -1,4 +1,4 @@
-package org.awesoma.notification.web;
+package org.awesoma.notification.adapters.in.web;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -7,8 +7,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.awesoma.notification.application.usecase.NotificationService;
-import org.awesoma.notification.web.dto.NotificationResponse;
-import org.awesoma.notification.web.dto.PageParams;
+import org.awesoma.notification.adapters.in.web.dto.NotificationResponse;
+import org.awesoma.notification.adapters.in.web.dto.PageParams;
 import org.awesoma.security.access.RemoteAccess;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;

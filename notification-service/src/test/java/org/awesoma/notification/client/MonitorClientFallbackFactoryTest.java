@@ -2,7 +2,7 @@ package org.awesoma.notification.client;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.awesoma.notification.web.exception.ServiceUnavailableException;
+import org.awesoma.notification.adapters.in.web.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 
 class MonitorClientFallbackFactoryTest {

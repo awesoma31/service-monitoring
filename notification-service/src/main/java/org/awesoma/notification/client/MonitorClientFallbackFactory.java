@@ -1,7 +1,7 @@
 package org.awesoma.notification.client;
 
 import lombok.extern.slf4j.Slf4j;
-import org.awesoma.notification.web.exception.ServiceUnavailableException;
+import org.awesoma.notification.adapters.in.web.exception.ServiceUnavailableException;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 
