@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-reports
+      author: awesoma31
+      comment: >-
+        Report metadata and generation jobs; file contents live in MinIO. Project and user IDs
+        belong to other services, so they have no foreign keys.
+      changes:
+        - sql:
+            sql: >-
+              CREATE TABLE reports (
+                id UUID PRIMARY KEY,
+                project_id BIGINT NOT NULL,
+                created_by BIGINT NOT NULL,
+                source VARCHAR(16) NOT NULL,
+                format VARCHAR(8) NOT NULL,
+                file_name VARCHAR(255) NOT NULL,
+                status VARCHAR(16) NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL,
+                object_key VARCHAR(255),
+                size_bytes BIGINT,
+                sha256 VARCHAR(64),
+                failure_code VARCHAR(32),
+                period_from TIMESTAMPTZ,
+                period_to TIMESTAMPTZ,
+                all_monitors BOOLEAN,
+                monitor_ids BIGINT[],
+                requested_at TIMESTAMPTZ,
+                generated_at TIMESTAMPTZ,
+                lease_attempt_id UUID,
+                lease_token UUID,
+                lease_until TIMESTAMPTZ,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                next_attempt_at TIMESTAMPTZ,
+                bounds_observed_at TIMESTAMPTZ,
+                checks_upper_id BIGINT,
+                incidents_upper_id BIGINT,
+                CONSTRAINT ck_reports_source CHECK (source IN ('UPLOADED', 'GENERATED')),
+                CONSTRAINT ck_reports_format CHECK (format IN ('CSV', 'PDF')),
+                CONSTRAINT ck_reports_status CHECK (status IN
+                  ('UPLOADING', 'QUEUED', 'GENERATING', 'READY', 'FAILED', 'DELETING')),
+                CONSTRAINT ck_reports_generation CHECK ((source = 'GENERATED') = (period_from IS NOT NULL
+                  AND period_to IS NOT NULL AND all_monitors IS NOT NULL AND requested_at IS NOT NULL)),
+                CONSTRAINT ck_reports_ready CHECK (status <> 'READY' OR (object_key IS NOT NULL
+                  AND size_bytes > 0 AND sha256 IS NOT NULL)),
+                CONSTRAINT ck_reports_lease CHECK ((lease_token IS NULL) = (lease_until IS NULL)
+                  AND (lease_token IS NULL) = (lease_attempt_id IS NULL)),
+                CONSTRAINT ck_reports_attempts CHECK (attempts >= 0)
+              );
+              CREATE INDEX idx_reports_project_list ON reports (project_id, created_at DESC, id DESC)
+                WHERE status <> 'DELETING';
+              CREATE INDEX idx_reports_queued ON reports (next_attempt_at NULLS FIRST, created_at)
+                WHERE status = 'QUEUED';
+              CREATE INDEX idx_reports_leased ON reports (lease_until) WHERE lease_until IS NOT NULL;
+              CREATE INDEX idx_reports_deleting ON reports (updated_at) WHERE status = 'DELETING';
+      rollback:
+        - sql:
+            sql: DROP TABLE reports;

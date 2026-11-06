@@ -1,5 +1,6 @@
 package org.awesoma.check.service;
 
+import org.awesoma.check.application.usecase.CheckRunner;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -8,32 +9,28 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.UUID;
-import org.awesoma.check.client.ReactiveMonitorClient;
-import org.awesoma.check.domain.CheckResult;
+import org.awesoma.check.application.port.MonitorDirectory;
+import org.awesoma.check.application.port.CheckResultRecorder;
 import org.awesoma.check.domain.HttpMethod;
 import org.awesoma.check.domain.MonitorTarget;
 import org.awesoma.check.domain.ProbeOutcome;
-import org.awesoma.check.probe.MonitorProbe;
-import org.awesoma.check.repository.CheckResultRepository;
+import org.awesoma.check.application.port.MonitorProbe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-import org.mockito.Mockito;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class CheckRunnerTest {
 
-    private final ReactiveMonitorClient monitors = mock(ReactiveMonitorClient.class);
+    private final MonitorDirectory monitors = mock(MonitorDirectory.class);
     private final MonitorProbe probe = mock(MonitorProbe.class);
-    private final CheckResultRepository results = mock(CheckResultRepository.class);
+    private final CheckResultRecorder results = mock(CheckResultRecorder.class);
     private final CheckRunner runner = new CheckRunner(monitors, probe, results, 10, 4);
 
     @BeforeEach
     void storeWhateverIsSaved() {
-        when(results.save(any())).thenAnswer(call -> Mono.just(call.getArgument(0, CheckResult.class)));
-        when(monitors.report(any(), any())).thenReturn(Mono.empty());
+        when(results.record(any(), any(), any())).thenReturn(Mono.empty());
     }
 
     @Test
@@ -45,9 +42,7 @@ class CheckRunnerTest {
 
         StepVerifier.create(runner.runOnce()).verifyComplete();
 
-        InOrder order = Mockito.inOrder(results, monitors);
-        order.verify(results).save(any());
-        order.verify(monitors).report(1L, outcome.forClaim(target.claimToken()));
+        verify(results).record(eq(1L), eq(outcome.forClaim(target.claimToken())), any());
     }
 
     @Test
@@ -60,8 +55,8 @@ class CheckRunnerTest {
 
         StepVerifier.create(runner.runOnce()).verifyComplete();
 
-        verify(monitors).report(eq(2L), any());
-        verify(monitors, never()).report(eq(1L), any());
+        verify(results).record(eq(2L), any(), any());
+        verify(results, never()).record(eq(1L), any(), any());
     }
 
     @Test
@@ -71,7 +66,7 @@ class CheckRunnerTest {
         StepVerifier.create(runner.runOnce()).verifyComplete();
 
         verify(probe, never()).probe(any());
-        verify(results, never()).save(any());
+        verify(results, never()).record(any(), any(), any());
     }
 
     private MonitorTarget target(Long id) {

@@ -54,6 +54,34 @@ class GatewayRoutingTest {
                 .expectStatus().isEqualTo(503)
                 .expectBody().jsonPath("$.detail")
                 .isEqualTo("notification-service is temporarily unavailable, try again later");
+        String report = "/api/v1/reports/7b0c1a0e-6c1f-4f1e-9d55-2b9f6e3c1a10";
+        for (String path : List.of("/api/v1/projects/1/reports", report, report + "/content")) {
+            http.get().uri(path).exchange()
+                    .expectStatus().isEqualTo(503)
+                    .expectBody().jsonPath("$.detail")
+                    .isEqualTo("report-service is temporarily unavailable, try again later");
+        }
+    }
+
+    @Test
+    void anOversizedReportUploadIsRejectedBeforeRouting() {
+        byte[] body = new byte[12 * 1024 * 1024 + 1];
+
+        http.post().uri("/api/v1/projects/1/reports")
+                .header("Content-Type", "multipart/form-data; boundary=x")
+                .bodyValue(body)
+                .exchange()
+                .expectStatus().isEqualTo(413);
+    }
+
+    @Test
+    void aViewerCannotUploadOrDeleteReports() {
+        String viewer = tokens.issue("1", "VIEWER").getTokenValue();
+        http.post().uri("/api/v1/projects/1/reports").headers(headers -> headers.setBearerAuth(viewer))
+                .exchange().expectStatus().isForbidden();
+        http.delete().uri("/api/v1/reports/7b0c1a0e-6c1f-4f1e-9d55-2b9f6e3c1a10")
+                .headers(headers -> headers.setBearerAuth(viewer))
+                .exchange().expectStatus().isForbidden();
     }
 
     @Test
@@ -66,9 +94,9 @@ class GatewayRoutingTest {
         routes.forEach(route -> ids.add(route.get("route_id").asText()));
         assertThat(ids).last().isEqualTo("monitor-service");
         assertThat(ids).contains(
-                "check-service", "notification-service",
+                "check-service", "notification-service", "report-service",
                 "monitor-service-api-docs", "check-service-api-docs", "notification-service-api-docs",
-                        "user-service-api-docs", "user-service");
+                        "user-service-api-docs", "user-service", "report-service-api-docs");
     }
 
     @Test
@@ -78,7 +106,8 @@ class GatewayRoutingTest {
                 .expectBody()
                 .jsonPath("$.urls[*].name")
                 .value(names -> assertThat(names.toString())
-                        .contains("monitor-service", "check-service", "notification-service", "user-service"))
+                        .contains("monitor-service", "check-service", "notification-service", "user-service",
+                                "report-service"))
                 .jsonPath("$.urls[?(@.name == 'monitor-service')].url")
                 .isEqualTo(List.of("/v3/api-docs/monitor-service"));
 

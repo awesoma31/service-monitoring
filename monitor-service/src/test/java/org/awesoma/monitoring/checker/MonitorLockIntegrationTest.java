@@ -1,9 +1,6 @@
 package org.awesoma.monitoring.checker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
@@ -16,15 +13,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.awesoma.monitoring.domain.entity.Monitor;
-import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Monitor;
+import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
 import org.awesoma.monitoring.domain.enums.IncidentStatus;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.integration.IncidentChanged;
-import org.awesoma.monitoring.repository.IncidentRepository;
-import org.awesoma.monitoring.repository.MonitorRepository;
-import org.awesoma.monitoring.service.MonitorCheckService;
+import org.awesoma.monitoring.adapters.out.persistence.repository.IncidentRepository;
+import org.awesoma.monitoring.adapters.out.persistence.repository.MonitorRepository;
+import org.awesoma.monitoring.application.usecase.MonitorCheckService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The row lock taken by {@link MonitorCheckService#record} against a real database.
@@ -47,6 +44,7 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
     @Autowired private IncidentRepository incidents;
     @Autowired private TransactionTemplate transactions;
     @Autowired private EntityManager entityManager;
+    @Autowired private JdbcTemplate jdbc;
 
     private final ExecutorService workers = Executors.newFixedThreadPool(8);
     private Long monitorId;
@@ -73,7 +71,8 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
             monitor.setIntervalSec(60);
             monitor.setTimeoutMs(5000);
             claimToken = UUID.randomUUID();
-            monitor.claimForCheck(claimToken, OffsetDateTime.now().plusMinutes(5));
+            monitor.setCheckClaimToken(claimToken);
+            monitor.setCheckClaimedUntil(OffsetDateTime.now().plusMinutes(5));
             entityManager.persist(monitor);
 
             ownerId = owner;
@@ -147,8 +146,9 @@ class MonitorLockIntegrationTest extends AbstractIntegrationTest {
                 .satisfies(incident -> assertThat(incident.getStatus()).isEqualTo(IncidentStatus.OPEN));
         assertThat(monitors.findById(monitorId).orElseThrow().getCurrentState())
                 .isEqualTo(MonitorState.DOWN);
-        verify(notificationClient, times(1)).incidentChanged(
-                argThat(event -> event.kind() == IncidentChanged.Kind.OPENED));
+        Long incidentId = incidents.findByMonitorId(monitorId, Pageable.unpaged()).getContent().getFirst().getId();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM integration_outbox WHERE payload::jsonb ->> 'incident_id' = ?",
+                Integer.class, incidentId.toString())).isEqualTo(1);
     }
 
     private static boolean finishesWithin(Future<?> future, long millis) throws Exception {

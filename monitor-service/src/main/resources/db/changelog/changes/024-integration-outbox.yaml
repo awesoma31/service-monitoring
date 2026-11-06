@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-integration-outbox
+      author: codex
+      changes:
+        - sql:
+            sql: >-
+              CREATE TABLE integration_outbox (
+                id BIGSERIAL PRIMARY KEY,
+                event_id UUID NOT NULL UNIQUE,
+                flow VARCHAR(32) NOT NULL,
+                transport VARCHAR(8) NOT NULL,
+                payload TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+              CREATE INDEX idx_integration_outbox_flow ON integration_outbox (flow, id);
+              CREATE TABLE integration_inbox (
+                event_id UUID PRIMARY KEY,
+                processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+      rollback:
+        - sql:
+            sql: DROP TABLE integration_inbox; DROP TABLE integration_outbox;

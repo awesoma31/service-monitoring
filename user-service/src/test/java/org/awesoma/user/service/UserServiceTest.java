@@ -3,95 +3,52 @@ package org.awesoma.user.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.util.Optional;
-import org.awesoma.user.domain.entity.User;
+import java.util.function.Supplier;
+import org.awesoma.user.application.exception.UserConflict;
+import org.awesoma.user.application.exception.UserNotFound;
+import org.awesoma.user.application.port.PasswordHasher;
+import org.awesoma.user.application.port.Transactions;
+import org.awesoma.user.application.port.UserStore;
+import org.awesoma.user.application.usecase.UserService;
+import org.awesoma.user.domain.User;
+import org.awesoma.user.domain.enums.UserRole;
 import org.awesoma.user.domain.enums.UserStatus;
-import org.awesoma.user.repository.UserRepository;
-import org.awesoma.user.web.dto.user.UserCreateRequest;
-import org.awesoma.user.web.dto.user.UserUpdateRequest;
-import org.awesoma.user.web.exception.ConflictStateException;
-import org.awesoma.user.web.exception.NotFoundException;
-import org.awesoma.user.web.mapper.UserMapper;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
-@ExtendWith(MockitoExtension.class)
 class UserServiceTest {
-
-    @Mock private UserRepository users;
-    @Mock private UserMapper mapper;
-    @Mock private PasswordEncoder passwords;
-    @InjectMocks private UserService service;
-
-    @Test
-    void rejectsAnEmailThatIsAlreadyTaken() {
-        when(users.existsByEmail("taken@example.com")).thenReturn(true);
-
-        assertThatThrownBy(() -> service.create(request("taken@example.com")))
-                .isInstanceOf(ConflictStateException.class)
-                .hasMessageContaining("taken@example.com");
-
-        verify(users, never()).save(any());
+    private final UserStore users=mock(UserStore.class);
+    private final PasswordHasher passwords=mock(PasswordHasher.class);
+    private final Transactions tx=new Transactions() {
+        public <T> T read(Supplier<T> work) { return work.get(); }
+        public <T> T write(Supplier<T> work) { return work.get(); }
+        public void afterCommit(Runnable work) { work.run(); }
+    };
+    private final UserService service=new UserService(users,passwords,tx);
+    private User account() { return new User(1L,"a@example.com","hash","Old",UserStatus.ACTIVE,UserRole.VIEWER,false); }
+    @Test void rejectsDuplicate() {
+        when(users.existsByEmail("a@example.com")).thenReturn(true);
+        assertThatThrownBy(() -> service.create("a@example.com","password","A",UserRole.VIEWER)).isInstanceOf(UserConflict.class);
+        verify(users,never()).save(any());
     }
-
-    @Test
-    void createSavesTheUserBuiltFromTheRequest() {
-        User mapped = new User();
-        when(users.existsByEmail("new@example.com")).thenReturn(false);
-        when(mapper.toEntity(any())).thenReturn(mapped);
-        when(users.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(passwords.encode("plaintext-password")).thenReturn("encoded-password");
-
-        service.create(request("new@example.com"));
-
-        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
-        verify(users).save(saved.capture());
-        assertThat(saved.getValue()).isSameAs(mapped);
-        assertThat(saved.getValue().getPassword()).isEqualTo("encoded-password");
+    @Test void hashesPasswordBeforeSaving() {
+        when(passwords.encode("password")).thenReturn("encoded");
+        when(users.save(any())).thenAnswer(call -> call.getArgument(0));
+        assertThat(service.create("a@example.com","password","A",UserRole.VIEWER).passwordHash()).isEqualTo("encoded");
     }
-
-    @Test
-    void reportsAMissingUserAsNotFound() {
-        when(users.findById(404L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.get(404L))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("404");
+    @Test void absentAndDeletedUsersAreNotFound() {
+        assertThatThrownBy(() -> service.get(404)).isInstanceOf(UserNotFound.class);
+        when(users.findById(1)).thenReturn(Optional.of(account().deactivate()));
+        assertThatThrownBy(() -> service.get(1)).isInstanceOf(UserNotFound.class);
     }
-
-    @Test
-    void updateAppliesTheNewNameAndStatus() {
-        User existing = new User();
-        existing.setFullName("Old Name");
-        when(users.findById(1L)).thenReturn(Optional.of(existing));
-
-        service.update(1L, new UserUpdateRequest("New Name", UserStatus.BLOCKED));
-
-        assertThat(existing.getFullName()).isEqualTo("New Name");
-        assertThat(existing.getStatus()).isEqualTo(UserStatus.BLOCKED);
-    }
-
-    @Test
-    void deleteRemovesAnExistingUser() {
-        User existing = new User();
-        when(users.findById(1L)).thenReturn(Optional.of(existing));
-
-        service.delete(1L);
-
-        assertThat(existing.isDeleted()).isTrue();
-        assertThat(existing.getStatus()).isEqualTo(UserStatus.INACTIVE);
-    }
-
-    private UserCreateRequest request(String email) {
-        return new UserCreateRequest(email, "plaintext-password", "Full Name");
+    @Test void updatesAndSoftDeleteAreExplicitlySaved() {
+        when(users.findById(1)).thenReturn(Optional.of(account()));
+        when(users.save(any())).thenAnswer(call -> call.getArgument(0));
+        assertThat(service.update(1,"New",UserStatus.BLOCKED).status()).isEqualTo(UserStatus.BLOCKED);
+        service.delete(1);
+        verify(users).save(account().deactivate());
+        assertThat(service.updateRole(1,UserRole.OPERATOR).role()).isEqualTo(UserRole.OPERATOR);
     }
 }

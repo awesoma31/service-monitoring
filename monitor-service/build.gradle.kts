@@ -8,7 +8,10 @@ val lombokMapstructBindingVersion = "0.2.0"
 val springdocVersion = "2.9.1"
 
 dependencies {
+    implementation(project(":integration-contracts"))
+    implementation("org.springframework.kafka:spring-kafka")
     implementation(project(":security-common"))
+    implementation(project(":config-updates"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -29,6 +32,7 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation(testFixtures(project(":security-common")))
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
@@ -53,7 +57,7 @@ val configRepo = rootProject.file("config-server/src/main/resources/config-repo"
 tasks.named<Test>("test") {
     systemProperty(
         "spring.config.import",
-        "optional:file:$configRepo/application.yml,optional:file:$configRepo/monitor-service.yml")
+        "optional:file:$configRepo/application.yml,optional:file:$configRepo/monitor-service/application.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
 }

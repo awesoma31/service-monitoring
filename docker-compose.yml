@@ -14,6 +14,14 @@ x-jwt-environment: &jwt-environment
   JWT_TTL: ${JWT_TTL:-PT15M}
   SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT5M}
 
+# Each flow has one shared setting for its sender and receiver(s).
+x-integration-environment: &integration-environment
+  CHECK_RESULTS_TRANSPORT: ${CHECK_RESULTS_TRANSPORT:-http}
+  INCIDENT_EVENTS_TRANSPORT: ${INCIDENT_EVENTS_TRANSPORT:-http}
+  RESOURCE_EVENTS_TRANSPORT: ${RESOURCE_EVENTS_TRANSPORT:-http}
+  REPORT_EVENTS_TRANSPORT: ${REPORT_EVENTS_TRANSPORT:-http}
+  KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka-1:9092,kafka-2:9092,kafka-3:9092}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -44,6 +52,38 @@ services:
     command: >-
       psql -h postgres -U ${POSTGRES_USER:-monitoring} -d ${POSTGRES_DB:-monitoring}
       -v ON_ERROR_STOP=1 -f /create-databases.sql
+
+  # Object storage for report files, a single server with its own volume. The official
+  # MinIO images are no longer published, so the community-maintained build is used.
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-local-dev-minio-root}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-dev-minio-root-password-replace-before-deployment}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the private report bucket and the limited account of report-service.
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-local-dev-minio-root}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-dev-minio-root-password-replace-before-deployment}
+      MINIO_BUCKET: ${MINIO_BUCKET:-reports}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-report-service}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-local-dev-report-storage-secret-replace-before-deployment}
+    volumes:
+      - ./docker/minio/init.sh:/init.sh:ro
+    entrypoint: [ "/bin/sh", "/init.sh" ]
 
   config-server:
     build:
@@ -84,9 +124,11 @@ services:
       MONITOR_SERVICE_CLIENT_SECRET: ${MONITOR_SERVICE_CLIENT_SECRET:-local-dev-monitor-client-secret-replace-before-deployment}
       CHECK_SERVICE_CLIENT_SECRET: ${CHECK_SERVICE_CLIENT_SECRET:-local-dev-check-client-secret-replace-before-deployment}
       NOTIFICATION_SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-local-dev-notification-client-secret-replace-before-deployment}
+      REPORT_SERVICE_CLIENT_SECRET: ${REPORT_SERVICE_CLIENT_SECRET:-local-dev-report-client-secret-replace-before-deployment}
       JWT_KEY_FILE: /app/keys/signing-key.json
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       EUREKA_URL: http://eureka-server:8761/eureka
       DB_URL: jdbc:postgresql://postgres:5432/user_db
       DB_USER: ${POSTGRES_USER:-monitoring}
@@ -113,10 +155,11 @@ services:
       user-service:
         condition: service_healthy
     environment:
-      <<: *jwt-environment
+      <<: [*jwt-environment, *integration-environment]
       SERVICE_CLIENT_SECRET: ${MONITOR_SERVICE_CLIENT_SECRET:-local-dev-monitor-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       EUREKA_URL: http://eureka-server:8761/eureka
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-monitoring}
       DB_USER: ${POSTGRES_USER:-monitoring}
@@ -141,10 +184,11 @@ services:
       user-service:
         condition: service_healthy
     environment:
-      <<: *jwt-environment
+      <<: [*jwt-environment, *integration-environment]
       SERVICE_CLIENT_SECRET: ${CHECK_SERVICE_CLIENT_SECRET:-local-dev-check-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       EUREKA_URL: http://eureka-server:8761/eureka
       DB_R2DBC_URL: r2dbc:postgresql://postgres:5432/check_db
       DB_JDBC_URL: jdbc:postgresql://postgres:5432/check_db
@@ -170,10 +214,11 @@ services:
       user-service:
         condition: service_healthy
     environment:
-      <<: *jwt-environment
+      <<: [*jwt-environment, *integration-environment]
       SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-local-dev-notification-client-secret-replace-before-deployment}
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       EUREKA_URL: http://eureka-server:8761/eureka
       DB_URL: jdbc:postgresql://postgres:5432/notification_db
       DB_USER: ${POSTGRES_USER:-monitoring}
@@ -210,6 +255,52 @@ services:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP" ]
       <<: *actuator-health
 
+  report-service:
+    build:
+      context: .
+      args:
+        MODULE: report-service
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    environment:
+      <<: [*jwt-environment, *integration-environment]
+      SERVICE_CLIENT_SECRET: ${REPORT_SERVICE_CLIENT_SECRET:-local-dev-report-client-secret-replace-before-deployment}
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_FAIL_FAST: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      EUREKA_URL: http://eureka-server:8761/eureka
+      DB_URL: jdbc:postgresql://postgres:5432/report_db
+      DB_USER: ${POSTGRES_USER:-monitoring}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-monitoring}
+      APP_PORT: 8080
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_BUCKET: ${MINIO_BUCKET:-reports}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-report-service}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-local-dev-report-storage-secret-replace-before-deployment}
+      REPORT_MAX_FILE_SIZE: ${REPORT_MAX_FILE_SIZE:-10MB}
+      REPORT_MAX_REQUEST_SIZE: ${REPORT_MAX_REQUEST_SIZE:-12MB}
+      REPORT_IDEMPOTENCY_TOMBSTONE_TTL: ${REPORT_IDEMPOTENCY_TOMBSTONE_TTL:-PT24H}
+      REPORT_GENERATION_MAX_PERIOD_DAYS: ${REPORT_GENERATION_MAX_PERIOD_DAYS:-31}
+      REPORT_GENERATION_MAX_MONITORS: ${REPORT_GENERATION_MAX_MONITORS:-100}
+      REPORT_GENERATION_MAX_SOURCE_ROWS: ${REPORT_GENERATION_MAX_SOURCE_ROWS:-100000}
+      REPORT_GENERATION_TIMEOUT: ${REPORT_GENERATION_TIMEOUT:-PT5M}
+      REPORT_GENERATION_CONCURRENCY: ${REPORT_GENERATION_CONCURRENCY:-2}
+      REPORT_GENERATION_MAX_ATTEMPTS: ${REPORT_GENERATION_MAX_ATTEMPTS:-3}
+      REPORT_GENERATION_RETRY_DELAY: ${REPORT_GENERATION_RETRY_DELAY:-PT30S}
+      REPORT_GENERATION_LEASE_DURATION: ${REPORT_GENERATION_LEASE_DURATION:-PT1M}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP" ]
+      <<: *actuator-health
+
   gateway:
     build:
       context: .
@@ -228,12 +319,16 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
+      report-service:
+        condition: service_healthy
     environment:
       <<: *jwt-environment
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_FAIL_FAST: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       EUREKA_URL: http://eureka-server:8761/eureka
       GATEWAY_PORT: 8080
+      REPORT_MAX_REQUEST_SIZE: ${REPORT_MAX_REQUEST_SIZE:-12MB}
     ports:
       - "${APP_PORT:-8080}:8080"
     healthcheck:
@@ -243,3 +338,4 @@ services:
 volumes:
   postgres-data:
   user-signing-keys:
+  minio-data:

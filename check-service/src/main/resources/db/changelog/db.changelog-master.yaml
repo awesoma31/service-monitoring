@@ -2,3 +2,6 @@ databaseChangeLog:
   - include:
       file: changes/001-create-check-results.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/002-integration-outbox.yaml
+      relativeToChangelogFile: true

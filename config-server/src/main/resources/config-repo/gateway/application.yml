@@ -1,0 +1,147 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # X-Forwarded-* headers are added only for requests from a trusted address. Without
+          # them the services would advertise their own container address in their API docs,
+          # and "Try it out" in the shared Swagger UI could not reach them. Trusted here are
+          # loopback and private networks: the host through the published port and the compose
+          # network itself.
+          trusted-proxies: (127\.0\.0\.1|0:0:0:0:0:0:0:1|10\..*|172\.(1[6-9]|2[0-9]|3[01])\..*|192\.168\..*)
+          # More specific paths first: everything not claimed by another service goes to
+          # monitor-service.
+          routes:
+            - id: user-service-api-docs
+              uri: lb://user-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/user-service
+              filters:
+                - RewritePath=/v3/api-docs/user-service, /v3/api-docs
+            - id: user-service-jwks
+              uri: lb://user-service
+              order: 0
+              predicates:
+                - Path=/.well-known/jwks.json
+            - id: user-service
+              uri: lb://user-service
+              order: 0
+              predicates:
+                - Path=/api/v1/users,/api/v1/users/**,/api/v1/auth/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: user-service
+                    fallbackUri: forward:/fallback/user-service
+            # The API docs of every service, served under the gateway for the shared Swagger UI.
+            - id: monitor-service-api-docs
+              uri: lb://monitor-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/monitor-service
+              filters:
+                - RewritePath=/v3/api-docs/monitor-service, /v3/api-docs
+            - id: check-service-api-docs
+              uri: lb://check-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/check-service
+              filters:
+                - RewritePath=/v3/api-docs/check-service, /v3/api-docs
+            - id: notification-service-api-docs
+              uri: lb://notification-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/notification-service
+              filters:
+                - RewritePath=/v3/api-docs/notification-service, /v3/api-docs
+            - id: report-service-api-docs
+              uri: lb://report-service
+              order: 0
+              predicates:
+                - Path=/v3/api-docs/report-service
+              filters:
+                - RewritePath=/v3/api-docs/report-service, /v3/api-docs
+            # Report files pass through as streams. The size is checked here by Content-Length
+            # and again by report-service, which also counts the bytes of a chunked request.
+            - id: report-service
+              uri: lb://report-service
+              order: 0
+              predicates:
+                - Path=/api/v1/projects/*/reports,/api/v1/projects/*/reports/**,/api/v1/reports/**
+              filters:
+                - name: RequestSize
+                  args:
+                    maxSize: ${REPORT_MAX_REQUEST_SIZE:12MB}
+                - name: CircuitBreaker
+                  args:
+                    name: report-service
+                    fallbackUri: forward:/fallback/report-service
+            - id: check-service
+              uri: lb://check-service
+              order: 0
+              predicates:
+                - Path=/api/v1/monitors/*/results
+              filters:
+                # An unreachable service answers 503 at once instead of a raw load-balancer
+                # error, and a failing one is left alone while its circuit is open.
+                - name: CircuitBreaker
+                  args:
+                    name: check-service
+                    fallbackUri: forward:/fallback/check-service
+            - id: notification-service
+              uri: lb://notification-service
+              order: 0
+              predicates:
+                - Path=/api/v1/projects/*/channels,/api/v1/channels/**,/api/v1/incidents/*/notifications
+              filters:
+                # An unreachable service answers 503 at once instead of a raw load-balancer
+                # error, and a failing one is left alone while its circuit is open.
+                - name: CircuitBreaker
+                  args:
+                    name: notification-service
+                    fallbackUri: forward:/fallback/notification-service
+            - id: monitor-service
+              uri: lb://monitor-service
+              order: 100
+              predicates:
+                - Path=/api/v1/**
+              filters:
+                # An unreachable service answers 503 at once instead of a raw load-balancer
+                # error, and a failing one is left alone while its circuit is open.
+                - name: CircuitBreaker
+                  args:
+                    name: monitor-service
+                    fallbackUri: forward:/fallback/monitor-service
+
+# One Swagger UI for the whole API: each service's document, fetched through the routes above.
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: user-service
+        url: /v3/api-docs/user-service
+      - name: monitor-service
+        url: /v3/api-docs/monitor-service
+      - name: check-service
+        url: /v3/api-docs/check-service
+      - name: notification-service
+        url: /v3/api-docs/notification-service
+      - name: report-service
+        url: /v3/api-docs/report-service
+
+resilience4j:
+  timelimiter:
+    instances:
+      # Uploading or downloading a file of up to the size limit takes longer than an API call.
+      report-service:
+        timeout-duration: ${REPORT_TRANSFER_TIMEOUT:PT5M}
+
+config:
+  updates:
+    # A change of the shared file restarts everything; the services go one after another.
+    restart-delay: PT25S

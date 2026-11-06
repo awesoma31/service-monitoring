@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+server:
+  port: ${APP_PORT:8084}
+
+security:
+  jwt:
+    key-file: ${JWT_KEY_FILE:./keys/signing-key.json}
+  bootstrap:
+    email: ${SUPERVISOR_EMAIL:supervisor@example.com}
+    password: ${SUPERVISOR_PASSWORD:}
+  clients:
+    secrets:
+      monitor-service: ${MONITOR_SERVICE_CLIENT_SECRET:}
+      check-service: ${CHECK_SERVICE_CLIENT_SECRET:}
+      notification-service: ${NOTIFICATION_SERVICE_CLIENT_SECRET:}
+      report-service: ${REPORT_SERVICE_CLIENT_SECRET:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+config:
+  updates:
+    # A change of the shared file restarts everything; the services go one after another.
+    restart-delay: PT0S

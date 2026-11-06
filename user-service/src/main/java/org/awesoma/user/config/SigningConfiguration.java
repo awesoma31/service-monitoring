@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import org.awesoma.security.jwt.JwtProperties;
 import org.awesoma.security.jwt.JwtTokens;
 import org.awesoma.security.jwt.JwtValidation;
-import org.awesoma.user.security.SigningKeyStore;
+import org.awesoma.user.adapters.in.security.SigningKeyStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

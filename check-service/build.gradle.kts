@@ -6,7 +6,10 @@ plugins {
 val springdocVersion = "2.9.1"
 
 dependencies {
+    implementation(project(":integration-contracts"))
+    implementation("org.springframework.kafka:spring-kafka")
     implementation(project(":security-common"))
+    implementation(project(":config-updates"))
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -26,6 +29,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation(testFixtures(project(":security-common")))
     testImplementation("io.projectreactor:reactor-test")
@@ -48,7 +52,7 @@ val configRepo = rootProject.file("config-server/src/main/resources/config-repo"
 tasks.named<Test>("test") {
     systemProperty(
         "spring.config.import",
-        "optional:file:$configRepo/application.yml,optional:file:$configRepo/check-service.yml")
+        "optional:file:$configRepo/application.yml,optional:file:$configRepo/check-service/application.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
 }

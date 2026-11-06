@@ -15,7 +15,7 @@ import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
 import java.util.List;
 import java.util.Map;
-import org.awesoma.user.web.dto.common.ApiErrorResponse;
+import org.awesoma.user.adapters.in.web.dto.common.ApiErrorResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

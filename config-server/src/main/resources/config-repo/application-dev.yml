@@ -1,0 +1,4 @@
+# Added to every service started with SPRING_PROFILES_ACTIVE=dev.
+logging:
+  level:
+    org.awesoma: DEBUG

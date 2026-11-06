@@ -1,20 +1,15 @@
 package org.awesoma.monitoring.domain.model;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
-import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import org.awesoma.monitoring.domain.enums.CheckResultType;
 import org.awesoma.monitoring.domain.enums.Severity;
 
 public record ProbeOutcome(
-        @NotNull CheckResultType result,
-        @PositiveOrZero Integer responseMs,
-        @Min(100) @Max(599) Integer httpStatus,
-        @Size(max = 500) String errorMessage,
-        @NotNull UUID claimToken) {
+        CheckResultType result,
+        Integer responseMs,
+        Integer httpStatus,
+        String errorMessage,
+        UUID claimToken) {
 
     public static ProbeOutcome success(int responseMs, int httpStatus) {
         return new ProbeOutcome(CheckResultType.SUCCESS, responseMs, httpStatus, null, null);

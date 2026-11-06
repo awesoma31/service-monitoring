@@ -8,3 +8,9 @@ databaseChangeLog:
   - include:
       file: changes/003-add-notification-delivery.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/004-integration-inbox.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/005-add-report-notifications.yaml
+      relativeToChangelogFile: true

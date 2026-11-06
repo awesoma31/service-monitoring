@@ -1,5 +1,7 @@
 package org.awesoma.notification.service;
 
+import org.awesoma.notification.application.usecase.NotificationDeliveryService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -12,17 +14,17 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.awesoma.notification.config.DeliveryProperties;
-import org.awesoma.notification.delivery.DeliveryException;
-import org.awesoma.notification.delivery.EmailNotificationSender;
-import org.awesoma.notification.delivery.TelegramNotificationSender;
-import org.awesoma.notification.delivery.WebhookNotificationSender;
+import org.awesoma.notification.application.exception.DeliveryException;
+import org.awesoma.notification.adapters.out.delivery.EmailNotificationSender;
+import org.awesoma.notification.adapters.out.delivery.TelegramNotificationSender;
+import org.awesoma.notification.adapters.out.delivery.WebhookNotificationSender;
 import org.awesoma.notification.domain.Channel;
 import org.awesoma.notification.domain.ChannelType;
 import org.awesoma.notification.domain.IncidentKind;
 import org.awesoma.notification.domain.Notification;
 import org.awesoma.notification.domain.NotificationStatus;
-import org.awesoma.notification.repository.ChannelRepository;
-import org.awesoma.notification.repository.NotificationRepository;
+import org.awesoma.notification.adapters.out.persistence.repository.ChannelRepository;
+import org.awesoma.notification.adapters.out.persistence.repository.NotificationRepository;
 import org.awesoma.notification.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

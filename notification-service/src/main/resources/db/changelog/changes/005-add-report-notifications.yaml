@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-add-report-notifications
+      author: awesoma31
+      comment: A notification is about either an incident or an uploaded report.
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE notifications ALTER COLUMN incident_id DROP NOT NULL;
+              ALTER TABLE notifications ALTER COLUMN incident_kind DROP NOT NULL;
+              ALTER TABLE notifications ADD COLUMN report_id UUID;
+              ALTER TABLE notifications ADD CONSTRAINT ck_notifications_subject CHECK (
+                (incident_id IS NOT NULL AND incident_kind IS NOT NULL AND report_id IS NULL)
+                OR (incident_id IS NULL AND incident_kind IS NULL AND report_id IS NOT NULL));
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM notifications WHERE report_id IS NOT NULL;
+              ALTER TABLE notifications DROP CONSTRAINT ck_notifications_subject;
+              ALTER TABLE notifications DROP COLUMN report_id;
+              ALTER TABLE notifications ALTER COLUMN incident_kind SET NOT NULL;
+              ALTER TABLE notifications ALTER COLUMN incident_id SET NOT NULL;

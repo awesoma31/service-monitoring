@@ -6,9 +6,11 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.util.UUID;
-import org.awesoma.user.repository.UserRepository;
+import org.awesoma.user.adapters.out.persistence.repository.UserRepository;
+import org.awesoma.user.application.usecase.UserService;
+import org.awesoma.user.domain.enums.UserRole;
 import org.awesoma.user.support.AbstractIntegrationTest;
-import org.awesoma.user.web.dto.user.UserCreateRequest;
+import org.awesoma.user.adapters.in.web.dto.user.UserCreateRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +45,7 @@ class UserLoggingIntegrationTest extends AbstractIntegrationTest {
         String email = UUID.randomUUID() + "@example.com";
         try {
             Long userId = new TransactionTemplate(transactionManager).execute(status -> {
-                var created = users.create(new UserCreateRequest(email, "private-password", "Private Name"));
+                var created = users.create(email, "private-password", "Private Name", UserRole.VIEWER);
                 assertThat(logs.list).isEmpty();
                 return created.id();
             });
@@ -62,7 +64,7 @@ class UserLoggingIntegrationTest extends AbstractIntegrationTest {
     void aRolledBackUserChangeDoesNotProduceASuccessLog() {
         String email = UUID.randomUUID() + "@example.com";
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            users.create(new UserCreateRequest(email, "private-password", "Private Name"));
+            users.create(email, "private-password", "Private Name", UserRole.VIEWER);
             status.setRollbackOnly();
         });
 

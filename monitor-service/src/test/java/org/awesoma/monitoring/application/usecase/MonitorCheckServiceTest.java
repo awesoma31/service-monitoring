@@ -1,0 +1,224 @@
+package org.awesoma.monitoring.application.usecase;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.awesoma.monitoring.domain.entity.Incident;
+import org.awesoma.monitoring.domain.entity.Monitor;
+import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.domain.enums.IncidentStatus;
+import org.awesoma.monitoring.domain.enums.MonitorState;
+import org.awesoma.monitoring.domain.enums.Severity;
+import org.awesoma.monitoring.domain.model.ProbeOutcome;
+import org.awesoma.monitoring.application.port.IncidentRepositoryPort;
+import org.awesoma.monitoring.application.port.MonitorRepositoryPort;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.awesoma.monitoring.application.event.IncidentChanged;
+import org.awesoma.monitoring.application.port.DomainEvents;
+
+@ExtendWith(MockitoExtension.class)
+class MonitorCheckServiceTest {
+
+    @Mock private MonitorRepositoryPort monitors;
+    @Mock private IncidentRepositoryPort incidents;
+    @Mock private DomainEvents events;
+    @InjectMocks private MonitorCheckService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void saveReturnsThePersistedIncident() { org.mockito.Mockito.lenient().when(incidents.save(any())).thenAnswer(call -> call.getArgument(0)); }
+
+    @Test
+    void aFailureOnAHealthyMonitorOpensAnIncidentAndAnnouncesIt() {
+        Monitor monitor = monitor(MonitorState.UP);
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+
+        service.record(1L, claimed(monitor, ProbeOutcome.timeout(5000, "read timed out")));
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
+        assertThat(monitor.getLastCheckedAt()).isNotNull();
+
+        ArgumentCaptor<Incident> opened = ArgumentCaptor.forClass(Incident.class);
+        verify(incidents).save(opened.capture());
+        assertThat(opened.getValue().getSeverity()).isEqualTo(Severity.HIGH);
+        assertThat(opened.getValue().getCause()).isEqualTo("read timed out");
+        assertThat(opened.getValue().getStatus()).isEqualTo(IncidentStatus.OPEN);
+
+        verify(events).publish(new IncidentChanged(null, 7L, IncidentChanged.Kind.OPENED));
+    }
+
+    @Test
+    void aSecondFailureDoesNotOpenASecondIncident() {
+        Monitor monitor = monitor(MonitorState.DOWN);
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+
+        service.record(1L, claimed(monitor, ProbeOutcome.connectionError(10, "refused")));
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
+        verify(incidents, never()).save(any());
+        verify(events, never()).publish(any(Object.class));
+    }
+
+    @Test
+    void aSuccessAfterAFailureResolvesTheIncidentAndAnnouncesRecovery() {
+        Monitor monitor = monitor(MonitorState.DOWN);
+        Incident open = new Incident();
+        open.setStartedAt(OffsetDateTime.now().minusMinutes(5));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+        when(incidents.findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN))
+                .thenReturn(Optional.of(open));
+
+        service.record(1L, claimed(monitor, ProbeOutcome.success(120, 200)));
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
+        assertThat(open.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
+        assertThat(open.getResolvedAt()).isNotNull();
+        verify(events).publish(new IncidentChanged(null, 7L, IncidentChanged.Kind.RESOLVED));
+    }
+
+    @Test
+    void aSuccessOnAHealthyMonitorTouchesNoIncident() {
+        Monitor monitor = monitor(MonitorState.UP);
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+
+        service.record(1L, claimed(monitor, ProbeOutcome.success(80, 200)));
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
+        verify(incidents, never()).findByMonitorIdAndStatus(any(), any());
+        verify(events, never()).publish(any(Object.class));
+    }
+
+    @Test
+    void disabledOwnerNotificationsDoNotAnnounceAnOpenedIncident() {
+        Monitor monitor = monitor(MonitorState.UP);
+        monitor.getProject().setOwnerNotificationsEnabled(false);
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+
+        service.record(1L, claimed(monitor, ProbeOutcome.connectionError(10, "refused")));
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
+        verify(incidents).save(any(Incident.class));
+        verify(events, never()).publish(any(Object.class));
+    }
+
+    @Test
+    void disabledOwnerNotificationsDoNotAnnounceARecovery() {
+        Monitor monitor = monitor(MonitorState.DOWN);
+        monitor.getProject().setOwnerNotificationsEnabled(false);
+        Incident open = new Incident();
+        open.setStartedAt(OffsetDateTime.now().minusMinutes(5));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+        when(incidents.findByMonitorIdAndStatus(monitor.getId(), IncidentStatus.OPEN))
+                .thenReturn(Optional.of(open));
+
+        service.record(1L, claimed(monitor, ProbeOutcome.success(120, 200)));
+
+        assertThat(open.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
+        verify(events, never()).publish(any(Object.class));
+    }
+
+    @Test
+    void aMonitorDeletedWhileBeingProbedIsIgnored() {
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.empty());
+
+        service.record(1L, ProbeOutcome.success(10, 200).forClaim(UUID.randomUUID()));
+        verify(incidents, never()).save(any());
+    }
+
+    @Test
+    void claimingDueMonitorsAssignsUniqueTokensAndADeadline() {
+        Monitor first = monitor(MonitorState.UP);
+        first.setId(1L);
+        first.setTimeoutMs(1_000);
+        Monitor second = monitor(MonitorState.UP);
+        second.setId(2L);
+        second.setTimeoutMs(3_000);
+        when(monitors.findDueForClaim(2)).thenReturn(List.of(first, second));
+
+        OffsetDateTime before = OffsetDateTime.now();
+        var targets = service.claimDueTargets(2, 1);
+
+        assertThat(targets).hasSize(2);
+        assertThat(targets).extracting(target -> target.claimToken()).doesNotHaveDuplicates();
+        assertThat(first.getCheckClaimToken()).isEqualTo(targets.get(0).claimToken());
+        // One at a time: two waves of the longer 3 s timeout plus the report grace.
+        assertThat(first.getCheckClaimedUntil())
+                .isBetween(before.plusSeconds(16), OffsetDateTime.now().plusSeconds(16));
+        assertThat(second.getCheckClaimedUntil()).isEqualTo(first.getCheckClaimedUntil());
+    }
+
+    @Test
+    void theLeaseCoversEachWaveOfTheBatchAtItsLongestTimeout() {
+        List<Monitor> batch = List.of(
+                monitorWithTimeout(5_000), monitorWithTimeout(2_000), monitorWithTimeout(5_000));
+
+        assertThat(MonitorCheckService.leaseDuration(batch, 8)).isEqualTo(Duration.ofSeconds(10));
+        assertThat(MonitorCheckService.leaseDuration(batch, 2)).isEqualTo(Duration.ofSeconds(20));
+        assertThat(MonitorCheckService.leaseDuration(List.of(), 8)).isZero();
+    }
+
+    @Test
+    void anOutcomeWithAStaleClaimTokenIsIgnored() {
+        Monitor monitor = monitor(MonitorState.UP);
+        UUID activeToken = UUID.randomUUID();
+        monitor.claimForCheck(activeToken, OffsetDateTime.now().plusMinutes(1));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+
+        service.record(
+                1L, ProbeOutcome.connectionError(10, "stale").forClaim(UUID.randomUUID()));
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.UP);
+        assertThat(monitor.getCheckClaimToken()).isEqualTo(activeToken);
+        assertThat(monitor.getLastCheckedAt()).isNull();
+        verify(incidents, never()).save(any());
+    }
+
+    @Test
+    void anOutcomeWithAnExpiredButStillCurrentClaimIsAccepted() {
+        Monitor monitor = monitor(MonitorState.UP);
+        UUID expiredToken = UUID.randomUUID();
+        monitor.claimForCheck(expiredToken, OffsetDateTime.now().minusSeconds(1));
+        when(monitors.findWithLockById(1L)).thenReturn(Optional.of(monitor));
+
+        service.record(
+                1L, ProbeOutcome.connectionError(10, "late").forClaim(expiredToken));
+
+        assertThat(monitor.getCurrentState()).isEqualTo(MonitorState.DOWN);
+        assertThat(monitor.getLastCheckedAt()).isNotNull();
+        verify(incidents).save(any());
+    }
+
+    private Monitor monitor(MonitorState state) {
+        Project project = new Project();
+        project.setId(7L);
+        Monitor monitor = new Monitor();
+        monitor.setId(1L);
+        monitor.setProject(project);
+        monitor.setCurrentState(state);
+        return monitor;
+    }
+
+    private Monitor monitorWithTimeout(int timeoutMs) {
+        Monitor monitor = monitor(MonitorState.UP);
+        monitor.setTimeoutMs(timeoutMs);
+        return monitor;
+    }
+
+    private ProbeOutcome claimed(Monitor monitor, ProbeOutcome outcome) {
+        UUID token = UUID.randomUUID();
+        monitor.claimForCheck(token, OffsetDateTime.now().plusMinutes(1));
+        return outcome.forClaim(token);
+    }
+}

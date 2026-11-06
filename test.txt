@@ -1,0 +1,4 @@
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --list
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --describe --topic incidents.events.v1
+/opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-1:9092 --topic checks.completed.v1 --from-beginning --property print.key=true
+/opt/kafka/bin/kafka-console-producer.sh --bootstrap-server kafka-1:9092 --topic incidents.events.v1 --property parse.key=true --property key.separator='|'

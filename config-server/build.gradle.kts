@@ -6,6 +6,9 @@ plugins {
 dependencies {
     implementation("org.springframework.cloud:spring-cloud-config-server")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation(project(":integration-contracts"))
+    implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.yaml:snakeyaml")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
