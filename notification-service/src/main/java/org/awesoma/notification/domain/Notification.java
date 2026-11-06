@@ -1,5 +1,6 @@
 package org.awesoma.notification.domain;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.Getter;
@@ -75,7 +76,7 @@ public class Notification {
             UUID token,
             OffsetDateTime at,
             int maxAttempts,
-            java.time.Duration retryDelay,
+            Duration retryDelay,
             String error) {
         requireClaim(token);
         this.attempts++;

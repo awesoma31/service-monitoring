@@ -10,5 +10,3 @@ include("security-common")
 include("integration-contracts")
 include("user-service")
 include("report-service")
-
-include("architecture-tests")

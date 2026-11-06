@@ -10,16 +10,20 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class JdbcProjectGuard implements ProjectGuard {
     private final JdbcTemplate db;
+    @Override
     public void lock(Long projectId) {
         db.queryForObject("SELECT 1 FROM (SELECT pg_advisory_xact_lock(?)) AS acquired", Integer.class, projectId);
     }
+    @Override
     public boolean deleted(Long projectId) {
         Integer count = db.queryForObject("SELECT count(*) FROM deleted_projects WHERE project_id = ?", Integer.class, projectId);
         return count != null && count > 0;
     }
+    @Override
     public void markDeleted(Long projectId) {
         db.update("INSERT INTO deleted_projects (project_id) VALUES (?) ON CONFLICT DO NOTHING", projectId);
     }
+    @Override
     public boolean recordEvent(UUID eventId) {
         return db.update("INSERT INTO integration_inbox (event_id) VALUES (?) ON CONFLICT DO NOTHING", eventId) == 1;
     }

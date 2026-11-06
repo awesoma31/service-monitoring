@@ -12,10 +12,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class SpringDomainEvents implements DomainEvents {
     private final ApplicationEventPublisher publisher;
 
+    @Override
     public void publish(Object event) {
         publisher.publishEvent(event);
     }
 
+    @Override
     public void afterCommit(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             action.run();

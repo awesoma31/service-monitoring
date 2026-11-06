@@ -5,7 +5,7 @@ import java.util.function.Function;
 
 public record Page<T>(List<T> content, int page, int size, long totalElements) {
     public static <T> Page<T> empty() {
-        return new Page<>(List.of(),0,1,0);
+        return new Page<>(List.of(), 0, 1, 0);
     }
     public Page {
         content = List.copyOf(content);

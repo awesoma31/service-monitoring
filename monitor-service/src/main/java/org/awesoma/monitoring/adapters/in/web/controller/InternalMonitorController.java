@@ -1,0 +1,56 @@
+package org.awesoma.monitoring.adapters.in.web.controller;
+
+import io.swagger.v3.oas.annotations.Hidden;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.awesoma.monitoring.domain.model.MonitorTarget;
+import org.awesoma.monitoring.adapters.in.web.dto.ProbeOutcomeRequest;
+import org.awesoma.monitoring.application.usecase.MonitorCheckService;
+import org.awesoma.monitoring.application.usecase.MonitorService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Endpoints for other services, not for API clients: the gateway routes only /api/v1/**, so
+ * these are reachable only inside the service network, and they stay out of the API docs.
+ */
+@Hidden
+@Validated
+@RestController
+@RequestMapping("/internal/monitors")
+@RequiredArgsConstructor
+public class InternalMonitorController {
+
+    private final MonitorCheckService monitorCheckService;
+    private final MonitorService monitorService;
+
+    @GetMapping("/due")
+    public ResponseEntity<List<MonitorTarget>> due(
+            @RequestParam(defaultValue = "50") @Min(1) @Max(500) int limit,
+            @RequestParam @Min(1) @Max(500) int concurrency) {
+        return ResponseEntity.ok(monitorCheckService.claimDueTargets(limit, concurrency));
+    }
+
+    @PostMapping("/{id}/outcomes")
+    public ResponseEntity<Void> recordOutcome(
+            @PathVariable @Positive Long id, @Valid @RequestBody ProbeOutcomeRequest outcome) {
+        monitorCheckService.record(id, outcome.toDomain());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/exists")
+    public ResponseEntity<Boolean> exists(@PathVariable @Positive Long id) {
+        return ResponseEntity.ok(monitorService.exists(id));
+    }
+}

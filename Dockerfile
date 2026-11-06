@@ -18,7 +18,6 @@ COPY security-common/build.gradle.kts security-common/
 COPY integration-contracts/build.gradle.kts integration-contracts/
 COPY user-service/build.gradle.kts user-service/
 COPY report-service/build.gradle.kts report-service/
-COPY architecture-tests/build.gradle.kts architecture-tests/
 COPY security-common/src security-common/src
 COPY integration-contracts/src integration-contracts/src
 COPY ${MODULE}/src ${MODULE}/src

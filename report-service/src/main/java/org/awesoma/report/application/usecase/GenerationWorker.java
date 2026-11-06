@@ -5,7 +5,14 @@ import java.io.OutputStream;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.awesoma.report.application.content.ContentTooLargeException;
@@ -97,32 +104,49 @@ public class GenerationWorker {
         var attempt = new Attempt(claimed.get(), lease, now.plus(limits.attemptTimeout()));
         log.info("Report generation started: report_id={} project_id={} format={} attempt={}",
                 attempt.report.id(), attempt.report.projectId(), attempt.report.format(), attempt.report.attempts());
-        var task = new java.util.concurrent.FutureTask<Void>(() -> { run(attempt); return null; });
-        Thread attemptThread = Thread.ofVirtual().name("report-attempt-" + attempt.report.id()).start(task);
+        runIsolated(attempt);
+        return true;
+    }
+
+    /** On its own thread, so that the heartbeat's interrupt never reaches the scheduler's thread. */
+    private void runIsolated(Attempt attempt) {
+        var task = new FutureTask<Void>(() -> {
+            run(attempt);
+            return null;
+        });
+        Thread thread = Thread.ofVirtual().name("report-attempt-" + attempt.report.id()).start(task);
         try {
             task.get();
         } catch (InterruptedException interrupted) {
-            synchronized (attempt) { attempt.cancelled = true; }
+            attempt.locked(() -> attempt.cancelled = true);
             task.cancel(true);
-            while (attemptThread.isAlive()) {
-                try { attemptThread.join(); }
-                catch (InterruptedException again) { attemptThread.interrupt(); }
-            }
+            // FutureTask.cancel marks the future done before its body unwinds. Keep the scheduler
+            // slot until the attempt has really stopped and cleaned its heartbeat and temporary file.
+            joinUninterruptibly(thread);
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Report worker interrupted", interrupted);
-        } catch (java.util.concurrent.ExecutionException failed) {
+        } catch (ExecutionException failed) {
             if (failed.getCause() instanceof RuntimeException runtime) throw runtime;
             if (failed.getCause() instanceof Error error) throw error;
             throw new IllegalStateException("Report worker failed", failed.getCause());
         }
-        return true;
+    }
+
+    private static void joinUninterruptibly(Thread thread) {
+        while (thread.isAlive()) {
+            try {
+                thread.join();
+            } catch (InterruptedException again) {
+                thread.interrupt();
+            }
+        }
     }
 
     /** Jobs whose worker stopped renewing its lease go back to the queue, or fail if out of attempts. */
     public int recoverExpired(int limit) {
         int recovered = 0;
         for (UUID id : queue.expiredUploads(clock.instant(), limit)) {
-            String abandoned = transactions.inTransaction(() -> Objects.requireNonNull(reports.lockById(id)
+            String abandoned = transactions.inTransaction(() -> reports.lockById(id)
                     .filter(current -> current.status() == ReportStatus.UPLOADING && current.lease() != null
                             && !current.lease().heldAt(clock.instant()))
                     .map(current -> {
@@ -130,14 +154,14 @@ public class GenerationWorker {
                         current.failUpload(current.lease().token(), clock.instant());
                         reports.save(current);
                         return key;
-                    }).orElse(null)));
+                    }).orElse(null));
             if (abandoned != null) {
                 cleanup.removeObject(abandoned);
                 recovered++;
             }
         }
         for (UUID id : queue.expiredLeases(clock.instant(), limit)) {
-            String abandoned = transactions.inTransaction(() -> Objects.requireNonNull(reports.lockById(id)
+            String abandoned = transactions.inTransaction(() -> reports.lockById(id)
                     .filter(current -> current.status() == ReportStatus.GENERATING && current.lease() != null
                             && !current.lease().heldAt(clock.instant()))
                     .map(current -> {
@@ -147,7 +171,7 @@ public class GenerationWorker {
                         reports.save(current);
                         return key;
                     })
-                    .orElse(null)));
+                    .orElse(null));
             if (abandoned != null) {
                 log.warn("Generation lease expired, job recovered: report_id={}", id);
                 cleanup.removeObject(abandoned);
@@ -179,19 +203,28 @@ public class GenerationWorker {
         } catch (IOException | RuntimeException error) {
             Throwable cause = attempt.heartbeatFailure != null ? attempt.heartbeatFailure : error;
             if (attempt.heartbeatFailure != null) Thread.interrupted();
-            if (cause instanceof Failure failure) finish(attempt, failure);
-            else if (cause instanceof StaleAttemptException) {
+            end(attempt, cause);
+        }
+    }
+
+    private void end(Attempt attempt, Throwable cause) {
+        Report report = attempt.report;
+        switch (cause) {
+            case Failure failure -> finish(attempt, failure);
+            case StaleAttemptException stale -> {
                 log.warn("Generation attempt lost its lease and is abandoned: report_id={}", report.id());
                 cleanup.removeUnreferenced(report);
-            } else if (cause instanceof SourceUnavailableException || cause instanceof AccessUnavailableException)
-                finish(attempt, Failure.temporary(FailureCode.SOURCE_UNAVAILABLE, cause));
-            else if (cause instanceof ObjectStorageUnavailableException)
-                finish(attempt, Failure.temporary(FailureCode.STORAGE_UNAVAILABLE, cause));
-            else if (cause instanceof SourceRejectedException rejected)
-                finish(attempt, Failure.permanent(rejected.reason()));
-            else if (cause instanceof ProjectNotFoundException) finish(attempt, Failure.projectGone());
-            else if (cause instanceof ContentTooLargeException) finish(attempt, Failure.permanent(FailureCode.LIMIT_EXCEEDED));
-            else {
+            }
+            case SourceUnavailableException unavailable ->
+                    finish(attempt, Failure.temporary(FailureCode.SOURCE_UNAVAILABLE, cause));
+            case AccessUnavailableException unavailable ->
+                    finish(attempt, Failure.temporary(FailureCode.SOURCE_UNAVAILABLE, cause));
+            case ObjectStorageUnavailableException unavailable ->
+                    finish(attempt, Failure.temporary(FailureCode.STORAGE_UNAVAILABLE, cause));
+            case SourceRejectedException rejected -> finish(attempt, Failure.permanent(rejected.reason()));
+            case ProjectNotFoundException gone -> finish(attempt, Failure.projectGone());
+            case ContentTooLargeException tooLarge -> finish(attempt, Failure.permanent(FailureCode.LIMIT_EXCEEDED));
+            default -> {
                 log.error("Generation attempt failed unexpectedly: report_id={}", report.id(), cause);
                 finish(attempt, Failure.temporary(FailureCode.GENERATION_ERROR, cause));
             }
@@ -273,7 +306,8 @@ public class GenerationWorker {
     private void publish(Attempt attempt, MeasuredInputStream measured) {
         var report = attempt.report;
         boolean ready;
-        synchronized (attempt) {
+        attempt.lock.lock();
+        try {
             if (attempt.cancelled) throw lost(report);
             if (attempt.heartbeatFailure != null) throw attempt.heartbeatFailure;
             ready = transactions.inTransaction(() -> {
@@ -290,6 +324,8 @@ public class GenerationWorker {
                 return true;
             });
             attempt.completed = true;
+        } finally {
+            attempt.lock.unlock();
         }
         if (!ready) cleanup.purge(report);
         else log.info("Report generation completed: report_id={} project_id={} format={} bytes={}",
@@ -298,7 +334,7 @@ public class GenerationWorker {
 
     /** Ends the attempt: the time limit, then the lease, which is renewed once half of it is used. */
     private void checkpoint(Attempt attempt) {
-        synchronized (attempt) {
+        attempt.locked(() -> {
             if (attempt.cancelled) throw lost(attempt.report);
             if (attempt.closed || attempt.completed) return;
             if (attempt.heartbeatFailure != null) throw attempt.heartbeatFailure;
@@ -313,7 +349,7 @@ public class GenerationWorker {
                 reports.save(current);
             });
             attempt.lease = attempt.lease.extendedTo(renewed);
-        }
+        });
     }
 
     private void requireAuthor(Report report) {
@@ -365,6 +401,8 @@ public class GenerationWorker {
     }
 
     private static final class Attempt {
+        /** A lock rather than a monitor: on Java 21 a monitor held during JDBC pins the virtual thread. */
+        private final ReentrantLock lock = new ReentrantLock();
         private final Report report;
         private final Instant deadline;
         private volatile Lease lease;
@@ -378,6 +416,15 @@ public class GenerationWorker {
             this.lease = lease;
             this.deadline = deadline;
         }
+
+        void locked(Runnable action) {
+            lock.lock();
+            try {
+                action.run();
+            } finally {
+                lock.unlock();
+            }
+        }
     }
 
     /** Keeps the lease alive even while a source, renderer or object upload is blocked. */
@@ -390,35 +437,33 @@ public class GenerationWorker {
             this.attempt = attempt;
             long interval = Math.max(1, Math.min(limits.leaseDuration().toMillis() / 3,
                     limits.attemptTimeout().toMillis() / 3));
-            thread = Thread.ofVirtual().name("report-lease-" + attempt.report.id()).start(() -> {
+            thread = Thread.ofVirtual().name("report-lease-" + attempt.report.id()).start(() -> beat(interval));
+        }
+
+        private void beat(long interval) {
+            try {
                 while (true) {
-                    try {
-                        Thread.sleep(interval);
-                        synchronized (attempt) {
-                            if (attempt.closed || attempt.completed) return;
-                            checkpoint(attempt);
-                        }
-                    } catch (InterruptedException stopped) {
-                        return;
-                    } catch (RuntimeException failure) {
-                        synchronized (attempt) {
-                            if (!attempt.closed && !attempt.completed) {
-                                attempt.heartbeatFailure = failure;
-                                owner.interrupt();
-                            }
-                        }
-                        return;
-                    }
+                    Thread.sleep(interval);
+                    checkpoint(attempt);
                 }
-            });
+            } catch (InterruptedException stopped) {
+                // The attempt has ended.
+            } catch (RuntimeException failure) {
+                attempt.locked(() -> {
+                    if (!attempt.closed && !attempt.completed) {
+                        attempt.heartbeatFailure = failure;
+                        owner.interrupt();
+                    }
+                });
+            }
         }
 
         @Override
         public void close() {
-            synchronized (attempt) {
+            attempt.locked(() -> {
                 attempt.closed = true;
                 thread.interrupt();
-            }
+            });
         }
     }
 
