@@ -32,6 +32,7 @@ final class DomainMapper {
         Notification result = new Notification();
         result.setId(row.getId());
         result.setIncidentId(row.getIncidentId());
+        result.setReportId(row.getReportId());
         result.setChannel(channel(row.getChannel()));
         result.setSentAt(row.getSentAt());
         result.setIncidentKind(row.getIncidentKind());
@@ -50,6 +51,7 @@ final class DomainMapper {
         NotificationEntity row = new NotificationEntity();
         row.setId(value.getId());
         row.setIncidentId(value.getIncidentId());
+        row.setReportId(value.getReportId());
         row.setChannel(channel);
         row.setSentAt(value.getSentAt());
         row.setIncidentKind(value.getIncidentKind());

@@ -13,7 +13,7 @@ class IntegrationTransportValidation {
 
     @PostConstruct
     void validate() {
-        for (String flow : List.of("check-results", "incident-events", "resource-events")) {
+        for (String flow : List.of("check-results", "incident-events", "resource-events", "report-events")) {
             String key = "integration." + flow + ".transport";
             String value = environment.getProperty(key, "http");
             if (!List.of("http", "kafka").contains(value)) {

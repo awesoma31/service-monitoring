@@ -19,7 +19,7 @@ class ConfigServerApplicationTest {
 
         assertThat(config.get("name").asText()).isEqualTo("monitor-service");
         assertThat(config.get("propertySources").findValuesAsText("name"))
-                .anyMatch(source -> source.endsWith("config-repo/monitor-service.yml"))
+                .anyMatch(source -> source.endsWith("config-repo/monitor-service/monitor-service.yml"))
                 .anyMatch(source -> source.endsWith("config-repo/application.yml"));
         assertThat(config.toString())
                 .contains("spring.datasource.url")

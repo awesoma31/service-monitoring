@@ -18,8 +18,10 @@ COPY security-common/build.gradle.kts security-common/
 COPY integration-contracts/build.gradle.kts integration-contracts/
 COPY user-service/build.gradle.kts user-service/
 COPY report-service/build.gradle.kts report-service/
+COPY config-updates/build.gradle.kts config-updates/
 COPY security-common/src security-common/src
 COPY integration-contracts/src integration-contracts/src
+COPY config-updates/src config-updates/src
 COPY ${MODULE}/src ${MODULE}/src
 
 # The Gradle distribution and every dependency live in a BuildKit cache shared by all the

@@ -27,6 +27,7 @@ import org.awesoma.report.application.port.ObjectStorageUnavailableException;
 import org.awesoma.report.application.port.ProjectAccessPort;
 import org.awesoma.report.application.port.ProjectGuard;
 import org.awesoma.report.application.port.ReportDataSource;
+import org.awesoma.report.application.port.ReportEvents;
 import org.awesoma.report.application.port.ReportJobQueue;
 import org.awesoma.report.application.port.ReportPage;
 import org.awesoma.report.application.port.ReportQuery;
@@ -127,6 +128,15 @@ final class Fakes {
         public List<UUID> expiredUploads(Instant now, int limit) {
             return rows.values().stream().filter(report -> report.status() == ReportStatus.UPLOADING
                     && report.lease() != null && !report.lease().heldAt(now)).map(Report::id).limit(limit).toList();
+        }
+    }
+
+    static final class Events implements ReportEvents {
+        final List<UUID> uploaded = new ArrayList<>();
+
+        @Override
+        public void uploaded(Report report) {
+            uploaded.add(report.id());
         }
     }
 

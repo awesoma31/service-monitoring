@@ -43,6 +43,19 @@ final class NotificationKafkaListeners {
         }
     }
 
+    @Component
+    @RequiredArgsConstructor
+    @ConditionalOnProperty(prefix = "integration.report-events", name = "transport", havingValue = "kafka")
+    static class Reports {
+        private final NotificationEventHandler handler;
+        private final ObjectMapper json;
+
+        @KafkaListener(topics = "reports.events.v1", groupId = "notification-reports-v1")
+        public void receive(ConsumerRecord<String, String> record) {
+            handle(json, handler, record, IntegrationEvent.REPORT_UPLOADED, "notification-reports-v1");
+        }
+    }
+
     private static void handle(ObjectMapper json, NotificationEventHandler handler, ConsumerRecord<String, String> record,
             String expectedType, String group) {
         IntegrationEvent event = null;

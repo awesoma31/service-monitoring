@@ -34,9 +34,12 @@ public class NotificationEntity {
     private Long id;
 
     /** An incident of monitor-service; another database, so an id rather than an association. */
-    @NotNull
-    @Column(name = "incident_id", nullable = false)
+    @Column(name = "incident_id")
     private Long incidentId;
+
+    /** Set instead of the incident on a notification about an uploaded report. */
+    @Column(name = "report_id", columnDefinition = "uuid")
+    private UUID reportId;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -46,9 +49,8 @@ public class NotificationEntity {
     @Column(name = "sent_at")
     private OffsetDateTime sentAt;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "incident_kind", nullable = false, length = 20)
+    @Column(name = "incident_kind", length = 20)
     private IncidentKind incidentKind;
 
     @NotNull

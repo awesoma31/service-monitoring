@@ -6,9 +6,11 @@ topics=(
   checks.completed.v1
   incidents.events.v1
   resources.events.v1
+  reports.events.v1
   checks.completed.v1.dlt
   incidents.events.v1.dlt
   resources.events.v1.dlt
+  reports.events.v1.dlt
 )
 
 for topic in "${topics[@]}"; do
@@ -27,3 +29,10 @@ for topic in "${topics[@]}"; do
   /opt/kafka/bin/kafka-configs.sh --bootstrap-server "$bootstrap" \
     --entity-type topics --entity-name "$topic" --alter --add-config min.insync.replicas=2
 done
+
+# Holds the latest settings of each service: compacted rather than expired, so that a service
+# that was down still finds them. Keys are service/profile.
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server "$bootstrap" \
+  --create --if-not-exists --topic config.changes.v1 --partitions 3 --replication-factor 3 \
+  --config min.insync.replicas=2 --config cleanup.policy=compact --config segment.ms=60000 \
+  --config min.cleanable.dirty.ratio=0.1

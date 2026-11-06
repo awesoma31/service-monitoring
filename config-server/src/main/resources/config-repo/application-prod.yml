@@ -1,0 +1,5 @@
+# Added to every service started with SPRING_PROFILES_ACTIVE=prod.
+logging:
+  level:
+    root: WARN
+    org.awesoma: ${APP_LOG_LEVEL:INFO}

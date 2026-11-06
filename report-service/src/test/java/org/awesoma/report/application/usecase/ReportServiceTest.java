@@ -31,8 +31,36 @@ class ReportServiceTest {
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-02T12:00:00Z"));
     private final ReportCleanup cleanup = new ReportCleanup(reports, storage, keys, Fakes.TRANSACTIONS, clock,
             Duration.ofHours(24));
-    private final ReportService service = new ReportService(reports, storage, access, projects, cleanup,
+    private final Fakes.Events events = new Fakes.Events();
+    private final ReportService service = new ReportService(reports, storage, access, projects, cleanup, events,
             Fakes.TRANSACTIONS, clock, LIMITS);
+
+    @Test
+    void announcesASuccessfulUploadOnce() {
+        var report = service.upload(command("uptime.csv", CSV.length, CSV));
+
+        assertThat(events.uploaded).containsExactly(report.id());
+    }
+
+    @Test
+    void announcesNothingWhenTheStorageFails() {
+        storage.putFails = true;
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.upload(command("uptime.csv", CSV.length, CSV)))
+                .isInstanceOf(ReportUnavailableException.class);
+
+        assertThat(events.uploaded).isEmpty();
+    }
+
+    @Test
+    void announcesNothingWhenTheProjectIsDeletedDuringTheUpload() {
+        storage.onPut = () -> projects.markDeleted(42);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.upload(command("uptime.csv", CSV.length, CSV)))
+                .isInstanceOf(ReportNotFoundException.class);
+
+        assertThat(events.uploaded).isEmpty();
+    }
 
     @Test
     void storesTheFileAndPublishesItsHash() {

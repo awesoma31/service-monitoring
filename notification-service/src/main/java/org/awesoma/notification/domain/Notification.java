@@ -18,6 +18,9 @@ public class Notification {
 
     private Long incidentId;
 
+    /** Set instead of the incident on a notification about an uploaded report. */
+    private UUID reportId;
+
     private Channel channel;
 
     private OffsetDateTime sentAt;
@@ -51,6 +54,12 @@ public class Notification {
         this.incidentKind = incidentKind;
         this.subject = subject;
         this.message = message;
+    }
+
+    public static Notification forReport(UUID reportId, Channel channel, String subject, String message) {
+        Notification notification = new Notification(null, channel, null, subject, message);
+        notification.reportId = reportId;
+        return notification;
     }
 
     public void claim(UUID token, OffsetDateTime until) {

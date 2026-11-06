@@ -24,6 +24,7 @@ public class NotificationEventHandler {
                 case PROJECT_DELETED -> channels.deleteByProjectInTransaction(event.projectId());
                 case INCIDENT_CHANGED -> notifications.recordInTransaction(
                         new IncidentNotice(event.incidentId(), event.projectId(), event.kind()));
+                case REPORT_UPLOADED -> notifications.recordReportUpload(event.report());
             };
         }).then();
     }

@@ -27,3 +27,8 @@ checker:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+config:
+  updates:
+    # A change of the shared file restarts everything; the services go one after another.
+    restart-delay: PT40S

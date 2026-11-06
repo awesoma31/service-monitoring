@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-integration-outbox
+      author: awesoma31
+      comment: Events waiting to be sent, written in the transaction of the change they announce.
+      changes:
+        - sql:
+            sql: >-
+              CREATE TABLE integration_outbox (
+                id BIGSERIAL PRIMARY KEY,
+                event_id UUID NOT NULL UNIQUE,
+                transport VARCHAR(8) NOT NULL,
+                payload TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+      rollback:
+        - sql:
+            sql: DROP TABLE integration_outbox;

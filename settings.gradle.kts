@@ -2,6 +2,7 @@ rootProject.name = "service-monitoring"
 
 include("check-service")
 include("config-server")
+include("config-updates")
 include("eureka-server")
 include("gateway")
 include("monitor-service")

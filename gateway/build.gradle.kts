@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(project(":security-common"))
+    implementation(project(":config-updates"))
     implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j")
     implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
@@ -26,7 +27,7 @@ val configRepo = rootProject.file("config-server/src/main/resources/config-repo"
 tasks.named<Test>("test") {
     systemProperty(
         "spring.config.import",
-        "optional:file:$configRepo/application.yml,optional:file:$configRepo/gateway.yml")
+        "optional:file:$configRepo/application.yml,optional:file:$configRepo/gateway/gateway.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
     // Lets the routing test read the route table from the actuator.

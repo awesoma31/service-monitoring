@@ -1,5 +1,6 @@
 package org.awesoma.report;
 
+import org.awesoma.report.adapters.out.http.NotificationClient;
 import org.awesoma.report.adapters.out.http.ProjectLookupClient;
 import org.awesoma.report.adapters.out.http.ReportDataClients;
 import org.awesoma.security.access.ResourceAccessClient;
@@ -12,7 +13,7 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@EnableFeignClients(clients = {ResourceAccessClient.class, ProjectLookupClient.class,
+@EnableFeignClients(clients = {ResourceAccessClient.class, ProjectLookupClient.class, NotificationClient.class,
     ReportDataClients.MonitorData.class, ReportDataClients.CheckData.class})
 @Import(ServiceTokenConfiguration.class)
 public class ReportServiceApplication {

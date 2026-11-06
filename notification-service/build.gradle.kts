@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":integration-contracts"))
     implementation("org.springframework.kafka:spring-kafka")
     implementation(project(":security-common"))
+    implementation(project(":config-updates"))
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     // Blocking JPA inside a reactive service: every repository call runs on the bounded
     // elastic scheduler (see support/JpaExecutor), never on an event-loop thread.
@@ -51,7 +52,7 @@ val configRepo = rootProject.file("config-server/src/main/resources/config-repo"
 tasks.named<Test>("test") {
     systemProperty(
         "spring.config.import",
-        "optional:file:$configRepo/application.yml,optional:file:$configRepo/notification-service.yml")
+        "optional:file:$configRepo/application.yml,optional:file:$configRepo/notification-service/notification-service.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
 }

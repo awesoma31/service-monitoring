@@ -9,6 +9,7 @@ import org.awesoma.report.application.port.ObjectStorage;
 import org.awesoma.report.application.port.ProjectAccessPort;
 import org.awesoma.report.application.port.ProjectGuard;
 import org.awesoma.report.application.port.ReportDataSource;
+import org.awesoma.report.application.port.ReportEvents;
 import org.awesoma.report.application.port.ReportJobQueue;
 import org.awesoma.report.application.port.ReportRenderer;
 import org.awesoma.report.application.port.ReportRepository;
@@ -50,9 +51,9 @@ public class ReportUseCaseConfiguration {
 
     @Bean
     public ReportService reportService(ReportRepository reports, ObjectStorage storage, ProjectAccessPort access,
-            ProjectGuard projects, ReportCleanup cleanup, TransactionRunner transactions, Clock clock,
-            ReportProperties properties) {
-        return new ReportService(reports, storage, access, projects, cleanup, transactions, clock, new ReportLimits(
+            ProjectGuard projects, ReportCleanup cleanup, ReportEvents events, TransactionRunner transactions,
+            Clock clock, ReportProperties properties) {
+        return new ReportService(reports, storage, access, projects, cleanup, events, transactions, clock, new ReportLimits(
                 properties.maxFileSize().toBytes(), properties.uploadTimeout(), properties.maxPageSize()));
     }
 

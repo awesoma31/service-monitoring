@@ -140,3 +140,8 @@ resilience4j:
       # Uploading or downloading a file of up to the size limit takes longer than an API call.
       report-service:
         timeout-duration: ${REPORT_TRANSFER_TIMEOUT:PT5M}
+
+config:
+  updates:
+    # A change of the shared file restarts everything; the services go one after another.
+    restart-delay: PT100S

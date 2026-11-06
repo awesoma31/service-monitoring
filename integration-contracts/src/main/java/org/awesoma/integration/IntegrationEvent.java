@@ -15,12 +15,29 @@ public record IntegrationEvent(
         Long incidentId,
         String kind,
         List<Long> monitorIds,
-        CheckOutcome outcome) {
+        CheckOutcome outcome,
+        UUID reportId,
+        String fileName,
+        Long uploadedBy) {
 
     public static final String CHECK_COMPLETED = "CheckCompleted";
     public static final String INCIDENT_CHANGED = "IncidentChanged";
     public static final String MONITOR_DELETED = "MonitorDeleted";
     public static final String PROJECT_DELETED = "ProjectDeleted";
+    public static final String REPORT_UPLOADED = "ReportUploaded";
+
+    /** Every event except {@link #REPORT_UPLOADED}. */
+    public IntegrationEvent(UUID eventId, int schemaVersion, String type, OffsetDateTime occurredAt, Long monitorId,
+            Long projectId, Long incidentId, String kind, List<Long> monitorIds, CheckOutcome outcome) {
+        this(eventId, schemaVersion, type, occurredAt, monitorId, projectId, incidentId, kind, monitorIds, outcome,
+                null, null, null);
+    }
+
+    public static IntegrationEvent reportUploaded(UUID eventId, OffsetDateTime occurredAt, long projectId,
+            UUID reportId, String fileName, long uploadedBy) {
+        return new IntegrationEvent(eventId, 1, REPORT_UPLOADED, occurredAt, null, projectId, null, null, null, null,
+                reportId, fileName, uploadedBy);
+    }
 
     public record CheckOutcome(String result, Integer responseMs, Integer httpStatus,
                                String errorMessage, UUID claimToken) {
@@ -56,6 +73,15 @@ public record IntegrationEvent(
                 positive(projectId);
                 if (monitorIds == null) throw new IllegalArgumentException("Missing monitor ids");
                 monitorIds.forEach(IntegrationEvent::positive);
+            }
+            case REPORT_UPLOADED -> {
+                positive(projectId);
+                positive(uploadedBy);
+                if (reportId == null) throw new IllegalArgumentException("Missing report id");
+                if (fileName == null || fileName.isBlank() || fileName.length() > 255
+                        || fileName.chars().anyMatch(Character::isISOControl)) {
+                    throw new IllegalArgumentException("Invalid file name");
+                }
             }
             default -> throw new IllegalArgumentException("Unknown event type: " + type);
         }

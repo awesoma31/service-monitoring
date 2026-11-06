@@ -34,6 +34,10 @@ docker compose -f docker-compose.yml -f docker-compose.kafka.yml up -d --build
 
 `report-service` доступен через gateway и общий Swagger UI (`report-service` в списке).
 Содержимое хранится в приватном bucket `reports` MinIO, метаданные и задания — в `report_db`.
+После успешной загрузки файла событие из outbox через `reports.events.v1` доходит до
+`notification-service`, и тот создаёт письмо для каждого включённого EMAIL-канала проекта. Если
+такого канала нет, письмо не отправляется. Сама отправка включается настройками
+`NOTIFICATION_DELIVERY_ENABLED` и `EMAIL_ENABLED`.
 
 | Метод и путь | Что делает |
 |---|---|

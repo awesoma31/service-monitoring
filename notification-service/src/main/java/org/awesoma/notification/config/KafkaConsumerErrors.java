@@ -15,7 +15,7 @@ import org.springframework.util.backoff.FixedBackOff;
 /** Poison messages go to DLT; transient failures retain their offset and retry. */
 @Configuration(proxyBeanMethods = false)
 @Slf4j
-@ConditionalOnExpression("'${integration.incident-events.transport:http}' == 'kafka' or '${integration.resource-events.transport:http}' == 'kafka'")
+@ConditionalOnExpression("'${integration.incident-events.transport:http}' == 'kafka' or '${integration.resource-events.transport:http}' == 'kafka' or '${integration.report-events.transport:http}' == 'kafka'")
 class KafkaConsumerErrors {
     @Bean
     DefaultErrorHandler integrationKafkaErrorHandler(KafkaTemplate<String, String> kafka) {

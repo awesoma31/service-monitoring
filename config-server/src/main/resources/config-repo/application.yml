@@ -23,6 +23,16 @@ integration:
     transport: ${INCIDENT_EVENTS_TRANSPORT:http}
   resource-events:
     transport: ${RESOURCE_EVENTS_TRANSPORT:http}
+  report-events:
+    transport: ${REPORT_EVENTS_TRANSPORT:http}
+
+config:
+  updates:
+    enabled: ${CONFIG_UPDATES_ENABLED:false}
+    # Waits for the latest snapshot, so that a burst of edits ends in one decision.
+    settle-delay: PT5S
+    # Applied without a restart; every other change restarts the service.
+    hot-prefixes: logging.level.
 
 security:
   jwt:

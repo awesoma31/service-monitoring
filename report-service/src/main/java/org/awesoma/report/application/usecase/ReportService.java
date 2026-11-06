@@ -15,6 +15,7 @@ import org.awesoma.report.application.port.ObjectStorage;
 import org.awesoma.report.application.port.ObjectStorageUnavailableException;
 import org.awesoma.report.application.port.ProjectAccessPort;
 import org.awesoma.report.application.port.ProjectGuard;
+import org.awesoma.report.application.port.ReportEvents;
 import org.awesoma.report.application.port.ReportPage;
 import org.awesoma.report.application.port.ReportQuery;
 import org.awesoma.report.application.port.ReportRepository;
@@ -50,18 +51,20 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
     private final ProjectAccessPort access;
     private final ProjectGuard projects;
     private final ReportCleanup cleanup;
+    private final ReportEvents events;
     private final TransactionRunner transactions;
     private final Clock clock;
     private final ReportLimits limits;
 
     public ReportService(ReportRepository reports, ObjectStorage storage, ProjectAccessPort access,
-            ProjectGuard projects, ReportCleanup cleanup, TransactionRunner transactions, Clock clock,
-            ReportLimits limits) {
+            ProjectGuard projects, ReportCleanup cleanup, ReportEvents events, TransactionRunner transactions,
+            Clock clock, ReportLimits limits) {
         this.reports = reports;
         this.storage = storage;
         this.access = access;
         this.projects = projects;
         this.cleanup = cleanup;
+        this.events = events;
         this.transactions = transactions;
         this.clock = clock;
         this.limits = limits;
@@ -100,7 +103,9 @@ public class ReportService implements UploadReport, GetReportMetadata, DownloadR
                 } else {
                     current.completeUpload(lease.token(), measured.size(), measured.sha256(), clock.instant());
                 }
-                return reports.save(current);
+                var saved = reports.save(current);
+                if (saved.contentAvailable()) events.uploaded(saved);
+                return saved;
             });
             if (!published.contentAvailable()) {
                 cleanup.purge(published);

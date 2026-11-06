@@ -62,3 +62,8 @@ storage:
     connect-timeout: ${MINIO_CONNECT_TIMEOUT:PT5S}
     # Per read or write of the stream, not for the whole transfer.
     io-timeout: ${MINIO_IO_TIMEOUT:PT1M}
+
+config:
+  updates:
+    # A change of the shared file restarts everything; the services go one after another.
+    restart-delay: PT80S

@@ -163,6 +163,7 @@ echo "docker.host=unix://$HOME/.colima/default/docker.sock" >> ~/.testcontainers
 CHECK_RESULTS_TRANSPORT=kafka
 INCIDENT_EVENTS_TRANSPORT=kafka
 RESOURCE_EVENTS_TRANSPORT=kafka
+REPORT_EVENTS_TRANSPORT=kafka
 ```
 
 Эти значения Compose передаёт всем бизнес-сервисам, поэтому отправитель и получатель видят
@@ -187,6 +188,8 @@ Overlay поднимает три брокера Apache Kafka в KRaft-режи�
 | `checks.completed.v1` | Результаты проверок | monitor-service |
 | `incidents.events.v1` | Открытие и закрытие инцидентов | notification-service |
 | `resources.events.v1` | Удаление монитора или проекта | check-service, notification-service и report-service |
+| `reports.events.v1` | Успешная загрузка файла отчёта | notification-service |
+| `config.changes.v1` | Снимки настроек сервисов, топик со сжатием | все бизнес-сервисы и gateway |
 
 У каждого топика три партиции, фактор репликации 3 и `min.insync.replicas=2`.
 Начальная настройка также создаёт соответствующие топики с суффиксом `.dlt`.
@@ -242,6 +245,44 @@ docker compose -f docker-compose.yml -f docker-compose.kafka.yml logs -f notific
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.kafka.yml down
+```
+
+## Конфигурация: профили и обновление на лету
+
+Файлы лежат в `config-server/src/main/resources/config-repo/`: общие в корне, настройки сервиса
+в его папке. Профиль задаётся переменной `SPRING_PROFILES_ACTIVE` (`dev` или `prod`), файлы
+профиля дополняют базовые и важнее их:
+
+```text
+config-repo/
+  application.yml                         всем сервисам
+  application-dev.yml                     всем сервисам с профилем dev
+  report-service/report-service.yml       только report-service
+  report-service/report-service-dev.yml   только report-service с профилем dev
+```
+
+При запуске с Kafka-оверлеем эта папка монтируется в `config-server`, и он раз в 5 секунд
+проверяет файлы. Если настройки сервиса изменились, в топик `config.changes.v1` уходит их полный
+снимок без значений секретов; ключи вида `password`, `secret`, `token` в него не попадают.
+Запуск сервиса по-прежнему идёт по HTTP, а через Kafka приходят изменения. Сервис сравнивает снимок
+с тем, с чем запустился, и затем:
+
+- `logging.level.*` применяет сразу, без рестарта (список задаёт `config.updates.hot-prefixes`);
+- при любом другом изменении, в том числе удалении ключа, завершается с кодом 75, и Compose поднимает
+  его заново (`restart: on-failure`). После запуска отличий нет, поэтому рестарт не повторяется.
+
+Сервисы перезапускаются не одновременно: паузу задаёт `config.updates.restart-delay` в файле
+сервиса, от 0 до 100 секунд. Поэтому изменение общего файла затрагивает всех по очереди, но готовность
+предыдущего сервиса не проверяется. Файл с ошибкой YAML ничего не меняет: сервисы работают с прежними
+настройками. Переменные окружения важнее файлов, поэтому значение, заданное в Compose или `.env`,
+так поменять нельзя. Активным может быть только один профиль.
+
+```bash
+# Сервисы перейдут на DEBUG без рестарта:
+sed -i 's/org.awesoma: ${APP_LOG_LEVEL:INFO}/org.awesoma: DEBUG/' config-server/src/main/resources/config-repo/application.yml
+# report-service перезапустится примерно через 85 секунд:
+sed -i 's/max-page-size: 50/max-page-size: 40/' config-server/src/main/resources/config-repo/report-service/report-service.yml
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml logs -f report-service
 ```
 
 ## Отчёты: report-service и MinIO
