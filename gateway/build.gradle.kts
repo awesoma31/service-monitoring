@@ -27,7 +27,7 @@ val configRepo = rootProject.file("config-server/src/main/resources/config-repo"
 tasks.named<Test>("test") {
     systemProperty(
         "spring.config.import",
-        "optional:file:$configRepo/application.yml,optional:file:$configRepo/gateway/gateway.yml")
+        "optional:file:$configRepo/application.yml,optional:file:$configRepo/gateway/application.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
     // Lets the routing test read the route table from the actuator.

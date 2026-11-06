@@ -144,4 +144,4 @@ resilience4j:
 config:
   updates:
     # A change of the shared file restarts everything; the services go one after another.
-    restart-delay: PT100S
+    restart-delay: PT25S

@@ -257,8 +257,8 @@ docker compose -f docker-compose.yml -f docker-compose.kafka.yml down
 config-repo/
   application.yml                         всем сервисам
   application-dev.yml                     всем сервисам с профилем dev
-  report-service/report-service.yml       только report-service
-  report-service/report-service-dev.yml   только report-service с профилем dev
+  report-service/application.yml          только report-service
+  report-service/application-dev.yml      только report-service с профилем dev
 ```
 
 При запуске с Kafka-оверлеем эта папка монтируется в `config-server`, и он раз в 5 секунд
@@ -272,7 +272,7 @@ config-repo/
   его заново (`restart: on-failure`). После запуска отличий нет, поэтому рестарт не повторяется.
 
 Сервисы перезапускаются не одновременно: паузу задаёт `config.updates.restart-delay` в файле
-сервиса, от 0 до 100 секунд. Поэтому изменение общего файла затрагивает всех по очереди, но готовность
+сервиса, от 0 до 25 секунд. Поэтому изменение общего файла затрагивает всех по очереди, но готовность
 предыдущего сервиса не проверяется. Файл с ошибкой YAML ничего не меняет: сервисы работают с прежними
 настройками. Переменные окружения важнее файлов, поэтому значение, заданное в Compose или `.env`,
 так поменять нельзя. Активным может быть только один профиль.
@@ -280,8 +280,8 @@ config-repo/
 ```bash
 # Сервисы перейдут на DEBUG без рестарта:
 sed -i 's/org.awesoma: ${APP_LOG_LEVEL:INFO}/org.awesoma: DEBUG/' config-server/src/main/resources/config-repo/application.yml
-# report-service перезапустится примерно через 85 секунд:
-sed -i 's/max-page-size: 50/max-page-size: 40/' config-server/src/main/resources/config-repo/report-service/report-service.yml
+# report-service перезапустится примерно через 30 секунд:
+sed -i 's/max-page-size: 50/max-page-size: 40/' config-server/src/main/resources/config-repo/report-service/application.yml
 docker compose -f docker-compose.yml -f docker-compose.kafka.yml logs -f report-service
 ```
 

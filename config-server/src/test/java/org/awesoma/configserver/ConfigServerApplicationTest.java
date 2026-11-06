@@ -19,11 +19,38 @@ class ConfigServerApplicationTest {
 
         assertThat(config.get("name").asText()).isEqualTo("monitor-service");
         assertThat(config.get("propertySources").findValuesAsText("name"))
-                .anyMatch(source -> source.endsWith("config-repo/monitor-service/monitor-service.yml"))
+                .anyMatch(source -> source.endsWith("config-repo/monitor-service/application.yml"))
                 .anyMatch(source -> source.endsWith("config-repo/application.yml"));
         assertThat(config.toString())
                 .contains("spring.datasource.url")
                 .contains("spring.jackson.property-naming-strategy");
+    }
+
+    @Test
+    void theFileOfTheServiceTakesPrecedenceOverTheSharedOne() {
+        JsonNode config = http.getForObject("/monitor-service/default", JsonNode.class);
+
+        assertThat(config.get("propertySources").findValuesAsText("name")).first().asString()
+                .endsWith("config-repo/monitor-service/application.yml");
+    }
+
+    @Test
+    void addsTheFilesOfTheProfileAboveTheBaseOnes() {
+        JsonNode config = http.getForObject("/report-service/dev", JsonNode.class);
+
+        assertThat(config.get("propertySources").findValuesAsText("name"))
+                .anyMatch(source -> source.endsWith("config-repo/report-service/application-dev.yml"))
+                .anyMatch(source -> source.endsWith("config-repo/application-dev.yml"))
+                .anyMatch(source -> source.endsWith("config-repo/report-service/application.yml"));
+        assertThat(config.get("propertySources").findValuesAsText("name")).first().asString().contains("-dev.yml");
+    }
+
+    @Test
+    void doesNotServeTheFilesOfAnotherService() {
+        JsonNode config = http.getForObject("/report-service/default", JsonNode.class);
+
+        assertThat(config.get("propertySources").findValuesAsText("name"))
+                .noneMatch(source -> source.contains("monitor-service"));
     }
 
     @Test

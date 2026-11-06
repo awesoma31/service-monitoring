@@ -20,6 +20,10 @@ final class ProcessRestarter implements Restarter {
     @Override
     public void restart() {
         // Not on the caller's thread: closing the context waits for that thread's executor.
-        new Thread(() -> System.exit(SpringApplication.exit(context, () -> EXIT_CODE)), "config-restart").start();
+        var thread = new Thread(() -> System.exit(SpringApplication.exit(context, () -> EXIT_CODE)), "config-restart");
+        // The caller's thread is a daemon. If this one were too, the JVM would end with code 0 as soon
+        // as the context is closed, before the exit code is set, and nothing would start it again.
+        thread.setDaemon(false);
+        thread.start();
     }
 }

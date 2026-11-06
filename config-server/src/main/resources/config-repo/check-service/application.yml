@@ -31,4 +31,4 @@ springdoc:
 config:
   updates:
     # A change of the shared file restarts everything; the services go one after another.
-    restart-delay: PT40S
+    restart-delay: PT10S

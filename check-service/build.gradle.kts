@@ -52,7 +52,7 @@ val configRepo = rootProject.file("config-server/src/main/resources/config-repo"
 tasks.named<Test>("test") {
     systemProperty(
         "spring.config.import",
-        "optional:file:$configRepo/application.yml,optional:file:$configRepo/check-service/check-service.yml")
+        "optional:file:$configRepo/application.yml,optional:file:$configRepo/check-service/application.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
 }

@@ -47,7 +47,7 @@ class ConfigChangePublisherTest {
         Files.writeString(root.resolve("application.yml"), "shared: 1\n");
         Files.writeString(root.resolve("application-dev.yml"), "shared: 2\n");
         Files.createDirectory(root.resolve("report-service"));
-        Files.writeString(root.resolve("report-service/report-service.yml"), "report: 1\n");
+        Files.writeString(root.resolve("report-service/application.yml"), "report: 1\n");
         when(environments.findOne(anyString(), anyString(), any())).thenAnswer(call -> {
             var environment = new Environment(call.getArgument(0), (String) call.getArgument(1));
             environment.add(new PropertySource("service", Map.of("report.limit", limit, "db.password", "hidden")));
@@ -86,7 +86,7 @@ class ConfigChangePublisherTest {
         publisher.publishChanges();
         verify(kafka, never()).send(anyString(), anyString(), anyString());
 
-        Files.writeString(root.resolve("report-service/report-service.yml"), "report: 2\n");
+        Files.writeString(root.resolve("report-service/application.yml"), "report: 2\n");
         limit = "60";
         publisher.publishChanges();
         verify(kafka, times(2)).send(anyString(), anyString(), anyString());
@@ -97,7 +97,7 @@ class ConfigChangePublisherTest {
         publisher.publishChanges();
         clearInvocations(kafka);
 
-        Files.writeString(root.resolve("report-service/report-service.yml"), "# a comment\nreport: 1\n");
+        Files.writeString(root.resolve("report-service/application.yml"), "# a comment\nreport: 1\n");
         publisher.publishChanges();
 
         verify(kafka, never()).send(anyString(), anyString(), anyString());
@@ -108,7 +108,7 @@ class ConfigChangePublisherTest {
         publisher.publishChanges();
         clearInvocations(kafka);
 
-        Files.writeString(root.resolve("report-service/report-service.yml"), "report: [broken\n");
+        Files.writeString(root.resolve("report-service/application.yml"), "report: [broken\n");
         limit = "60";
         publisher.publishChanges();
 
@@ -129,7 +129,7 @@ class ConfigChangePublisherTest {
 
     @Test
     void scannerSkipsFilesThatAreNotConfiguration() throws IOException {
-        Files.writeString(root.resolve("report-service/.report-service.yml.swp"), "binary: [");
+        Files.writeString(root.resolve("report-service/.application.yml.swp"), "binary: [");
         Files.writeString(root.resolve("report-service/notes.txt"), "text");
 
         var targets = new ConfigRepositoryScanner(root).scan().targets();

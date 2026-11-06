@@ -29,7 +29,7 @@ extra["coverageExclusions"] = listOf(
 )
 val configRepo = rootProject.file("config-server/src/main/resources/config-repo")
 tasks.named<Test>("test") {
-    systemProperty("spring.config.import", "optional:file:$configRepo/application.yml,optional:file:$configRepo/user-service/user-service.yml")
+    systemProperty("spring.config.import", "optional:file:$configRepo/application.yml,optional:file:$configRepo/user-service/application.yml")
     systemProperty("spring.cloud.config.enabled", "false")
     systemProperty("eureka.client.enabled", "false")
     systemProperty("security.jwt.key-file", layout.buildDirectory.file("test-keys/signing-key.json").get().asFile.absolutePath)

@@ -20,6 +20,8 @@ import org.yaml.snakeyaml.error.YAMLException;
 
 /** Finds which services and profiles the repository holds, and refuses it while a file is broken. */
 final class ConfigRepositoryScanner {
+    private static final Pattern PROFILE_FILE = Pattern.compile("application-(.+)");
+
     private final Path root;
 
     ConfigRepositoryScanner(Path root) {
@@ -51,27 +53,28 @@ final class ConfigRepositoryScanner {
         return new Scan(targets(files), HexFormat.of().formatHex(digest.digest()));
     }
 
+    /** Every folder with an application.yml is a service; a profile comes from application-*.yml. */
     private List<Target> targets(List<Path> files) {
         Set<String> shared = new TreeSet<>();
         for (Path file : files) {
-            if (root.equals(file.getParent())) profileOf(file, "application", shared);
+            if (root.equals(file.getParent())) profileOf(file, shared);
         }
         List<Target> targets = new ArrayList<>();
         for (Path file : files) {
-            String service = file.getParent().getFileName().toString();
-            if (root.equals(file.getParent()) || !stem(file).equals(service)) continue;
+            if (root.equals(file.getParent()) || !stem(file).equals("application")) continue;
             Set<String> profiles = new TreeSet<>(shared);
             profiles.add(ConfigChanged.DEFAULT_PROFILE);
             for (Path other : files) {
-                if (file.getParent().equals(other.getParent())) profileOf(other, service, profiles);
+                if (file.getParent().equals(other.getParent())) profileOf(other, profiles);
             }
+            String service = file.getParent().getFileName().toString();
             profiles.forEach(profile -> targets.add(new Target(service, profile)));
         }
         return targets;
     }
 
-    private static void profileOf(Path file, String name, Set<String> profiles) {
-        Matcher matcher = Pattern.compile(Pattern.quote(name) + "-(.+)").matcher(stem(file));
+    private static void profileOf(Path file, Set<String> profiles) {
+        Matcher matcher = PROFILE_FILE.matcher(stem(file));
         if (matcher.matches()) profiles.add(matcher.group(1));
     }
 

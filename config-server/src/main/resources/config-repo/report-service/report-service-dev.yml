@@ -1,3 +1,0 @@
-# Added to report-service only, on top of report-service.yml, with the dev profile.
-report:
-  upload-timeout: PT2M

@@ -49,9 +49,9 @@ notifications:
 management:
   health:
     mail:
-      # Without this the health check probes SMTP even when email is off, and an
-      # unreachable server keeps the service, and the gateway behind it, from starting.
-      enabled: ${EMAIL_ENABLED:false}
+      # A slow or unreachable SMTP server must not keep the service, and the gateway behind it,
+      # from starting: delivery retries on its own and records its failures.
+      enabled: false
 
 server:
   port: ${APP_PORT:8080}
@@ -63,4 +63,4 @@ springdoc:
 config:
   updates:
     # A change of the shared file restarts everything; the services go one after another.
-    restart-delay: PT60S
+    restart-delay: PT15S
