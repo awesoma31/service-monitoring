@@ -10,5 +10,6 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class R2dbcUnitOfWork implements ReactiveUnitOfWork {
     private final TransactionalOperator transaction;
+    @Override
     public <T> Mono<T> write(Mono<T> operation) { return transaction.transactional(operation); }
 }

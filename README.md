@@ -12,7 +12,7 @@
 | 1 | Монолит на Spring Boot: REST API, PostgreSQL, Liquibase, транзакции, пагинация, тесты | готово | [описание](lab1.md), [отчёт](docs/report-lab1.md), релиз `v1.1.0-lab1` |
 | 2 | Декомпозиция на микросервисы: Eureka, Config Server, Gateway, Feign, Circuit Breaker, Reactor | готово | [описание](lab2.md), [отчёт](docs/report-lab2.md), релиз `v2.1.0-lab2` |
 | 3 | Аутентификация: Spring Security, JWT, ролевая модель | готово | [описание](lab3.md), [отчёт](docs/report-lab3.md) |
-| 4 | Обмен сообщениями через Kafka/RabbitMQ, файловый сервис, Clean Architecture | в работе | [описание](lab4.md) |
+| 4 | Обмен сообщениями через Kafka/RabbitMQ, файловый сервис, Clean Architecture | в работе: код готов, нет отчёта | [описание](lab4.md), [границы архитектуры](docs/clean-architecture.md) |
 
 Полный текст задания — [TASK.md](TASK.md).
 

@@ -1,0 +1,32 @@
+package org.awesoma.check.adapters.in.web;
+
+import io.swagger.v3.oas.annotations.Hidden;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.awesoma.check.adapters.in.messaging.CheckEventHandler;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
+
+/**
+ * Called by monitor-service when a monitor is deleted. Not routed by the gateway and hidden
+ * from the API docs, like the rest of /internal/**.
+ */
+@Hidden
+@RestController
+@RequestMapping("/internal/results")
+@RequiredArgsConstructor
+public class InternalResultController {
+
+    private final CheckEventHandler events;
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> deleteHistory(@RequestParam("monitor_id") @Positive Long monitorId) {
+        return events.deleteMonitorLegacy(monitorId);
+    }
+}

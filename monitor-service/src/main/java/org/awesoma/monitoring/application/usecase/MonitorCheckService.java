@@ -55,7 +55,7 @@ public class MonitorCheckService {
     private MonitorTarget claim(Monitor monitor, OffsetDateTime claimedUntil) {
         UUID token = UUID.randomUUID();
         monitor.claimForCheck(token, claimedUntil);
-        monitorRepository.save(monitor);
+        monitorRepository.saveClaim(monitor);
         return new MonitorTarget(
                 monitor.getId(),
                 monitor.getUrl(),

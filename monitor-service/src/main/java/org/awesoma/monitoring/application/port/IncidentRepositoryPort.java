@@ -16,6 +16,7 @@ public interface IncidentRepositoryPort {
     Page<Incident> findByMonitorIdAndStatus(Long monitorId, IncidentStatus status, PageRequest page);
     boolean existsById(Long id);
     long maxId();
+    /** Incidents are returned with only the ID of their monitor, and are only good for reading. */
     List<Incident> findReportPage(Collection<Long> ids, OffsetDateTime from, OffsetDateTime to, long after, long upper, int limit);
     Incident save(Incident incident);
 }

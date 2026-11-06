@@ -1,7 +1,5 @@
 package org.awesoma.notification.adapters.out.persistence;
 
-import org.awesoma.notification.domain.*;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,6 +19,8 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.awesoma.notification.domain.IncidentKind;
+import org.awesoma.notification.domain.NotificationStatus;
 
 @Entity
 @Table(name = "notifications")

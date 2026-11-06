@@ -18,7 +18,7 @@ import org.awesoma.monitoring.adapters.out.persistence.entity.Project;
 import org.awesoma.monitoring.domain.enums.MonitorState;
 import org.awesoma.monitoring.domain.model.MonitorTarget;
 import org.awesoma.monitoring.domain.model.ProbeOutcome;
-import org.awesoma.monitoring.repository.MonitorRepository;
+import org.awesoma.monitoring.adapters.out.persistence.repository.MonitorRepository;
 import org.awesoma.monitoring.application.usecase.MonitorCheckService;
 import org.awesoma.monitoring.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.AfterEach;

@@ -1,0 +1,45 @@
+package org.awesoma.notification.adapters.in.web;
+
+import io.swagger.v3.oas.annotations.Hidden;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.awesoma.notification.adapters.in.web.dto.IncidentEvent;
+import org.awesoma.notification.application.model.IncidentNotice;
+import org.awesoma.notification.application.usecase.ChannelService;
+import org.awesoma.notification.application.usecase.NotificationService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
+
+/**
+ * Called by monitor-service only: the gateway routes /api/v1/** alone, so this is reachable
+ * inside the service network, and it stays out of the API docs.
+ */
+@Hidden
+@RestController
+@RequestMapping("/internal")
+@RequiredArgsConstructor
+public class InternalNotificationController {
+
+    private final NotificationService notificationService;
+    private final ChannelService channelService;
+
+    @PostMapping("/notifications")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> incidentChanged(@Valid @RequestBody IncidentEvent event) {
+        return notificationService.record(new IncidentNotice(event.incidentId(), event.projectId(), event.kind())).then();
+    }
+
+    @DeleteMapping("/projects/{projectId}/channels")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> projectDeleted(@PathVariable @Positive Long projectId) {
+        return channelService.deleteByProject(projectId).then();
+    }
+}

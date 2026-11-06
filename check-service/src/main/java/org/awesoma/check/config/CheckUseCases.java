@@ -1,8 +1,18 @@
 package org.awesoma.check.config;
 
 import java.time.Clock;
-import org.awesoma.check.application.port.*;
-import org.awesoma.check.application.usecase.*;
+import org.awesoma.check.application.port.CheckHistory;
+import org.awesoma.check.application.port.CheckResultRecorder;
+import org.awesoma.check.application.port.DeletionStore;
+import org.awesoma.check.application.port.MonitorDirectory;
+import org.awesoma.check.application.port.MonitorOwnership;
+import org.awesoma.check.application.port.MonitorProbe;
+import org.awesoma.check.application.port.ReactiveUnitOfWork;
+import org.awesoma.check.application.port.ReportDataStore;
+import org.awesoma.check.application.usecase.CheckHistoryService;
+import org.awesoma.check.application.usecase.CheckRunner;
+import org.awesoma.check.application.usecase.ReportDataService;
+import org.awesoma.check.application.usecase.ResourceDeletionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +29,7 @@ public class CheckUseCases {
     @Bean ResourceDeletionService resourceDeletionService(DeletionStore store, ReactiveUnitOfWork work) {
         return new ResourceDeletionService(store, work);
     }
-    @Bean ReportDataService reportDataService(ReportDataStore store, MonitorOwnership monitors, CursorCodec cursors) {
-        return new ReportDataService(store, monitors, cursors, Clock.systemUTC());
+    @Bean ReportDataService reportDataService(ReportDataStore store, MonitorOwnership monitors) {
+        return new ReportDataService(store, monitors, Clock.systemUTC());
     }
 }

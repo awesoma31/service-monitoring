@@ -7,7 +7,7 @@
 | Межсервисное взаимодействие через Kafka/RabbitMQ, где это возможно | результаты проверок, события инцидентов и удаления ресурсов идут через Kafka с outbox и inbox; транспорт выбирается настройкой | готово |
 | Уведомления через брокер: минимум 3 брокера, несколько топиков, репликация | три брокера Kafka в режиме KRaft, три топика и их `.dlt`, 3 партиции, фактор репликации 3, `min.insync.replicas=2` | готово |
 | Микросервис для загрузки и получения файлов | `report-service`: загрузка готовых отчётов CSV/PDF, фоновая генерация отчётов о мониторинге, хранение в MinIO | готово |
-| Все микросервисы соответствуют Clean Architecture | `report-service` построен по слоям domain → application → adapters; остальные сервисы ещё в прежней слоистой структуре | в работе |
+| Все микросервисы соответствуют Clean Architecture | все пять бизнес-сервисов разделены на `domain`, `application` и `adapters`; границы описаны в [docs/clean-architecture.md](docs/clean-architecture.md) и проверяются модулем `architecture-tests` | готово |
 
 ## Запуск
 
@@ -79,20 +79,27 @@ export SUPERVISOR_PASSWORD='значение-из-.env'
 | инцидент в периоде | `startedAt < to AND (resolvedAt IS NULL OR resolvedAt > from)` |
 | открыт на конец | `resolvedAt IS NULL OR resolvedAt > to` |
 
-## Clean Architecture в report-service
+## Clean Architecture
+
+Все бизнес-сервисы устроены одинаково:
 
 ```text
-report-service/src/main/java/org/awesoma/report/
-  domain/        Report и правила его состояний, период, выбор мониторов, метрики — только JDK
-  application/   сценарии (ReportService, GenerationService, GenerationWorker, …) и порты
-  adapters/in/   web, приём событий (Kafka и HTTP), планировщик фоновых задач
-  adapters/out/  PostgreSQL, MinIO, HTTP-клиенты источников данных, рендереры CSV и PDF
+src/main/java/org/awesoma/<сервис>/
+  domain/        модели и правила предметной области, без Spring и JPA
+  application/   сценарии и порты
+  adapters/in/   web, безопасность, приём событий (Kafka и HTTP), планировщики
+  adapters/out/  PostgreSQL, HTTP-клиенты, отправка событий, MinIO, рендереры, рассылка
   config/        сборка сценариев из адаптеров
 ```
 
-Зависимости направлены внутрь: домен не знает Spring и JPA, сценарии работают только через
-свои порты (`ReportRepository`, `ObjectStorage`, `ReportDataSource`, `ProjectAccessPort`,
-`TransactionRunner`, …) и создаются в `config`, а не через аннотации Spring.
+Зависимости направлены внутрь: сценарии работают только через свои порты и создаются в
+`config`, а не через аннотации Spring. В `monitor-service` транзакции тоже заданы в `config`:
+каждый публичный метод сценария выполняется в транзакции, поэтому забыть о ней нельзя. Правила
+и то, как их проверить, описаны в [docs/clean-architecture.md](docs/clean-architecture.md):
+
+```bash
+./gradlew :architecture-tests:check
+```
 
 ## Тесты
 

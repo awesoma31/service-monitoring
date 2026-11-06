@@ -2,26 +2,27 @@ package org.awesoma.monitoring.application.usecase;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.monitoring.domain.entity.Project;
-import org.awesoma.monitoring.domain.entity.ProjectMember;
-import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 import org.awesoma.monitoring.application.event.ProjectDeleted;
-import org.awesoma.monitoring.application.port.MonitorRepositoryPort;
-import org.awesoma.monitoring.application.port.MemberRepositoryPort;
-import org.awesoma.monitoring.application.port.ProjectRepositoryPort;
+import org.awesoma.monitoring.application.exception.ConflictStateException;
+import org.awesoma.monitoring.application.exception.NotFoundException;
+import org.awesoma.monitoring.application.model.Page;
+import org.awesoma.monitoring.application.model.PageRequest;
+import org.awesoma.monitoring.application.model.view.ProjectMemberResponse;
+import org.awesoma.monitoring.application.model.view.ProjectResponse;
 import org.awesoma.monitoring.application.port.CurrentActor;
+import org.awesoma.monitoring.application.port.DomainEvents;
+import org.awesoma.monitoring.application.port.MemberRepositoryPort;
+import org.awesoma.monitoring.application.port.MonitorRepositoryPort;
+import org.awesoma.monitoring.application.port.ProjectPresenter;
+import org.awesoma.monitoring.application.port.ProjectRepositoryPort;
+import org.awesoma.monitoring.application.port.UserDirectoryPort;
 import org.awesoma.monitoring.application.port.command.OwnerNotificationsUpdateRequest;
 import org.awesoma.monitoring.application.port.command.ProjectCreateRequest;
 import org.awesoma.monitoring.application.port.command.ProjectMemberRequest;
-import org.awesoma.monitoring.application.model.view.ProjectMemberResponse;
-import org.awesoma.monitoring.application.model.view.ProjectResponse;
 import org.awesoma.monitoring.application.port.command.ProjectUpdateRequest;
-import org.awesoma.monitoring.application.exception.ConflictStateException;
-import org.awesoma.monitoring.application.exception.NotFoundException;
-import org.awesoma.monitoring.application.port.ProjectPresenter;
-import org.awesoma.monitoring.application.port.DomainEvents;
-import org.awesoma.monitoring.application.model.Page;
-import org.awesoma.monitoring.application.model.PageRequest;
+import org.awesoma.monitoring.domain.entity.Project;
+import org.awesoma.monitoring.domain.entity.ProjectMember;
+import org.awesoma.monitoring.domain.entity.ProjectMemberId;
 
 @RequiredArgsConstructor
 public class ProjectService {
@@ -29,7 +30,7 @@ public class ProjectService {
 
     private final ProjectRepositoryPort projects;
     private final MemberRepositoryPort members;
-    private final org.awesoma.monitoring.application.port.UserDirectoryPort users;
+    private final UserDirectoryPort users;
     private final ProjectPresenter mapper;
     private final MonitorRepositoryPort monitors;
     private final DomainEvents events;

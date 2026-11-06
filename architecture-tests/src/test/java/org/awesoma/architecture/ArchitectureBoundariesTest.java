@@ -36,15 +36,14 @@ class ArchitectureBoundariesTest {
                     service.module() + " must contain a domain layer");
             assertFalse(classes.stream().noneMatch(c -> c.getPackageName().startsWith(service.root() + ".application")),
                     service.module() + " must contain an application layer");
-            assertFalse(classes.stream().anyMatch(c -> c.getPackageName().startsWith(service.root() + ".service")),
-                    service.module() + " must not leave business services in the legacy service package");
+            for (String legacy : List.of("service", "web", "repository", "client", "integration", "security",
+                    "probe", "delivery", "support", "scheduling")) {
+                assertFalse(classes.stream().anyMatch(c -> c.getPackageName().startsWith(service.root() + "." + legacy)),
+                        service.module() + " must keep adapters under adapters, not in the package " + legacy);
+            }
             String domain = service.root() + ".domain..";
             String application = service.root() + ".application..";
-            String[] outer = {service.root() + ".adapters..", service.root() + ".web..",
-                    service.root() + ".repository..", service.root() + ".config..",
-                    service.root() + ".client..", service.root() + ".integration..",
-                    service.root() + ".security..", service.root() + ".probe..",
-                    service.root() + ".delivery..", service.root() + ".support.."};
+            String[] outer = {service.root() + ".adapters..", service.root() + ".config.."};
             noClasses().that().resideInAnyPackage(domain, application)
                     .should().dependOnClassesThat().resideInAnyPackage(FRAMEWORKS)
                     .because("business rules must not depend on frameworks").check(classes);

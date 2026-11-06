@@ -18,8 +18,11 @@ public interface MonitorRepositoryPort {
     List<Long> findIdsByProjectId(Long id);
     long countByProjectIdAndIdIn(Long id, Collection<Long> ids);
     long maxId();
+    /** Monitors are returned without project and tags, and are only good for reading. */
     List<Monitor> findReportPage(Long projectId, boolean all, Collection<Long> ids, long after, long upper, int limit);
+    /** Monitors are returned without project and tags: a claim only needs {@link #saveClaim}. */
     List<Monitor> findDueForClaim(int limit);
+    void saveClaim(Monitor monitor);
     Monitor save(Monitor monitor);
     void delete(Monitor monitor);
 }

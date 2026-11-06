@@ -3,7 +3,7 @@ package org.awesoma.notification.support;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
-import org.awesoma.notification.client.MonitorClient;
+import org.awesoma.notification.adapters.out.http.MonitorClient;
 import org.awesoma.security.jwt.JwtTokens;
 import org.awesoma.security.access.ResourceAccessClient;
 import org.awesoma.security.support.TestJwtConfiguration;

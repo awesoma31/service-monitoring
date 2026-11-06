@@ -2,10 +2,10 @@ package org.awesoma.monitoring.adapters.out.health;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import lombok.RequiredArgsConstructor;
-import org.awesoma.monitoring.integration.CheckHistoryClient;
-import org.awesoma.monitoring.integration.HealthStatus;
-import org.awesoma.monitoring.integration.NotificationClient;
-import org.awesoma.monitoring.web.dto.common.ServiceHealthResponse;
+import org.awesoma.monitoring.adapters.out.http.CheckHistoryClient;
+import org.awesoma.monitoring.adapters.out.http.HealthStatus;
+import org.awesoma.monitoring.adapters.out.http.NotificationClient;
+import org.awesoma.monitoring.adapters.in.web.dto.common.ServiceHealthResponse;
 import org.springframework.stereotype.Service;
 
 @Service
